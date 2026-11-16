@@ -6,7 +6,7 @@ import type { UnitDef } from '../data/types';
 import {
   applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isSkillOpen, isStageOpen,
   isUnitOwned, levelCap, levelUp, levelUpCost, makeLoadout, newSave, subscribe, unitProgress, unitStats,
-  upgradeFacility, type SaveData,
+  upgradeFacility, takeMigrationNotes, type SaveData,
 } from '../sim/progression';
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
@@ -73,7 +73,14 @@ export class App {
   private async enter(p: Profile, go = true): Promise<void> {
     this.profile = p;
     this.sync = p.kind === 'account' ? 'pending' : null;
+    takeMigrationNotes();
     this.save = (await this.storeFor(p).load(p.id)) ?? newSave();
+    const notes = takeMigrationNotes();
+    if (notes.length) {
+      // 환불 등 정리된 데이터를 바로 저장해 같은 일이 두 번 일어나지 않게 한다
+      this.notice = [...new Set(notes)].join(' ');
+      this.persist();
+    }
     if (p.kind === 'account' && this.api && !this.api.user) {
       // 갱신 토큰이 만료돼 로그아웃됐다
       this.profiles.drop(p.id);
@@ -275,8 +282,11 @@ export class App {
       );
     }));
     const totalStars = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
+    this.notice = '';
     this.swap(h('div.screen.map', {},
       this.topBar('스테이지'),
+      toast,
       tabs,
       h('div.chapter-title', {}, h('b', {}, `${ch.name}: ${ch.subtitle}`), h('span.muted', {}, ` · 총 별 ${totalStars}/${STAGES.length * 3}`)),
       nodes,

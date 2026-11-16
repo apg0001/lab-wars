@@ -2,6 +2,7 @@ import { STAGES, type StageDef } from '../data/stages';
 import { UNITS } from '../data/units';
 import { FACILITIES, facilityCost } from '../data/upgrades';
 import { ALLY_FRONT, Battle, makeRng } from './battle';
+import { RANGED_THRESHOLD } from '../data/types';
 import {
   applyOutcome, canEvolve, canLevelUp, evolve, evolveCost, levelUp, levelUpCost, makeLoadout, subscribe,
   canSubscribe, unitProgress, upgradeFacility, type SaveData,
@@ -9,7 +10,7 @@ import {
 
 /**
  * 밸런스 검증용 자동 플레이어. 사람 수준으로 플레이하도록 판단 주기를 0.4초로 두고,
- * 머그컵은 기회의 일부만 쓰며 조준 오차를 둔다.
+ * 폭격 스킬은 조준 오차를 둔다.
  */
 export function playBot(battle: Battle, limit = 300, seed = 4242): void {
   const rng = makeRng(seed);
@@ -33,19 +34,21 @@ function botThink(b: Battle, rng: () => number): void {
     return;
   }
   // 가장 비싼 유닛을 우선 소환하되, 카페인이 넘칠 때만 고급 유닛을 기다린다.
-  const deck = [...b.loadout.deck].sort((x, y) => y.def.cost - x.def.cost);
+  // 공중 적이 쌓이면 대공 가능한 유닛(원거리)을 먼저 뽑는다.
+  const air = enemies.filter((e) => e.stats.flying).length;
+  const antiAir = (d: { def: { range: number } }) => d.def.range >= RANGED_THRESHOLD;
+  const deck = [...b.loadout.deck].sort((x, y) => (air >= 2 ? Number(antiAir(y)) - Number(antiAir(x)) : 0) || y.def.cost - x.def.cost);
+  // 적이 연구실 코앞이면 급한 대로 아무거나, 아니면 좋은 유닛을 위해 카페인을 모은다.
+  const emergency = nearest - ALLY_FRONT < 260;
   for (const d of deck) {
+    if ((b.unitCd[d.def.id] ?? 0) > 0) continue;
     if (b.canSummon(d.def.id)) {
       b.summon(d.def.id);
       break;
     }
-    // 고급 유닛을 위해 모으는 중이면 싼 유닛은 참는다.
-    if (b.caffeine < d.def.cost && (b.unitCd[d.def.id] ?? 0) <= 0 && d.def.cost <= b.caffeineMax * 0.9 && enemies.length < 4) break;
-  }
-  // 사람 수준: 투척 기회의 60%만 쓰고, 조준은 ±35px 빗나간다.
-  if (enemies.length && b.canThrowMug() && rng() < 0.6) {
-    const front = enemies.reduce((m, e) => (e.x < m.x ? e : m));
-    b.throwMug(front.x + (rng() - 0.5) * 70);
+    // 3초 안에 모을 수 있으면 기다리고, 아니면 다음(더 싼) 유닛을 본다
+    const wait = (d.def.cost - b.caffeine) / b.caffeineRegen;
+    if (!emergency && d.def.cost <= b.caffeineMax * 0.9 && wait <= 3) break;
   }
   for (const s of b.loadout.skills) {
     if (!b.canCast(s.id)) continue;
@@ -54,7 +57,7 @@ function botThink(b: Battle, rng: () => number): void {
     else if (s.id === 'aircon' && enemies.length >= 6) b.cast('aircon');
     else if (s.id === 'bombard' && enemies.length >= 4) {
       const front = enemies.reduce((m, e) => (e.x < m.x ? e : m));
-      b.cast('bombard', front.x + 30);
+      b.cast('bombard', front.x + 30 + (rng() - 0.5) * 70);
     }
   }
 }

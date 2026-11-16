@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Battle, ENEMY_FRONT, GROUND_Y } from '../src/sim/battle';
+import { Battle, ENEMY_FRONT, GROUND_Y, killCaffeine } from '../src/sim/battle';
 import { STAGE_BY_ID } from '../src/data/stages';
 import { makeLoadout, newSave } from '../src/sim/progression';
 import { playBot } from '../src/sim/bot';
@@ -30,17 +30,6 @@ describe('전투 시뮬레이션', () => {
     expect(grunt.x).toBeGreaterThan(260);
   });
 
-  it('머그컵은 대기 시간이 있고 범위 안의 적에게 피해를 준다', () => {
-    const b = fresh();
-    const spawn = (b as unknown as { spawnEnemy: (id: string, boss: boolean, x: number) => { hp: number } }).spawnEnemy;
-    const e = spawn.call(b, 'paperwork', false, 900);
-    const hp0 = e.hp;
-    expect(b.throwMug(900)).toBe(true);
-    expect(b.throwMug(900)).toBe(false);
-    for (let i = 0; i < 60; i++) b.step(1 / 60);
-    expect(e.hp).toBeLessThan(hp0);
-  });
-
   it('커피머신을 올리면 카페인 최대치와 충전 속도가 오른다', () => {
     const b = fresh();
     expect(b.caffeineMax).toBe(100);
@@ -56,6 +45,32 @@ describe('전투 시뮬레이션', () => {
     expect(b.brewLevel).toBe(6);
     expect(b.brewCost()).toBeNull();
     expect(b.caffeineMax).toBe(225);
+  });
+
+  it('넉백을 맞으면 뒤로 밀리고 잠깐 움직이지 못하며, 보스는 면역이다', () => {
+    const b = fresh();
+    type Priv = { spawnEnemy: (id: string, boss: boolean, x: number) => { x: number; kbT: number; isBoss: boolean }; knockback: (f: unknown, d: number) => void };
+    const p = b as unknown as Priv;
+    const e = p.spawnEnemy.call(b, 'paperwork', false, 900);
+    p.knockback.call(b, e, 60);
+    expect(e.kbT).toBeGreaterThan(0);
+    for (let i = 0; i < 30; i++) b.step(1 / 60);
+    expect(e.x).toBeGreaterThan(940); // 적은 교수실 쪽(오른쪽)으로 밀린다
+    const boss = p.spawnEnemy.call(b, 'prof1', true, 1200);
+    p.knockback.call(b, boss, 60);
+    expect(boss.kbT).toBe(0);
+  });
+
+  it('적을 처치하면 세기에 비례해 카페인을 얻는다', () => {
+    expect(killCaffeine('memo')).toBe(2);
+    expect(killCaffeine('grant')).toBe(15);
+    expect(killCaffeine('prof1')).toBe(50);
+    const b = fresh();
+    b.caffeine = 0;
+    const spawn = (b as unknown as { spawnEnemy: (id: string, boss: boolean, x: number) => { hp: number } }).spawnEnemy;
+    const e = spawn.call(b, 'meeting', false, 900);
+    (b as unknown as { damageFighter: (f: unknown, d: number, s: string) => void }).damageFighter(e, 99999, 'ally');
+    expect(b.caffeine).toBe(killCaffeine('meeting'));
   });
 
   it('스킬은 멘탈이 부족하면 쓸 수 없다', () => {

@@ -65,7 +65,6 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const cafTxt = h('span.res-txt');
   const menFill = h('div.res-fill.men');
   const menTxt = h('span.res-txt');
-  const mugBtn = h('div.mug-chip', { title: '전장을 탭하면 머그컵 투척' }, '🫖');
   const brewLv = h('span.brew-lv');
   const brewCost = h('span.brew-cost');
   const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, '☕', brewLv, brewCost);
@@ -95,7 +94,6 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     h('div.res-col', {},
       h('div.res', {}, h('div.res-track', {}, cafFill), cafTxt),
       h('div.res', {}, h('div.res-track', {}, menFill), menTxt),
-      mugBtn,
       brewBtn,
     ),
     h('div.unit-row', {}, ...unitBtns.map((u) => u.btn)),
@@ -123,7 +121,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (p) {
       overlay.replaceChildren(h('div.panel', {},
         h('h2', {}, '일시정지'),
-        h('p.muted', {}, '전장 드래그: 시점 이동 · 탭: 머그컵 투척 · 숫자키: 소환'),
+        h('p.muted', {}, '전장 드래그: 시점 이동 · 숫자키: 소환 · Q: 커피머신'),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
           h('button.btn', { onclick: () => { cleanup(); opt.onQuit(); } }, '후퇴하기'),
@@ -159,7 +157,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (armed) {
       battle.cast(armed, wx);
       armed = null;
-    } else battle.throwMug(wx);
+    }
   });
   canvas.addEventListener('pointercancel', () => (drag = null));
   canvas.addEventListener('wheel', (e) => {
@@ -232,8 +230,6 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     brewBtn.classList.toggle('off', !battle.canBrew());
     menFill.style.width = `${(battle.mental / L.mentalMax) * 100}%`;
     menTxt.textContent = `🧠 ${Math.floor(battle.mental)}`;
-    mugBtn.style.setProperty('--p', String(1 - battle.mugCd / battle.mugCooldown));
-    mugBtn.classList.toggle('ready', battle.canThrowMug());
     for (const u of unitBtns) {
       const cdLeft = battle.unitCd[u.entry.def.id] ?? 0;
       u.cd.style.height = `${(cdLeft / u.entry.def.cooldown) * 100}%`;

@@ -54,8 +54,8 @@ const STAGE_BOSS: Record<string, string> = {
 };
 
 const WEIGHTS: Record<string, number> = {
-  memo: 5, meeting: 4, deadline: 2, plane: 2, reviewer: 2,
-  ta: 1, paperwork: 1.5, grant: 0.6, revision: 1.5, notif: 1.1,
+  memo: 5, meeting: 4, deadline: 2, plane: 1.2, reviewer: 2,
+  ta: 1, paperwork: 1.5, grant: 0.6, revision: 1.0, notif: 0.8,
 };
 
 function makeStage(chapter: number, index: number): StageDef {
@@ -77,12 +77,12 @@ function makeStage(chapter: number, index: number): StageDef {
     index,
     order,
     name: STAGE_NAMES[order] ?? `${chapter}-${index}`,
-    scale: 1 + order * 0.12,
-    enemyBaseHp: Math.round(800 + order * 260),
+    scale: 1 + order * 0.1,
+    enemyBaseHp: Math.round(700 + order * 180),
     towerAtk: Math.round(10 * (1 + order * 0.12)),
     spawnEvery: Math.max(1.75, 2.8 - order * 0.06) * (isBoss ? 1.6 : 1),
     pool,
-    rush: { first: 35, every: Math.max(22, 40 - order), size: 3 + Math.floor(order / 3) },
+    rush: { first: 35, every: Math.max(22, 40 - order), size: Math.round((3 + Math.floor(order / 3)) * (isBoss ? 0.5 : 1)) },
     boss,
     reward: Math.round(60 + order * 30 + (isBoss ? 80 : 0)),
   };
