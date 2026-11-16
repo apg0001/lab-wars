@@ -83,7 +83,11 @@ export class App {
         h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 프로필 변경'),
       )
       : this.newProfileForm();
+    const fsBtn = canFullscreen()
+      ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void enterFullscreen() }, '⛶ 전체 화면')
+      : null;
     this.swap(h('div.screen.title', {},
+      fsBtn,
       h('div.title-logo', {}, h('h1', {}, '망가워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
       cast,
       body,
@@ -344,4 +348,21 @@ export class App {
       );
     });
   }
+}
+
+function canFullscreen(): boolean {
+  const standalone = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+  return !standalone && !!document.documentElement.requestFullscreen && !document.fullscreenElement;
+}
+
+/** 모바일에서 전체 화면으로 전환하고 가능하면 가로로 고정한다. */
+async function enterFullscreen(): Promise<void> {
+  try {
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    await o.lock?.('landscape');
+  } catch {
+    /* 지원하지 않는 브라우저(iOS Safari 등)는 무시 */
+  }
+  document.querySelector('.fs-btn')?.remove();
 }
