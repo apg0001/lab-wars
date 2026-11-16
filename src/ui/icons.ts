@@ -15,7 +15,8 @@ export function portrait(look: Look, tier = 1, defId = '', facing: 1 | -1 = 1): 
   const ctx = c.getContext('2d')!;
   const s = look.scale ?? 1;
   // 캐릭터 키에 맞춰 축소해서 칸에 맞춘다
-  const fit = 1.7 / Math.max(1, s * 0.75);
+  const charH = (look.kind === 'professor' ? 90 : 58) * s;
+  const fit = Math.min(1.7, (size - 16) / charH);
   ctx.translate(size / 2, size - 10);
   ctx.scale(fit, fit);
   const lift = look.kind === 'drone' || look.kind === 'plane' || look.kind === 'notif' ? 12 : 0;

@@ -1,28 +1,29 @@
 import { STAGES, type StageDef } from '../data/stages';
 import { UNITS } from '../data/units';
 import { FACILITIES, facilityCost } from '../data/upgrades';
-import { Battle } from './battle';
+import { Battle, makeRng } from './battle';
 import {
   applyOutcome, canEvolve, canLevelUp, evolve, evolveCost, levelUp, levelUpCost, makeLoadout, subscribe,
   canSubscribe, unitProgress, upgradeFacility, type SaveData,
 } from './progression';
 
 /**
- * 밸런스 검증용 자동 플레이어. 사람보다 조금 서툴게 플레이하도록
- * 판단 주기를 0.4초로 두고 머그컵은 가장 앞의 적에게만 던진다.
+ * 밸런스 검증용 자동 플레이어. 사람 수준으로 플레이하도록 판단 주기를 0.4초로 두고,
+ * 머그컵은 기회의 일부만 쓰며 조준 오차를 둔다.
  */
-export function playBot(battle: Battle, limit = 300): void {
+export function playBot(battle: Battle, limit = 300, seed = 4242): void {
+  const rng = makeRng(seed);
   let think = 0;
   while (!battle.result && battle.t < limit) {
     battle.step(1 / 60);
     think += 1 / 60;
     if (think < 0.4) continue;
     think = 0;
-    botThink(battle);
+    botThink(battle, rng);
   }
 }
 
-function botThink(b: Battle): void {
+function botThink(b: Battle, rng: () => number): void {
   const enemies = b.alive('enemy');
   const allies = b.alive('ally');
   // 가장 비싼 유닛을 우선 소환하되, 카페인이 넘칠 때만 고급 유닛을 기다린다.
@@ -35,9 +36,10 @@ function botThink(b: Battle): void {
     // 고급 유닛을 위해 모으는 중이면 싼 유닛은 참는다.
     if (b.caffeine < d.def.cost && (b.unitCd[d.def.id] ?? 0) <= 0 && d.def.cost <= b.loadout.caffeineMax * 0.9 && enemies.length < 4) break;
   }
-  if (enemies.length && b.canThrowMug()) {
+  // 사람 수준: 투척 기회의 60%만 쓰고, 조준은 ±35px 빗나간다.
+  if (enemies.length && b.canThrowMug() && rng() < 0.6) {
     const front = enemies.reduce((m, e) => (e.x < m.x ? e : m));
-    b.throwMug(front.x);
+    b.throwMug(front.x + (rng() - 0.5) * 70);
   }
   for (const s of b.loadout.skills) {
     if (!b.canCast(s.id)) continue;
@@ -107,7 +109,7 @@ export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7): { runs:
 
 export function playOnce(save: SaveData, stage: StageDef, seed: number): { win: boolean; stars: number; seconds: number } {
   const battle = new Battle(stage, makeLoadout(save), seed);
-  playBot(battle);
+  playBot(battle, 300, seed * 31 + 7);
   const win = battle.result === 'win';
   const out = applyOutcome(save, stage, win, battle.ally.hp / battle.ally.maxHp, battle.killReward);
   return { win, stars: out.stars, seconds: battle.t };
