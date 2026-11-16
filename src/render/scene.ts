@@ -10,6 +10,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number): voi
   ctx.save();
   drawBackdrop(ctx, camX);
   ctx.translate(-camX, 0);
+  drawPrinterRange(ctx, ALLY_FRONT + b.loadout.printerRange);
   drawLab(ctx, b.ally, time);
   drawOffice(ctx, b.enemy, time);
 
@@ -85,6 +86,25 @@ function drawBackdrop(ctx: Ctx, camX: number): void {
     ctx.lineTo(VIEW_W, y);
     ctx.stroke();
   }
+}
+
+/** 프린터 포탑 사거리: 바닥을 옅게 칠하고 끝에 점선 표시 */
+function drawPrinterRange(ctx: Ctx, edge: number): void {
+  ctx.save();
+  ctx.fillStyle = 'rgba(66,165,245,.08)';
+  ctx.fillRect(ALLY_FRONT, GROUND_Y, edge - ALLY_FRONT, VIEW_H - GROUND_Y);
+  ctx.strokeStyle = 'rgba(30,136,229,.55)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(edge, GROUND_Y);
+  ctx.lineTo(edge - 20, VIEW_H);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '12px Jua, sans-serif';
+  ctx.fillStyle = 'rgba(30,136,229,.8)';
+  ctx.fillText('🖨️', edge - 8, GROUND_Y + 18);
+  ctx.restore();
 }
 
 function crack(ctx: Ctx, base: Base, x: number, w: number): void {
@@ -280,19 +300,6 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.stroke();
       break;
     }
-    case 'mug':
-      ctx.rotate(time * 12);
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.roundRect(-7, -8, 14, 16, 3);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(8, 0, 4, -1.2, 1.2);
-      ctx.stroke();
-      ctx.fillStyle = '#6d4c41';
-      ctx.fillRect(-5, -6, 10, 4);
-      break;
     case 'flask':
     case 'bomb':
       ctx.rotate(time * 10);

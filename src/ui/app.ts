@@ -6,13 +6,14 @@ import type { UnitDef } from '../data/types';
 import {
   applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isSkillOpen, isStageOpen,
   isUnitOwned, levelCap, levelUp, levelUpCost, makeLoadout, newSave, subscribe, unitProgress, unitStats,
-  upgradeFacility, type SaveData,
+  upgradeFacility, takeMigrationNotes, type SaveData,
 } from '../sim/progression';
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
 import { AccountApi, AccountSaveStore, API_URL, ApiError, progressScore, type SyncState } from '../save/remote';
 import { mountBattle } from './battle-screen';
 import { mountGallery } from './gallery';
+import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscreen } from './fullscreen';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 
@@ -38,6 +39,11 @@ export class App {
   }
 
   constructor(private readonly root: HTMLElement) {
+    // 전체 화면이 켜지거나 꺼지면 버튼 글자를 바꾼다
+    onFullscreenChange(() => {
+      const btn = this.root.querySelector('.fs-btn');
+      if (btn) btn.textContent = fsLabel();
+    });
     if (this.accountStore) {
       this.accountStore.onSync = (st) => {
         this.sync = st;
@@ -73,7 +79,14 @@ export class App {
   private async enter(p: Profile, go = true): Promise<void> {
     this.profile = p;
     this.sync = p.kind === 'account' ? 'pending' : null;
+    takeMigrationNotes();
     this.save = (await this.storeFor(p).load(p.id)) ?? newSave();
+    const notes = takeMigrationNotes();
+    if (notes.length) {
+      // 환불 등 정리된 데이터를 바로 저장해 같은 일이 두 번 일어나지 않게 한다
+      this.notice = [...new Set(notes)].join(' ');
+      this.persist();
+    }
     if (p.kind === 'account' && this.api && !this.api.user) {
       // 갱신 토큰이 만료돼 로그아웃됐다
       this.profiles.drop(p.id);
@@ -125,8 +138,8 @@ export class App {
       : this.newProfileForm();
     const notice = this.notice ? h('p.notice', {}, this.notice) : null;
     this.notice = '';
-    const fsBtn = canFullscreen()
-      ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void enterFullscreen() }, '⛶ 전체 화면')
+    const fsBtn = shouldOfferFullscreen() || isFullscreen()
+      ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void toggleFullscreen(this.root.firstElementChild) }, fsLabel())
       : null;
     this.swap(h('div.screen.title', {},
       fsBtn,
@@ -275,8 +288,11 @@ export class App {
       );
     }));
     const totalStars = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
+    this.notice = '';
     this.swap(h('div.screen.map', {},
       this.topBar('스테이지'),
+      toast,
       tabs,
       h('div.chapter-title', {}, h('b', {}, `${ch.name}: ${ch.subtitle}`), h('span.muted', {}, ` · 총 별 ${totalStars}/${STAGES.length * 3}`)),
       nodes,
@@ -460,19 +476,6 @@ export class App {
   }
 }
 
-function canFullscreen(): boolean {
-  const standalone = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
-  return !standalone && !!document.documentElement.requestFullscreen && !document.fullscreenElement;
-}
-
-/** 모바일에서 전체 화면으로 전환하고 가능하면 가로로 고정한다. */
-async function enterFullscreen(): Promise<void> {
-  try {
-    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
-    await o.lock?.('landscape');
-  } catch {
-    /* 지원하지 않는 브라우저(iOS Safari 등)는 무시 */
-  }
-  document.querySelector('.fs-btn')?.remove();
+function fsLabel(): string {
+  return isFullscreen() ? '✕ 전체 화면 끄기' : '⛶ 전체 화면';
 }

@@ -151,13 +151,6 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .res-fill.caf { background: linear-gradient(90deg, #8d6e63, #d7a86e); }
 .res-fill.men { background: linear-gradient(90deg, #8e24aa, #ce93d8); }
 .res-txt { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6cqw; color: var(--ink); text-shadow: 0 0 0.3cqw #fff; }
-.mug-chip {
-  position: absolute; right: 0; top: -4.8cqw; width: 4cqw; height: 4cqw; border-radius: 50%;
-  display: grid; place-items: center; font-size: 2cqw;
-  background: conic-gradient(rgba(255,255,255,.95) calc(var(--p, 1) * 360deg), rgba(120,120,120,.6) 0);
-  border: 0.2cqw solid var(--ink); opacity: 0.7;
-}
-.mug-chip.ready { opacity: 1; }
 
 .unit-row { display: flex; gap: 0.6cqw; overflow-x: auto; padding: 0.4cqw 0.2cqw; scrollbar-width: none; touch-action: pan-x; }
 .unit-row::-webkit-scrollbar { display: none; }
@@ -337,3 +330,12 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .notice { margin: 0; color: #c62828; font-size: 1.6cqw; }
 .top-right { display: flex; align-items: center; gap: 0.8cqw; }
 .sync-chip { font-size: 1.4cqw; background: rgba(43,36,48,.08); border-radius: 1cqw; padding: 0.3cqw 0.8cqw; white-space: nowrap; }
+.toast {
+  position: absolute; top: 6cqw; left: 50%; transform: translateX(-50%); z-index: 15; max-width: 80cqw;
+  background: #fff8e1; border: 0.22cqw solid var(--ink); border-radius: 1cqw; padding: 0.8cqw 1.6cqw; font-size: 1.7cqw;
+  box-shadow: 0 0.35cqw 0 var(--ink);
+}
+.install-guide { max-width: 64cqw; text-align: left; }
+.install-guide h2 { text-align: center; }
+.install-guide ol { font-size: 1.9cqw; line-height: 1.6; padding-left: 3cqw; }
+.install-guide .btn { display: block; margin: 1cqw auto 0; }
