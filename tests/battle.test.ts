@@ -41,6 +41,23 @@ describe('전투 시뮬레이션', () => {
     expect(e.hp).toBeLessThan(hp0);
   });
 
+  it('커피머신을 올리면 카페인 최대치와 충전 속도가 오른다', () => {
+    const b = fresh();
+    expect(b.caffeineMax).toBe(100);
+    expect(b.brewCost()).toBe(30);
+    expect(b.brew()).toBe(true);
+    expect(b.brewLevel).toBe(2);
+    expect(b.caffeine).toBeCloseTo(0);
+    expect(b.caffeineMax).toBe(125);
+    expect(b.caffeineRegen).toBeCloseTo(6);
+    expect(b.brew()).toBe(false); // 카페인 부족
+    b.caffeine = 10_000;
+    while (b.brew());
+    expect(b.brewLevel).toBe(6);
+    expect(b.brewCost()).toBeNull();
+    expect(b.caffeineMax).toBe(225);
+  });
+
   it('스킬은 멘탈이 부족하면 쓸 수 없다', () => {
     const b = fresh();
     expect(b.cast('snack')).toBe(false);
