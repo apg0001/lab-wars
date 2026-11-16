@@ -1,0 +1,18 @@
+name: 문서 작업
+description: 기획서, 밸런스표, 운영 문서를 개선합니다.
+title: "[DOCS] "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문서 문제
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 대상 독자와 범위
+    validations:
+      required: true
