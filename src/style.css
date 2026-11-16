@@ -291,3 +291,4 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .desc { margin: 0; font-size: 1.5cqw; opacity: 0.75; flex: 1; }
 .lock-note { font-size: 1.6cqw; opacity: 0.7; }
 .btn.evolve { background: linear-gradient(90deg, #ffd54f, #ffb74d); }
+.fs-btn { position: absolute; top: 1.2cqw; right: 1.2cqw; font-size: 1.6cqw; }
