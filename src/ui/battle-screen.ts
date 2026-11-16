@@ -15,6 +15,9 @@ import { showAudioSettings } from './audio-settings';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
+/** 유닛 슬롯 단축키: 1~9, 0, -, = (최대 12칸) */
+const UNIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'minus', 'equal'];
+const UNIT_KEY_LABEL: Record<string, string> = { minus: '-', equal: '=' };
 
 export interface BattleEnd {
   win: boolean;
@@ -89,7 +92,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const btn = h('button.unit-btn', { onclick: () => battle.summon(d.def.id), title: d.def.names[d.tier - 1] },
       h('img', { src: portrait(d.def.look, d.tier, d.def.id), alt: '', draggable: 'false' }),
       h('span.cost', {}, `☕${d.def.cost}`),
-      h('span.hotkey', {}, i < 9 ? String(i + 1) : ''),
+      h('span.hotkey', {}, UNIT_KEYS[i] ? UNIT_KEY_LABEL[UNIT_KEYS[i]!] ?? UNIT_KEYS[i]! : ''),
       cd,
     );
     return { btn, cd, entry: d };
@@ -115,7 +118,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       brewBtn,
     ),
     h('div.unit-row', {}, ...unitBtns.map((u) => u.btn)),
-    h('div.skill-row', {}, ...skillBtns.map((s) => s.btn)),
+    h(`div.skill-row${skillBtns.length > 2 ? '.grid' : ''}`, {}, ...skillBtns.map((s) => s.btn)),
   );
 
   const aimHint = h('div.aim-hint', {}, '📚 폭격할 지점을 탭하세요');
@@ -140,7 +143,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (p) {
       overlay.replaceChildren(h('div.panel', {},
         h('h2', {}, '일시정지'),
-        h('p.muted', {}, '전장 드래그: 시점 이동 · 숫자키: 소환 · Q: 커피머신 · W/E/R/T: 스킬'),
+        h('p.muted', {}, '전장 드래그: 시점 이동 · 1~0 - =: 소환 · Q: 커피머신 · W/E/R/T: 스킬'),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
           h('button.btn', { onclick: () => showAudioSettings(screen) }, '🔊 소리 설정'),
@@ -198,8 +201,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (k === 'q') battle.brew();
     const si = SKILL_KEYS.indexOf(k);
     if (si >= 0 && skillBtns[si]) useSkill(skillBtns[si].skill);
-    const n = Number(k);
-    if (k.length === 1 && n >= 1 && n <= 9) unitBtns[n - 1]?.entry && battle.summon(unitBtns[n - 1]!.entry.def.id);
+    const ui = UNIT_KEYS.indexOf(k);
+    if (ui >= 0 && unitBtns[ui]) battle.summon(unitBtns[ui].entry.def.id);
     if (k === 'arrowleft' || k === 'a') camX = clamp(camX - 60, 0, maxCam);
     if (k === 'arrowright' || k === 'd') camX = clamp(camX + 60, 0, maxCam);
   };
