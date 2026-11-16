@@ -3,7 +3,7 @@ import { UNIT_BY_ID } from '../src/data/units';
 import { STAGE_BY_ID, STAGES } from '../src/data/stages';
 import {
   applyOutcome, canSubscribe, evolve, evolveCost, isStageOpen, isUnitOwned, levelCap, levelUp, levelUpCost,
-  makeLoadout, newSave, normalizeSave, starsFor, subscribe, unitProgress, unitStats, upgradeFacility,
+  makeLoadout, newSave, normalizeSave, takeMigrationNotes, starsFor, subscribe, unitProgress, unitStats, upgradeFacility,
 } from '../src/sim/progression';
 
 describe('성장 시스템', () => {
@@ -80,11 +80,22 @@ describe('성장 시스템', () => {
   it('프린터 사거리 연장은 레벨당 20씩 늘고, 예전 저장 데이터는 0레벨로 시작한다', () => {
     const old = normalizeSave({ money: 1000, facilities: { remodel: 1, printer: 2 } });
     expect(old.facilities.printerRange).toBe(0);
-    expect(makeLoadout(old).printerRange).toBe(280);
+    expect(makeLoadout(old).printerRange).toBe(300);
     old.money = 100_000;
     expect(upgradeFacility(old, 'printerRange')).toBe(true);
     expect(upgradeFacility(old, 'printerRange')).toBe(true);
-    expect(makeLoadout(old).printerRange).toBe(320);
+    expect(makeLoadout(old).printerRange).toBe(340);
+  });
+
+  it('머그컵 투척기 강화 비용을 한 번 환불하고 안내를 남긴다', () => {
+    takeMigrationNotes();
+    const s = normalizeSave({ money: 100, facilities: { mug: 3, printer: 1 } });
+    expect(s.money).toBe(100 + 70 + Math.round(70 * 1.45) + Math.round(70 * 1.45 ** 2));
+    expect((s.facilities as Record<string, number>).mug).toBeUndefined();
+    expect(takeMigrationNotes()).toHaveLength(1);
+    // 정리된 데이터를 다시 읽으면 또 환불하지 않는다
+    expect(normalizeSave(JSON.parse(JSON.stringify(s))).money).toBe(s.money);
+    expect(takeMigrationNotes()).toHaveLength(0);
   });
 
   it('손상된 저장 데이터를 안전하게 정리한다', () => {

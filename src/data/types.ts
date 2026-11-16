@@ -53,6 +53,8 @@ export interface CombatStats {
   aura?: { atkMul: number; radius: number };
   /** 주기적 주변 회복 */
   heal?: { amount: number; every: number; radius: number };
+  /** 확률 넉백: chance(0~1) 확률로 dist만큼 밀어내고 잠깐 경직시킨다 */
+  knockback?: { chance: number; dist: number };
 }
 
 export interface UnitDef extends CombatStats {

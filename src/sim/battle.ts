@@ -14,6 +14,10 @@ export const ENEMY_FRONT = WORLD_W - 30 - BASE_W;
 const STEP = 1 / 60;
 const MAX_ENEMIES = 45;
 const ENEMY_TOWER_RANGE = 260;
+/** 일반 적 HP 배율 (머그컵 제거 후 화력 보정) */
+const ENEMY_HP_MUL = 0.85;
+/** 처치 보상 배율 */
+const KILL_REWARD_MUL = 1.3;
 export const BREW_MAX = 6;
 /** 단계 n → n+1 비용 */
 export const BREW_COST = [30, 50, 75, 105, 140];
@@ -39,6 +43,9 @@ export interface Fighter {
   /** 공격 모션 진행 (0이면 대기) */
   swing: number;
   hitFlash: number;
+  /** 넉백 경직 남은 시간과 밀려나는 속도 */
+  kbT: number;
+  kbV: number;
   auraMul: number;
   dead: boolean;
   deathT: number;
@@ -47,7 +54,7 @@ export interface Fighter {
   walk: number;
 }
 
-export type ProjectileKind = 'bug' | 'flask' | 'mug' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt';
+export type ProjectileKind = 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt';
 
 export interface Projectile {
   kind: ProjectileKind;
@@ -65,6 +72,7 @@ export interface Projectile {
   /** 건물을 노린 공격 */
   hitsBase: boolean;
   arc: number;
+  knockback?: { chance: number; dist: number };
 }
 
 export type FxKind = 'dmg' | 'text' | 'boom' | 'heal' | 'stomp' | 'spawn' | 'poof';
@@ -112,8 +120,6 @@ export class Battle {
   projectiles: Projectile[] = [];
   fx: Fx[] = [];
   unitCd: Record<string, number> = {};
-  mugCd = 0;
-  readonly mugCooldown = 1.2;
   /** 전투 중 커피머신 단계 (1~BREW_MAX) */
   brewLevel = 1;
   hasteT = 0;
@@ -186,24 +192,6 @@ export class Battle {
     return true;
   }
 
-  canThrowMug(): boolean {
-    return !this.result && this.mugCd <= 0;
-  }
-
-  /** 지정한 x좌표로 머그컵을 던진다. */
-  throwMug(x: number): boolean {
-    if (!this.canThrowMug()) return false;
-    this.mugCd = this.mugCooldown;
-    const tx = clamp(x, ALLY_FRONT, ENEMY_FRONT + 40);
-    const dist = tx - ALLY_FRONT;
-    this.projectiles.push({
-      kind: 'mug', side: 'ally', x0: 110, y0: GROUND_Y - 230, x1: tx, y1: GROUND_Y - 6,
-      t: 0, dur: 0.35 + dist / 2600, dmg: this.loadout.mugDmg, splash: 42, buildingMul: 0.5,
-      targetUid: null, hitsBase: false, arc: 120 + dist * 0.12,
-    });
-    return true;
-  }
-
   canCast(id: SkillId): boolean {
     const s = this.loadout.skills.find((k) => k.id === id);
     return !!s && !this.result && this.mental >= s.cost;
@@ -235,6 +223,7 @@ export class Battle {
         this.projectiles.push({
           kind: 'book', side: 'ally', x0: tx - 60, y0: 0, x1: tx, y1: GROUND_Y - 6,
           t: 0, dur: 0.5, dmg: 150, splash: 90, buildingMul: 0.5, targetUid: null, hitsBase: false, arc: 0,
+          knockback: { chance: 1, dist: 60 },
         });
         break;
       }
@@ -263,7 +252,6 @@ export class Battle {
     this.caffeine = Math.min(this.caffeineMax, this.caffeine + this.caffeineRegen * dt);
     this.mental = Math.min(L.mentalMax, this.mental + L.mentalRegen * dt);
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
-    this.mugCd = Math.max(0, this.mugCd - dt);
     this.hasteT = Math.max(0, this.hasteT - dt);
     this.freezeT = Math.max(0, this.freezeT - dt);
     this.ally.hitFlash = Math.max(0, this.ally.hitFlash - dt);
@@ -298,8 +286,8 @@ export class Battle {
       this.spawnEnemy(st.boss, true);
       this.banner(`⚠️ ${ENEMY_BY_ID[st.boss]!.name} 등장!`);
     }
-    // 장기전 방지: 2분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
-    const overtime = this.t > 120 ? Math.max(0.5, 1 - (this.t - 120) / 240) : 1;
+    // 장기전 방지: 3분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
+    const overtime = this.t > 180 ? Math.max(0.5, 1 - (this.t - 180) / 240) : 1;
     const every = st.spawnEvery * overtime;
     this.spawnTimer += dt;
     if (this.spawnTimer >= every) {
@@ -331,8 +319,8 @@ export class Battle {
     if (!boss && this.alive('enemy').length >= MAX_ENEMIES) return null;
     const scale = def.boss ? 1 : this.stage.scale;
     const atkScale = 1 + (scale - 1) * 0.7;
-    const stats: CombatStats = { ...def, hp: Math.round(def.hp * scale), atk: def.atk * atkScale };
-    const f = this.addFighter('enemy', id, def.name, def.look, 1, stats, x, def.reward);
+    const stats: CombatStats = { ...def, hp: Math.round(def.hp * scale * (def.boss ? 1 : ENEMY_HP_MUL)), atk: def.atk * atkScale };
+    const f = this.addFighter('enemy', id, def.name, def.look, 1, stats, x, Math.round(def.reward * KILL_REWARD_MUL));
     f.isBoss = !!def.boss;
     f.summonCd = def.boss?.summon?.every ?? 0;
     f.stompCd = def.boss?.stomp?.every ?? 0;
@@ -344,7 +332,7 @@ export class Battle {
       uid: this.uidSeq++, side, defId, name, look, tier, stats,
       hp: stats.hp, maxHp: stats.hp, x, depth: this.rng() * 14,
       cd: 0.3, healCd: stats.heal?.every ?? 0, summonCd: 0, stompCd: 0,
-      attacking: false, swing: 0, hitFlash: 0, auraMul: 1, dead: false, deathT: 0,
+      attacking: false, swing: 0, hitFlash: 0, kbT: 0, kbV: 0, auraMul: 1, dead: false, deathT: 0,
       reward, isBoss: false, walk: this.rng() * 10,
     };
     this.fighters.push(f);
@@ -412,6 +400,15 @@ export class Battle {
     f.hitFlash = Math.max(0, f.hitFlash - dt);
     f.swing = Math.max(0, f.swing - dt * 3);
 
+    // 넉백 중: 뒤로 밀리며 이동·공격을 못 한다
+    if (f.kbT > 0) {
+      f.kbT -= dt;
+      f.x = clamp(f.x + f.kbV * dt, ALLY_FRONT - 40, ENEMY_FRONT + 40);
+      f.kbV *= Math.exp(-6 * dt);
+      f.attacking = false;
+      return;
+    }
+
     if (s.heal) {
       f.healCd -= dt;
       if (f.healCd <= 0) {
@@ -446,7 +443,7 @@ export class Battle {
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
-      else this.damageFighter(target, atk, f.side);
+      else this.damageFighter(target, atk, f.side, s.knockback);
     } else {
       const bx = f.side === 'ally' ? ENEMY_FRONT + 20 : ALLY_FRONT - 20;
       if (ranged) this.shoot(f, atk, bx, GROUND_Y - 80, null, true);
@@ -468,7 +465,7 @@ export class Battle {
       if (f.stompCd <= 0) {
         f.stompCd = b.stomp.every;
         for (const o of this.alive('ally')) {
-          if (!o.stats.flying && Math.abs(o.x - f.x) <= b.stomp.radius) this.damageFighter(o, b.stomp.dmg, 'enemy');
+          if (!o.stats.flying && Math.abs(o.x - f.x) <= b.stomp.radius) this.damageFighter(o, b.stomp.dmg, 'enemy', { chance: 0.5, dist: 45 });
         }
         this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.6, r: b.stomp.radius });
         this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 160, t: 0, life: 1, text: '버럭!', color: '#ff5252' });
@@ -484,6 +481,7 @@ export class Battle {
       kind, side: f.side, x0: f.x, y0, x1: tx, y1: ty, t: 0, dur: 0.12 + dist / 520,
       dmg, splash: f.stats.splash ?? 0, buildingMul: f.stats.buildingMul ?? 1,
       targetUid, hitsBase, arc: kind === 'flask' || kind === 'bomb' ? 40 + dist * 0.15 : 0,
+      knockback: f.stats.knockback,
     });
   }
 
@@ -503,7 +501,7 @@ export class Battle {
       }
     }
     if (!best) return;
-    b.towerCd = ally ? 1.0 : 1.2;
+    b.towerCd = ally ? 0.8 : 1.2;
     const x0 = ally ? 105 : WORLD_W - 105;
     this.projectiles.push({
       kind: ally ? 'paper' : 'laser', side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
@@ -537,21 +535,22 @@ export class Battle {
     if (p.splash > 0) {
       for (const o of this.alive(foe)) {
         const dy = Math.abs(this.fy(o) - p.y1);
-        if (Math.abs(o.x - p.x1) <= p.splash + bodyR(o) && dy < 170) this.damageFighter(o, p.dmg, p.side);
+        if (Math.abs(o.x - p.x1) <= p.splash + bodyR(o) && dy < 170) this.damageFighter(o, p.dmg, p.side, p.knockback);
       }
       // 범위 공격이 건물 앞에서 터지면 건물도 맞는다.
       const base = p.side === 'ally' ? this.enemy : this.ally;
       const front = p.side === 'ally' ? ENEMY_FRONT : ALLY_FRONT;
       if (Math.abs(p.x1 - front) <= p.splash) this.damageBase(base, p.dmg * p.buildingMul, p.x1);
-      this.fx.push({ kind: 'boom', x: p.x1, y: p.y1, t: 0, life: 0.45, r: p.splash, color: p.kind === 'mug' ? '#8d6e63' : undefined });
+      this.fx.push({ kind: 'boom', x: p.x1, y: p.y1, t: 0, life: 0.45, r: p.splash });
       return;
     }
     const tgt = this.fighters.find((f) => f.uid === p.targetUid && !f.dead);
-    if (tgt) this.damageFighter(tgt, p.dmg, p.side);
+    if (tgt) this.damageFighter(tgt, p.dmg, p.side, p.knockback);
   }
 
-  private damageFighter(f: Fighter, dmg: number, from: Side): void {
+  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }): void {
     if (f.dead) return;
+    if (kb && !f.isBoss && f.hp > dmg && this.rng() < kb.chance) this.knockback(f, kb.dist);
     f.hp -= dmg;
     f.hitFlash = 0.12;
     this.fx.push({ kind: 'dmg', x: f.x + (this.rng() - 0.5) * 16, y: this.fy(f) - 40 - (f.look.scale ?? 1) * 20, t: 0, life: 0.6, text: String(Math.round(dmg)), color: from === 'ally' ? '#fff' : '#ff8a80' });
@@ -562,9 +561,21 @@ export class Battle {
       if (f.side === 'enemy') {
         this.kills++;
         this.killReward += f.reward;
-        this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${f.reward}💰`, color: '#ffd54f' });
+        // 적 세기(기본 처치 보상)에 비례해 카페인을 얻는다
+        const caf = killCaffeine(f.defId);
+        this.caffeine = Math.min(this.caffeineMax, this.caffeine + caf);
+        this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${f.reward}💰 +${caf}☕`, color: '#ffd54f' });
       }
     }
+  }
+
+  /** 뒤(자기 진영 쪽)로 밀어내고 잠깐 경직시킨다. 보스는 면역. */
+  private knockback(f: Fighter, dist: number): void {
+    if (f.isBoss) return;
+    f.kbT = 0.4;
+    f.kbV = (f.side === 'ally' ? -1 : 1) * dist * 6;
+    f.swing = 0;
+    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 0.6, text: '넉백!', color: '#80d8ff' });
   }
 
   private damageBase(b: Base, dmg: number, x: number): void {
@@ -581,6 +592,12 @@ export class Battle {
     for (const e of this.fx) e.t += dt;
     this.fx = this.fx.filter((e) => e.t < e.life);
   }
+}
+
+/** 처치 시 얻는 카페인: 기본 처치 보상 × 0.6 (1~50) */
+export function killCaffeine(defId: string): number {
+  const base = ENEMY_BY_ID[defId]?.reward ?? 0;
+  return Math.min(50, Math.max(1, Math.round(base * 0.6)));
 }
 
 function bodyR(f: Fighter): number {

@@ -30,7 +30,7 @@ export function newSave(): SaveData {
     stars: {},
     units: {},
     subs: [],
-    facilities: { remodel: 0, coffee: 0, tumbler: 0, meditate: 0, mug: 0, printer: 0, printerRange: 0 },
+    facilities: { remodel: 0, coffee: 0, tumbler: 0, meditate: 0, printer: 0, printerRange: 0 },
     updatedAt: Date.now(),
   };
 }
@@ -59,8 +59,23 @@ export function normalizeSave(raw: unknown): SaveData {
   if (r.facilities && typeof r.facilities === 'object') {
     for (const f of FACILITIES) base.facilities[f.id] = Math.min(f.max, Math.max(0, Math.floor(num(r.facilities[f.id], 0))));
   }
+  // 머그컵 투척기 제거(0.5.0): 강화에 쓴 연구비를 돌려준다.
+  const mugLv = Math.min(10, Math.max(0, Math.floor(num((r.facilities as Record<string, unknown> | undefined)?.mug, 0))));
+  if (mugLv > 0) {
+    let refund = 0;
+    for (let lv = 0; lv < mugLv; lv++) refund += Math.round(70 * 1.45 ** lv);
+    base.money += refund;
+    migrationNotes.push(`🫖 머그컵 투척기가 사라져서 강화 비용 💰${refund.toLocaleString('ko-KR')}을 돌려드렸어요.`);
+  }
   base.updatedAt = num(r.updatedAt, 0);
   return base;
+}
+
+const migrationNotes: string[] = [];
+
+/** 저장 데이터를 정리하며 생긴 안내(환불 등)를 꺼낸다. */
+export function takeMigrationNotes(): string[] {
+  return migrationNotes.splice(0);
 }
 
 export const isCleared = (save: SaveData, stageId: string): boolean => (save.stars[stageId] ?? 0) > 0;
@@ -161,7 +176,6 @@ export interface BattleLoadout {
   caffeineRegen: number;
   mentalMax: number;
   mentalRegen: number;
-  mugDmg: number;
   printerAtk: number;
   printerRange: number;
   deck: DeckEntry[];
@@ -177,9 +191,8 @@ export function makeLoadout(save: SaveData): BattleLoadout {
     caffeineRegen: 5 + 0.6 * f.coffee,
     mentalMax: 100,
     mentalRegen: 1.5 + 0.25 * f.meditate,
-    mugDmg: 30 * (1 + 0.2 * f.mug),
-    printerAtk: 12 * (1 + 0.2 * f.printer),
-    printerRange: 280 + 20 * f.printerRange,
+    printerAtk: 20 * (1 + 0.2 * f.printer),
+    printerRange: 300 + 20 * f.printerRange,
     deck: UNITS.filter((u) => isUnitOwned(save, u)).map((def) => {
       const p = unitProgress(save, def.id);
       return { def, stats: unitStats(def, p), tier: p.tier, level: p.level };

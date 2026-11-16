@@ -29,6 +29,7 @@ function tags(st: CombatStats): string {
   if (st.aura) t.push(`오라 +${Math.round((st.aura.atkMul - 1) * 100)}%`);
   if (st.heal) t.push('회복');
   if (st.buildingMul) t.push(`건물 ×${st.buildingMul}`);
+  if (st.knockback) t.push(`넉백 ${Math.round(st.knockback.chance * 100)}%`);
   return t.join(' · ');
 }
 

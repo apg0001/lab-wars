@@ -300,19 +300,6 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.stroke();
       break;
     }
-    case 'mug':
-      ctx.rotate(time * 12);
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.roundRect(-7, -8, 14, 16, 3);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(8, 0, 4, -1.2, 1.2);
-      ctx.stroke();
-      ctx.fillStyle = '#6d4c41';
-      ctx.fillRect(-5, -6, 10, 4);
-      break;
     case 'flask':
     case 'bomb':
       ctx.rotate(time * 10);
