@@ -2,7 +2,7 @@
 services:
   api:
     build: .
-    image: manga-wars-server:local
+    image: lab-wars-server:local
     restart: unless-stopped
     env_file: .env
     environment:
@@ -11,7 +11,7 @@ services:
       # 외부 공개는 Tailscale Funnel 등 프록시가 담당하고, 컨테이너는 로컬에만 연다
       - "127.0.0.1:8787:8787"
     volumes:
-      - manga-wars-data:/data
+      - lab-wars-data:/data
 
 volumes:
-  manga-wars-data:
+  lab-wars-data:

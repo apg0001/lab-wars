@@ -1,5 +1,5 @@
-// 망가워즈 오프라인 캐시: 페이지는 네트워크 우선, 나머지 자원은 캐시 우선 후 갱신
-const CACHE = 'manga-wars-v1';
+// 랩워즈 오프라인 캐시: 페이지는 네트워크 우선, 나머지 자원은 캐시 우선 후 갱신
+const CACHE = 'lab-wars-v1';
 
 self.addEventListener('install', () => self.skipWaiting());
 

@@ -130,7 +130,7 @@ export class App {
       : null;
     this.swap(h('div.screen.title', {},
       fsBtn,
-      h('div.title-logo', {}, h('h1', {}, '망가워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
+      h('div.title-logo', {}, h('h1', {}, '랩워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
       cast,
       body,
       notice,
