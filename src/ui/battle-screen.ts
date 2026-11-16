@@ -7,6 +7,9 @@ import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
 
+/** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
+const SKILL_KEYS = ['w', 'e', 'r', 't'];
+
 export interface BattleEnd {
   win: boolean;
   baseHpRatio: number;
@@ -68,7 +71,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const menTxt = h('span.res-txt');
   const brewLv = h('span.brew-lv');
   const brewCost = h('span.brew-cost');
-  const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, '☕', brewLv, brewCost);
+  const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, '☕', brewLv, brewCost, h('span.hotkey', {}, 'Q'));
 
   const unitBtns = opt.loadout.deck.map((d, i) => {
     const cd = h('div.cd-mask');
@@ -81,13 +84,16 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     return { btn, cd, entry: d };
   });
 
-  const skillBtns = opt.loadout.skills.map((s) => {
-    const btn = h('button.skill-btn', { title: `${s.name}: ${s.desc}`, onclick: () => {
-      if (s.targeted) {
-        if (!battle.canCast(s.id)) return;
-        armed = armed ? null : 'bombard';
-      } else battle.cast(s.id);
-    } }, h('span.skill-icon', {}, s.icon), h('span.cost', {}, `🧠${s.cost}`));
+  const useSkill = (s: (typeof opt.loadout.skills)[number]): void => {
+    if (s.targeted) {
+      if (!battle.canCast(s.id)) return;
+      armed = armed ? null : 'bombard';
+    } else battle.cast(s.id);
+  };
+  const skillBtns = opt.loadout.skills.map((s, i) => {
+    const key = SKILL_KEYS[i] ?? '';
+    const btn = h('button.skill-btn', { title: `${s.name} (${key.toUpperCase()}): ${s.desc}`, onclick: () => useSkill(s) },
+      h('span.skill-icon', {}, s.icon), h('span.cost', {}, `🧠${s.cost}`), h('span.hotkey', {}, key.toUpperCase()));
     return { btn, skill: s };
   });
 
@@ -122,7 +128,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (p) {
       overlay.replaceChildren(h('div.panel', {},
         h('h2', {}, '일시정지'),
-        h('p.muted', {}, '전장 드래그: 시점 이동 · 숫자키: 소환 · Q: 커피머신'),
+        h('p.muted', {}, '전장 드래그: 시점 이동 · 숫자키: 소환 · Q: 커피머신 · W/E/R/T: 스킬'),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
           isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? '✕ 전체 화면 끄기' : '⛶ 전체 화면'),
@@ -175,11 +181,14 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === 'Escape' || e.key === 'p') return setPaused(!paused);
     if (paused) return;
-    if (e.key === 'q') battle.brew();
+    const k = e.key.toLowerCase();
+    if (k === 'q') battle.brew();
+    const si = SKILL_KEYS.indexOf(k);
+    if (si >= 0 && skillBtns[si]) useSkill(skillBtns[si].skill);
     const n = Number(e.key);
     if (n >= 1 && n <= 9) unitBtns[n - 1]?.entry && battle.summon(unitBtns[n - 1]!.entry.def.id);
-    if (e.key === 'ArrowLeft' || e.key === 'a') camX = clamp(camX - 60, 0, maxCam);
-    if (e.key === 'ArrowRight' || e.key === 'd') camX = clamp(camX + 60, 0, maxCam);
+    if (e.key === 'ArrowLeft' || k === 'a') camX = clamp(camX - 60, 0, maxCam);
+    if (e.key === 'ArrowRight' || k === 'd') camX = clamp(camX + 60, 0, maxCam);
   };
   window.addEventListener('keydown', onKey);
 
