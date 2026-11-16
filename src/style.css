@@ -319,3 +319,13 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .dex-info { flex: 1; display: flex; flex-direction: column; gap: 0.6cqw; font-size: 1.8cqw; }
 .dex-info h2 { margin: 0; }
 .dex-info .btn { align-self: flex-start; }
+
+.brew-btn {
+  position: absolute; left: 0; top: -5.2cqw; height: 4.4cqw; padding: 0 0.8cqw;
+  display: flex; align-items: center; gap: 0.4cqw; font-size: 1.6cqw;
+  background: #fff3e0; border: 0.22cqw solid var(--ink); border-radius: 1cqw; box-shadow: 0 0.3cqw 0 var(--ink);
+}
+.brew-btn .brew-lv { font-size: 1.4cqw; }
+.brew-btn .brew-cost { font-size: 1.4cqw; background: var(--ink); color: #fff; border-radius: 0.6cqw; padding: 0 0.5cqw; }
+.brew-btn.off { filter: grayscale(0.7); opacity: 0.75; }
+.brew-btn:active { transform: translateY(0.25cqw); box-shadow: none; }
