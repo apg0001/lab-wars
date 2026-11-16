@@ -74,7 +74,7 @@ export class App {
       h('img', { src: portrait(UNITS[0]!.look, 1, 'grunt'), alt: '' }),
       h('img.vs', { src: portrait(UNITS[9]!.look, 1, 'claudy'), alt: '' }),
       h('span.vs-mark', {}, 'VS'),
-      h('img.big', { src: portrait(ENEMY_BY_ID.dean!.look, 1, 'dean', -1), alt: '' }),
+      h('img.big', { src: portrait(ENEMY_BY_ID.president!.look, 1, 'president', -1), alt: '' }),
       h('img', { src: portrait(ENEMY_BY_ID.reviewer!.look, 1, 'reviewer', -1), alt: '' }),
     );
     const body = p
