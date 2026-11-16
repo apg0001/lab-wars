@@ -1,8 +1,19 @@
 import { ALLY_FRONT, ENEMY_FRONT, GROUND_Y, WORLD_W, type Battle, type Base, type Fighter, type Projectile } from '../sim/battle';
 import { drawCharacter, INK } from './characters';
 
+/** 기준 화면 크기 (16:9). 더 넓은 화면에서는 세로를 고정하고 가로로 더 보여준다. */
 export const VIEW_W = 960;
 export const VIEW_H = 540;
+/** 가장 넓게 보여줄 가로 폭 (약 21.6:9) */
+export const VIEW_W_MAX = 1296;
+
+let viewW = VIEW_W;
+/** 현재 화면 비율에 맞는 가로 폭 */
+export const viewWidth = (): number => viewW;
+export function setViewAspect(aspect: number): number {
+  viewW = Math.round(Math.min(VIEW_W_MAX, Math.max(viewW, VIEW_H * aspect)));
+  return viewW;
+}
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -31,12 +42,12 @@ function drawBackdrop(ctx: Ctx, camX: number): void {
   g.addColorStop(0, '#f3efe6');
   g.addColorStop(1, '#e4ddcc');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, VIEW_W, GROUND_Y);
+  ctx.fillRect(0, 0, viewW, GROUND_Y);
 
   // 원경: 복도 문과 게시판 (시차 0.5)
   ctx.save();
   ctx.translate(-camX * 0.5, 0);
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 11; i++) {
     const x = 160 + i * 150;
     ctx.fillStyle = '#d7ccb5';
     ctx.fillRect(x, 170, 70, 150);
@@ -65,16 +76,16 @@ function drawBackdrop(ctx: Ctx, camX: number): void {
 
   // 걸레받이와 바닥 타일 (시차 1)
   ctx.fillStyle = '#8d7b5f';
-  ctx.fillRect(0, GROUND_Y - 8, VIEW_W, 8);
+  ctx.fillRect(0, GROUND_Y - 8, viewW, 8);
   const fg = ctx.createLinearGradient(0, GROUND_Y, 0, VIEW_H);
   fg.addColorStop(0, '#cfd8dc');
   fg.addColorStop(1, '#b0bec5');
   ctx.fillStyle = fg;
-  ctx.fillRect(0, GROUND_Y, VIEW_W, VIEW_H - GROUND_Y);
+  ctx.fillRect(0, GROUND_Y, viewW, VIEW_H - GROUND_Y);
   ctx.strokeStyle = 'rgba(0,0,0,.08)';
   ctx.lineWidth = 1;
   const off = -(camX % 60);
-  for (let x = off; x < VIEW_W; x += 60) {
+  for (let x = off; x < viewW; x += 60) {
     ctx.beginPath();
     ctx.moveTo(x, GROUND_Y);
     ctx.lineTo(x - 30, VIEW_H);
@@ -83,7 +94,7 @@ function drawBackdrop(ctx: Ctx, camX: number): void {
   for (const y of [470, 505]) {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(VIEW_W, y);
+    ctx.lineTo(viewW, y);
     ctx.stroke();
   }
 }
@@ -388,9 +399,9 @@ function drawFx(ctx: Ctx, b: Battle, screenSpace: boolean): void {
           const y = 120 + bannerIdx++ * 40 - Math.min(k, 0.15) * 40;
           ctx.lineWidth = 6;
           ctx.strokeStyle = INK;
-          ctx.strokeText(e.text ?? '', 480, y);
+          ctx.strokeText(e.text ?? '', viewW / 2, y);
           ctx.fillStyle = '#fff';
-          ctx.fillText(e.text ?? '', 480, y);
+          ctx.fillText(e.text ?? '', viewW / 2, y);
         } else {
           ctx.font = 'bold 15px Jua, sans-serif';
           ctx.textAlign = 'center';

@@ -2,7 +2,7 @@ import type { StageDef } from '../data/stages';
 import { ENEMY_BY_ID } from '../data/enemies';
 import { Battle, WORLD_W } from '../sim/battle';
 import type { BattleLoadout } from '../sim/progression';
-import { drawBattle, VIEW_H, VIEW_W } from '../render/scene';
+import { drawBattle, setViewAspect, VIEW_H, VIEW_W } from '../render/scene';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { keyOf } from './keys';
@@ -37,6 +37,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   canvas.className = 'battle-canvas';
   const ctx = canvas.getContext('2d')!;
   let camX = 0;
+  /** 화면 비율에 따라 바뀌는 가로 시야 (resize에서 갱신) */
+  let viewW = VIEW_W;
+  let maxCam = WORLD_W - viewW;
   let speed = opt.speed2x ? 2 : 1;
   let paused = false;
   let armed: 'bombard' | null = null;
@@ -143,9 +146,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   let drag: { x: number; cam: number; moved: boolean; id: number } | null = null;
   const toView = (clientX: number): number => {
     const r = canvas.getBoundingClientRect();
-    return ((clientX - r.left) / r.width) * VIEW_W;
+    return ((clientX - r.left) / r.width) * viewW;
   };
-  const maxCam = WORLD_W - VIEW_W;
   canvas.addEventListener('pointerdown', (e) => {
     drag = { x: e.clientX, cam: camX, moved: false, id: e.pointerId };
     canvas.setPointerCapture(e.pointerId);
@@ -153,7 +155,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   canvas.addEventListener('pointermove', (e) => {
     if (!drag || drag.id !== e.pointerId) return;
     const r = canvas.getBoundingClientRect();
-    const dx = ((e.clientX - drag.x) / r.width) * VIEW_W;
+    const dx = ((e.clientX - drag.x) / r.width) * viewW;
     if (Math.abs(dx) > 10) drag.moved = true;
     if (drag.moved) camX = clamp(drag.cam - dx, 0, maxCam);
   });
@@ -176,7 +178,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   // 미니맵 탭으로 시점 이동
   mini.addEventListener('pointerdown', (e) => {
     const r = mini.getBoundingClientRect();
-    camX = clamp(((e.clientX - r.left) / r.width) * WORLD_W - VIEW_W / 2, 0, maxCam);
+    camX = clamp(((e.clientX - r.left) / r.width) * WORLD_W - viewW / 2, 0, maxCam);
   });
 
   const onKey = (e: KeyboardEvent): void => {
@@ -198,8 +200,13 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const resize = (): void => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const r = canvas.getBoundingClientRect();
-    const scale = Math.max(1, (r.width / VIEW_W) * dpr);
-    canvas.width = Math.round(VIEW_W * Math.min(scale, 2));
+    if (r.width > 0 && r.height > 0) {
+      viewW = setViewAspect(r.width / r.height);
+      maxCam = WORLD_W - viewW;
+      camX = clamp(camX, 0, maxCam);
+    }
+    const scale = Math.max(1, (r.width / viewW) * dpr);
+    canvas.width = Math.round(viewW * Math.min(scale, 2));
     canvas.height = Math.round(VIEW_H * Math.min(scale, 2));
   };
   const ro = new ResizeObserver(resize);
@@ -215,12 +222,12 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (!paused) battle.update(dt * speed);
-    const k = canvas.width / VIEW_W;
+    const k = canvas.width / viewW;
     ctx.setTransform(k, 0, 0, k, 0, 0);
     drawBattle(ctx, battle, camX, now / 1000);
     if (armed) {
       ctx.fillStyle = 'rgba(30,136,229,.12)';
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillRect(0, 0, viewW, VIEW_H);
     }
     updateHud();
     if (battle.result && !ended) endBattle();
@@ -257,7 +264,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const dots = battle.fighters.filter((f) => !f.dead).map((f) => `<i class="${f.side}${f.isBoss ? ' boss' : ''}${f.stats.flying ? ' air' : ''}" style="left:${(f.x / WORLD_W) * 100}%"></i>`).join('');
     miniDots.innerHTML = dots;
     miniView.style.left = `${(camX / WORLD_W) * 100}%`;
-    miniView.style.width = `${(VIEW_W / WORLD_W) * 100}%`;
+    miniView.style.width = `${(viewW / WORLD_W) * 100}%`;
     const boss = battle.fighters.find((f) => f.isBoss && !f.dead);
     bossBox.hidden = !boss;
     if (boss) bossFill.style.width = `${(boss.hp / boss.maxHp) * 100}%`;
