@@ -1,9 +1,10 @@
 import type { CombatStats, UnitDef } from '../data/types';
 import { UNITS } from '../data/units';
-import { STAGES, type StageDef } from '../data/stages';
+import { FINAL_STAGE, STAGES, legacyOrder, type StageDef } from '../data/stages';
 import { FACILITIES, SKILLS, facilityCost, type FacilityId, type SkillDef } from '../data/upgrades';
 
-export const SAVE_VERSION = 1;
+/** 2: 7챕터 캠페인 (0.8.0) */
+export const SAVE_VERSION = 2;
 
 export interface UnitProgress {
   level: number;
@@ -20,6 +21,10 @@ export interface SaveData {
   /** 구독한 AI 조수 id */
   subs: string[];
   facilities: Record<FacilityId, number>;
+  /** 무한 모드 최고 기록 (클리어한 판 수) */
+  endless: number;
+  /** 이미 본 스토리 장면 id */
+  seen: string[];
   updatedAt: number;
 }
 
@@ -31,6 +36,8 @@ export function newSave(): SaveData {
     units: {},
     subs: [],
     facilities: { remodel: 0, coffee: 0, tumbler: 0, meditate: 0, printer: 0, printerRange: 0 },
+    endless: 0,
+    seen: [],
     updatedAt: Date.now(),
   };
 }
@@ -43,9 +50,30 @@ export function normalizeSave(raw: unknown): SaveData {
   const r = raw as Partial<SaveData>;
   const num = (x: unknown, d: number) => (typeof x === 'number' && Number.isFinite(x) ? x : d);
   base.money = Math.max(0, Math.floor(num(r.money, 0)));
+  const starOf = (v: unknown): number => Math.min(3, Math.max(0, Math.floor(num(v, 0))));
   if (r.stars && typeof r.stars === 'object') {
-    for (const s of STAGES) base.stars[s.id] = Math.min(3, Math.max(0, Math.floor(num(r.stars[s.id], 0))));
+    if (num(r.v, 1) < 2) {
+      // 예전 4챕터×5 캠페인 → 7챕터×6: 같은 난이도 지점까지 클리어한 것으로 옮긴다.
+      let reach = -1;
+      const oldStars: number[] = [];
+      for (const [id, v] of Object.entries(r.stars)) {
+        const o = legacyOrder(id);
+        const st = starOf(v);
+        if (o === null || st === 0) continue;
+        reach = Math.max(reach, o);
+        oldStars.push(st);
+      }
+      if (reach >= 0) {
+        const avg = Math.max(1, Math.round(oldStars.reduce((a, b) => a + b, 0) / oldStars.length));
+        for (const s of STAGES) if (s.order <= reach) base.stars[s.id] = avg;
+        migrationNotes.push(`📚 캠페인이 학부생~포닥 7챕터로 늘어났어요. 예전 진행도에 맞춰 ${STAGES[reach]!.id}까지 클리어로 옮겼어요.`);
+      }
+    } else {
+      for (const s of STAGES) base.stars[s.id] = starOf(r.stars[s.id]);
+    }
   }
+  base.endless = Math.max(0, Math.floor(num(r.endless, 0)));
+  if (Array.isArray(r.seen)) base.seen = r.seen.filter((x): x is string => typeof x === 'string').slice(0, 200);
   if (r.units && typeof r.units === 'object') {
     for (const u of UNITS) {
       const p = r.units[u.id];
@@ -80,7 +108,11 @@ export function takeMigrationNotes(): string[] {
 
 export const isCleared = (save: SaveData, stageId: string): boolean => (save.stars[stageId] ?? 0) > 0;
 
+/** 캠페인을 끝내면 무한 모드가 열린다. */
+export const isEndlessOpen = (save: SaveData): boolean => isCleared(save, FINAL_STAGE.id);
+
 export function isStageOpen(save: SaveData, stage: StageDef): boolean {
+  if (stage.kind === 'endless') return isEndlessOpen(save) && stage.index <= save.endless + 1;
   if (stage.order === 0) return true;
   const prev = STAGES[stage.order - 1];
   return !!prev && isCleared(save, prev.id);
@@ -220,6 +252,16 @@ export function applyOutcome(save: SaveData, stage: StageDef, win: boolean, base
   const prev = save.stars[stage.id] ?? 0;
   let stars = 0;
   let clearReward = 0;
+  if (win && stage.kind === 'endless') {
+    // 무한 모드: 별 대신 최고 기록, 처음 넘은 판만 전체 보상
+    stars = starsFor(baseHpRatio);
+    const first = stage.index > save.endless;
+    clearReward = Math.round(stage.reward * (first ? 1 : 0.4));
+    save.endless = Math.max(save.endless, stage.index);
+    save.money += clearReward + killReward;
+    save.updatedAt = Date.now();
+    return { win, stars, clearReward, killReward, firstClear: first };
+  }
   if (win) {
     stars = starsFor(baseHpRatio);
     const full = stage.reward * (0.6 + 0.2 * stars);

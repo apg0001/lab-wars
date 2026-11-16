@@ -674,6 +674,15 @@ function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
     blob(ctx, 0, -5, 5, 5, '#9e9e9e');
     ctx.restore();
   }
+  if (variant === 'committee') {
+    // 심사위원장: 빨간 '불합격' 도장
+    ctx.save();
+    ctx.translate(16, -38);
+    ctx.rotate(0.2 - pose.swing * 0.9);
+    rrect(ctx, -2.5, -14, 5, 14, 1, '#6d4c41');
+    rrect(ctx, -7, 0, 14, 7, 2, '#e53935');
+    ctx.restore();
+  }
   if (isPresident) {
     ctx.fillStyle = '#ffd54f';
     ctx.beginPath();

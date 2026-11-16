@@ -119,7 +119,7 @@ export function progressScore(s: SaveData): number {
   const stars = Object.values(s.stars).reduce((a, b) => a + b, 0);
   const growth = Object.values(s.units).reduce((a, u) => a + u.level + (u.tier - 1) * 15, 0)
     + Object.values(s.facilities).reduce((a, b) => a + b, 0) + s.subs.length * 5;
-  return stars * 1e6 + growth * 1e3 + Math.min(999, Math.floor(s.money / 100));
+  return (stars + s.endless * 2) * 1e6 + growth * 1e3 + Math.min(999, Math.floor(s.money / 100));
 }
 
 export function pickBetter(a: SaveData, b: SaveData): SaveData {
