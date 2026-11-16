@@ -11,6 +11,7 @@ import {
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
 import { mountBattle } from './battle-screen';
+import { mountGallery } from './gallery';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 
@@ -74,7 +75,7 @@ export class App {
       h('img', { src: portrait(UNITS[0]!.look, 1, 'grunt'), alt: '' }),
       h('img.vs', { src: portrait(UNITS[9]!.look, 1, 'claudy'), alt: '' }),
       h('span.vs-mark', {}, 'VS'),
-      h('img.big', { src: portrait(ENEMY_BY_ID.dean!.look, 1, 'dean', -1), alt: '' }),
+      h('img.big', { src: portrait(ENEMY_BY_ID.president!.look, 1, 'president', -1), alt: '' }),
       h('img', { src: portrait(ENEMY_BY_ID.reviewer!.look, 1, 'reviewer', -1), alt: '' }),
     );
     const body = p
@@ -179,6 +180,7 @@ export class App {
       nodes,
       h('div.map-actions', {},
         h('button.btn.lab-btn', { onclick: () => this.showLab() }, '🔬 연구실 강화'),
+        h('button.btn.dex-btn', { onclick: () => this.showGallery() }, '📖 도감'),
       ),
     ));
   }
@@ -267,6 +269,12 @@ export class App {
       if (kind === 'c') news.push(`📖 새 챕터: ${CHAPTERS[Number(id) - 1]!.name}`);
     }
     return news;
+  }
+
+  showGallery(): void {
+    const holder = h('div.screen');
+    this.swap(holder);
+    this.cleanup = mountGallery(holder, this.save, () => this.showMap());
   }
 
   // ───────────────────── 연구실 강화 ─────────────────────
