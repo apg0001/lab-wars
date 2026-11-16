@@ -30,7 +30,7 @@ export const ENEMIES: EnemyDef[] = [
     hp: 95, atk: 18, range: 130, speed: 36, interval: 1.7, splash: 40,
     look: { kind: 'revision', color: '#212121', accent: '#e53935' } },
   { id: 'notif', name: '메신저 알림 폭탄', role: '공중 범위', reward: 10,
-    hp: 90, atk: 16, range: 110, speed: 55, interval: 1.4, splash: 35, flying: true,
+    hp: 80, atk: 13, range: 110, speed: 50, interval: 1.5, splash: 30, flying: true,
     look: { kind: 'notif', color: '#ffeb3b', accent: '#f44336' } },
 
   // 보스: 챕터 마지막 스테이지에 등장한다. 능력치는 스테이지 배율을 받지 않는다.
@@ -47,8 +47,8 @@ export const ENEMIES: EnemyDef[] = [
     boss: { summon: { id: 'revision', every: 9, count: 2 }, stomp: { dmg: 60, radius: 120, every: 7 } },
     look: { kind: 'professor', color: '#b71c1c', accent: '#e57373', scale: 2.0 } },
   { id: 'dean', name: '학과장님', role: '최종 보스', reward: 500,
-    hp: 8000, atk: 90, range: 34, speed: 18, interval: 1.5,
-    boss: { summon: { id: 'ta', every: 10, count: 2 }, stomp: { dmg: 65, radius: 130, every: 7 } },
+    hp: 7000, atk: 80, range: 34, speed: 18, interval: 1.6,
+    boss: { summon: { id: 'ta', every: 11, count: 2 }, stomp: { dmg: 55, radius: 130, every: 7 } },
     look: { kind: 'professor', color: '#311b92', accent: '#ffd54f', scale: 2.2 } },
 ];
 

@@ -50,7 +50,7 @@ const ENEMY_FROM: Record<string, number> = {
 
 const WEIGHTS: Record<string, number> = {
   memo: 5, meeting: 4, deadline: 2, plane: 2, reviewer: 2,
-  ta: 1, paperwork: 1.5, grant: 0.6, revision: 1.5, notif: 1.5,
+  ta: 1, paperwork: 1.5, grant: 0.6, revision: 1.5, notif: 1.1,
 };
 
 function makeStage(chapter: number, index: number): StageDef {
