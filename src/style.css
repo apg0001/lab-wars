@@ -162,13 +162,18 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .unit-btn img { width: 100%; height: 72%; object-fit: contain; pointer-events: none; }
 .unit-btn .cost { position: absolute; left: 0; right: 0; bottom: 0.2cqw; font-size: 1.6cqw; }
 .unit-btn .hotkey { position: absolute; left: 0.4cqw; top: 0.1cqw; font-size: 1cqw; opacity: 0.4; }
+.skill-btn .hotkey, .brew-btn .hotkey {
+  position: absolute; top: -0.6cqw; left: -0.4cqw; min-width: 1.8cqw; padding: 0 0.3cqw;
+  font-size: 1.1cqw; line-height: 1.6cqw; text-align: center; color: #fff; background: var(--ink);
+  border-radius: 0.5cqw; opacity: 0.75; pointer-events: none;
+}
 .unit-btn .cd-mask { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(43,36,48,.55); pointer-events: none; }
 .unit-btn.off { filter: grayscale(0.8) brightness(0.85); }
 .unit-btn:active { transform: translateY(0.25cqw); box-shadow: none; }
 
 .skill-row { display: flex; gap: 0.6cqw; }
 .skill-btn {
-  width: 6.4cqw; height: 6.4cqw; border-radius: 50%; border: 0.25cqw solid var(--ink); background: #f3e5f5;
+  position: relative; width: 6.4cqw; height: 6.4cqw; border-radius: 50%; border: 0.25cqw solid var(--ink); background: #f3e5f5;
   display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0;
   box-shadow: 0 0.3cqw 0 var(--ink);
 }
