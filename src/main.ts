@@ -1,5 +1,14 @@
 import './style.css';
 import { App } from './ui/app';
+import { installAudioUnlock } from './audio/engine';
+import { sfx } from './audio/sfx';
+
+installAudioUnlock();
+// 메뉴 버튼 딸깍 소리 (전투 하단 버튼은 각자 소리가 있어 제외)
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target as Element | null;
+  if (t?.closest('button') && !t.closest('.hud-bottom')) sfx.click();
+}, { capture: true });
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const stage = document.createElement('div');

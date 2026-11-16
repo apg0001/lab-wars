@@ -297,7 +297,21 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .desc { margin: 0; font-size: calc(1.5 * var(--u)); opacity: 0.75; flex: 1; }
 .lock-note { font-size: calc(1.6 * var(--u)); opacity: 0.7; }
 .btn.evolve { background: linear-gradient(90deg, #ffd54f, #ffb74d); }
-.fs-btn { position: absolute; top: calc(1.2 * var(--u)); right: calc(1.2 * var(--u)); font-size: calc(1.6 * var(--u)); }
+.title-corner { position: absolute; top: calc(1.2 * var(--u)); right: calc(1.2 * var(--u)); display: flex; gap: calc(0.8 * var(--u)); z-index: 2; }
+.fs-btn, .title-corner .audio-btn { font-size: calc(1.6 * var(--u)); }
+
+/* ───── 소리 설정 ───── */
+.audio-panel { min-width: calc(46 * var(--u)); }
+.audio-row { display: grid; grid-template-columns: calc(11 * var(--u)) calc(7 * var(--u)) 1fr calc(4 * var(--u)); align-items: center; gap: calc(1.2 * var(--u)); margin: calc(1.2 * var(--u)) 0; font-size: calc(1.8 * var(--u)); }
+.audio-label { text-align: left; }
+.toggle {
+  border: calc(0.2 * var(--u)) solid var(--ink); border-radius: calc(2 * var(--u)); background: #e0e0e0;
+  padding: calc(0.4 * var(--u)) 0; font-size: calc(1.5 * var(--u));
+}
+.toggle.on { background: #a5d6a7; }
+.vol { width: 100%; accent-color: var(--accent); height: calc(2.4 * var(--u)); touch-action: none; }
+.vol:disabled { opacity: 0.4; }
+.vol-pct { font-size: calc(1.5 * var(--u)); text-align: right; }
 
 /* ───── 도감 ───── */
 .dex-btn { font-size: calc(2.2 * var(--u)); background: #fff8e1; }

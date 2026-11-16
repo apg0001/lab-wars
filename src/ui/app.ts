@@ -12,6 +12,8 @@ import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
 import { AccountApi, AccountSaveStore, API_URL, ApiError, progressScore, type SyncState } from '../save/remote';
 import { mountBattle } from './battle-screen';
+import { music } from '../audio/music';
+import { audioIcon, showAudioSettings } from './audio-settings';
 import { mountGallery } from './gallery';
 import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscreen } from './fullscreen';
 import { h, fmt } from './dom';
@@ -117,7 +119,14 @@ export class App {
 
   // ───────────────────── 타이틀 / 프로필 ─────────────────────
 
+  /** 소리 설정 버튼 (누르면 아이콘도 갱신) */
+  private audioBtn(cls = ''): HTMLElement {
+    const btn = h(`button.icon-btn.audio-btn${cls}`, { title: '소리 설정', onclick: () => showAudioSettings(this.root.firstElementChild, () => { btn.textContent = audioIcon(); }) }, audioIcon());
+    return btn;
+  }
+
   showTitle(): void {
+    music.play('lobby');
     const p = this.profile;
     const cast = h('div.title-cast', {},
       h('img', { src: portrait(UNITS[2]!.look, 3, 'coder'), alt: '' }),
@@ -142,7 +151,7 @@ export class App {
       ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void toggleFullscreen(this.root.firstElementChild) }, fsLabel())
       : null;
     this.swap(h('div.screen.title', {},
-      fsBtn,
+      h('div.title-corner', {}, this.audioBtn(), fsBtn),
       h('div.title-logo', {}, h('h1', {}, '랩워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
       cast,
       body,
@@ -260,11 +269,12 @@ export class App {
     return h('div.topbar', {},
       back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `👤 ${this.profile?.name ?? ''}`),
       h('h2.top-title', {}, title),
-      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `💰 ${fmt(this.save.money)}`)),
+      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `💰 ${fmt(this.save.money)}`), this.audioBtn()),
     );
   }
 
   showMap(): void {
+    music.play('lobby');
     const ch = CHAPTERS[this.chapter - 1]!;
     const tabs = h('div.chapter-tabs', {}, ...CHAPTERS.map((c) => {
       const open = isStageOpen(this.save, STAGE_BY_ID[`${c.id}-1`]!);
@@ -390,6 +400,7 @@ export class App {
   }
 
   showGallery(): void {
+    music.play('lobby');
     const holder = h('div.screen');
     this.swap(holder);
     this.cleanup = mountGallery(holder, this.save, () => this.showMap());
@@ -398,6 +409,7 @@ export class App {
   // ───────────────────── 연구실 강화 ─────────────────────
 
   showLab(tab: 'units' | 'facilities' = 'units'): void {
+    music.play('lobby');
     const body = tab === 'units' ? this.unitCards() : this.facilityCards();
     this.swap(h('div.screen.lab', {},
       this.topBar('연구실 강화', () => this.showMap()),
