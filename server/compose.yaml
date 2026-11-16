@@ -1,0 +1,17 @@
+# 사용: cd server && cp .env.example .env (MW_SECRET 채우기) && docker compose up -d --build
+services:
+  api:
+    build: .
+    image: manga-wars-server:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MW_TRUST_PROXY: "1"
+    ports:
+      # 외부 공개는 Tailscale Funnel 등 프록시가 담당하고, 컨테이너는 로컬에만 연다
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - manga-wars-data:/data
+
+volumes:
+  manga-wars-data:

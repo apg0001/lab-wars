@@ -28,6 +28,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # 저장소 변수 MW_API_URL에 계정 서버 주소를 넣으면 로그인 기능이 켜진다
+          VITE_API_URL: ${{ vars.MW_API_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

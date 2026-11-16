@@ -329,3 +329,11 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .brew-btn .brew-cost { font-size: 1.4cqw; background: var(--ink); color: #fff; border-radius: 0.6cqw; padding: 0 0.5cqw; }
 .brew-btn.off { filter: grayscale(0.7); opacity: 0.75; }
 .brew-btn:active { transform: translateY(0.25cqw); box-shadow: none; }
+
+/* ───── 로그인·동기화 ───── */
+.login { min-width: 48cqw; max-width: 60cqw; }
+.login .title-actions { margin: 1cqw 0; }
+.form-msg { min-height: 2.4cqw; color: #c62828; font-size: 1.6cqw; }
+.notice { margin: 0; color: #c62828; font-size: 1.6cqw; }
+.top-right { display: flex; align-items: center; gap: 0.8cqw; }
+.sync-chip { font-size: 1.4cqw; background: rgba(43,36,48,.08); border-radius: 1cqw; padding: 0.3cqw 0.8cqw; white-space: nowrap; }

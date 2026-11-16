@@ -10,6 +10,7 @@ import {
 } from '../sim/progression';
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
+import { AccountApi, AccountSaveStore, API_URL, ApiError, progressScore, type SyncState } from '../save/remote';
 import { mountBattle } from './battle-screen';
 import { mountGallery } from './gallery';
 import { h, fmt } from './dom';
@@ -20,15 +21,35 @@ interface Settings {
 }
 
 export class App {
-  private readonly store: SaveStore = new LocalSaveStore();
-  private readonly profiles = new ProfileManager(this.store);
+  private readonly localStore = new LocalSaveStore();
+  private readonly api = API_URL ? new AccountApi(API_URL) : null;
+  private readonly accountStore = this.api ? new AccountSaveStore(this.api) : null;
+  private readonly profiles = new ProfileManager(this.localStore);
+  private sync: SyncState | null = null;
+  private notice = '';
   private profile: Profile | null = null;
   private save: SaveData = newSave();
   private settings: Settings = { speed2x: false };
   private chapter = 1;
   private cleanup: (() => void) | null = null;
 
+  private storeFor(p: Profile): SaveStore {
+    return p.kind === 'account' && this.accountStore ? this.accountStore : this.localStore;
+  }
+
   constructor(private readonly root: HTMLElement) {
+    if (this.accountStore) {
+      this.accountStore.onSync = (st) => {
+        this.sync = st;
+        const chip = this.root.querySelector('.sync-chip');
+        if (chip) chip.replaceWith(this.syncChip());
+      };
+      this.accountStore.onReplaced = (data) => {
+        // 다른 기기에서 더 많이 진행했다: 화면이 전투 중이 아니면 바로 반영한다.
+        this.save = data;
+        if (this.root.querySelector('.map')) this.showMap();
+      };
+    }
     try {
       this.settings = { ...this.settings, ...JSON.parse(kv.get('settings') ?? '{}') };
     } catch {
@@ -51,7 +72,17 @@ export class App {
 
   private async enter(p: Profile, go = true): Promise<void> {
     this.profile = p;
-    this.save = (await this.store.load(p.id)) ?? newSave();
+    this.sync = p.kind === 'account' ? 'pending' : null;
+    this.save = (await this.storeFor(p).load(p.id)) ?? newSave();
+    if (p.kind === 'account' && this.api && !this.api.user) {
+      // 갱신 토큰이 만료돼 로그아웃됐다
+      this.profiles.drop(p.id);
+      this.profile = null;
+      this.save = newSave();
+      this.notice = '로그인이 만료됐어요. 다시 로그인해 주세요.';
+      this.showTitle();
+      return;
+    }
     this.profiles.remember(p);
     const next = STAGES.find((s) => !isCleared(this.save, s.id)) ?? STAGES[STAGES.length - 1]!;
     this.chapter = next.chapter;
@@ -59,7 +90,12 @@ export class App {
   }
 
   private persist(): void {
-    if (this.profile) void this.store.save(this.profile.id, this.save);
+    if (this.profile) void this.storeFor(this.profile).save(this.profile.id, this.save);
+  }
+
+  private syncChip(): HTMLElement {
+    const label = { synced: '☁️ 저장됨', pending: '⏳ 저장 중', offline: '📴 오프라인', error: '⚠️ 동기화 오류' };
+    return h('span.sync-chip', {}, this.sync ? label[this.sync] : '📱 이 기기');
   }
 
   private saveSettings(): void {
@@ -81,9 +117,14 @@ export class App {
     const body = p
       ? h('div.title-actions', {},
         h('button.btn.primary.big', { onclick: () => this.showMap() }, `▶ ${p.name} 연구실로`),
-        h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 프로필 변경'),
+        h('div.btn-row', {},
+          h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 프로필 변경'),
+          this.api && p.kind !== 'account' ? h('button.btn.small', { onclick: () => this.showLogin() }, '🔐 로그인 / 가입') : null,
+        ),
       )
       : this.newProfileForm();
+    const notice = this.notice ? h('p.notice', {}, this.notice) : null;
+    this.notice = '';
     const fsBtn = canFullscreen()
       ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void enterFullscreen() }, '⛶ 전체 화면')
       : null;
@@ -92,7 +133,10 @@ export class App {
       h('div.title-logo', {}, h('h1', {}, '망가워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
       cast,
       body,
-      h('p.title-foot', {}, p ? '자동 접속됨 · 이 기기에 저장 중' : '진행 상황은 이 기기에 저장됩니다'),
+      notice,
+      h('p.title-foot', {}, p
+        ? (p.kind === 'account' ? `🔐 ${p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
+        : '진행 상황은 이 기기에 저장됩니다'),
     ));
   }
 
@@ -106,8 +150,11 @@ export class App {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') void go();
     });
-    return h('div.title-actions', {}, input, h('button.btn.primary.big', { onclick: () => void go() }, '🎓 연구실 입학하기'),
-      this.profiles.list().length ? h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 기존 프로필') : null);
+    return h('div.title-actions', {}, input, h('button.btn.primary.big', { onclick: () => void go() }, '🎓 게스트로 시작'),
+      h('div.btn-row', {},
+        this.api ? h('button.btn.small', { onclick: () => this.showLogin() }, '🔐 로그인 / 가입') : null,
+        this.profiles.list().length ? h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 기존 프로필') : null,
+      ));
   }
 
   private showProfiles(): void {
@@ -115,8 +162,18 @@ export class App {
     const overlay = h('div.overlay');
     const close = (): void => overlay.remove();
     const rows = list.map((p) => h('div.profile-row', {},
-      h('button.btn.profile-pick', { onclick: async () => { close(); await this.enter(p); } }, `${p.id === this.profile?.id ? '✅ ' : ''}${p.name}`),
-      h('button.btn.small.danger', { onclick: async () => {
+      h('button.btn.profile-pick', { onclick: async () => { close(); await this.enter(p); } }, `${p.id === this.profile?.id ? '✅ ' : ''}${p.kind === 'account' ? '🔐 ' : '📱 '}${p.name}`),
+      p.kind === 'account' ? h('button.btn.small', { onclick: async () => {
+        await this.api?.logout();
+        await this.localStore.remove(p.id);
+        this.profiles.drop(p.id);
+        if (this.profile?.id === p.id) {
+          this.profile = null;
+          this.save = newSave();
+        }
+        close();
+        this.showTitle();
+      } }, '로그아웃') : h('button.btn.small.danger', { onclick: async () => {
         if (!confirm(`'${p.name}' 프로필과 진행 상황을 삭제할까요? 되돌릴 수 없습니다.`)) return;
         await this.profiles.remove(p.id);
         if (this.profile?.id === p.id) {
@@ -139,13 +196,58 @@ export class App {
     this.root.firstElementChild?.append(overlay);
   }
 
+  private showLogin(): void {
+    const api = this.api;
+    if (!api) return;
+    const overlay = h('div.overlay');
+    const close = (): void => overlay.remove();
+    const user = h('input.name-input', { maxlength: '16', placeholder: '아이디 (2~16자)', autocomplete: 'username', autocapitalize: 'off' }) as HTMLInputElement;
+    const pass = h('input.name-input', { type: 'password', maxlength: '128', placeholder: '비밀번호 (8자 이상)', autocomplete: 'current-password' }) as HTMLInputElement;
+    const msg = h('p.form-msg');
+    const guest = this.profile && this.profile.kind === 'guest' ? { p: this.profile, save: this.save } : null;
+    const submit = async (mode: 'login' | 'register'): Promise<void> => {
+      msg.textContent = '잠시만요…';
+      try {
+        const u = mode === 'login' ? await api.login(user.value.trim(), pass.value) : await api.register(user.value.trim(), pass.value);
+        const acct = this.profiles.upsertAccount(u.id, u.username);
+        // 계정이 비어 있고 지금 게스트로 진행한 게 있으면 옮길지 묻는다
+        if (guest && progressScore(guest.save) > 0) {
+          const remote = await api.getSave().catch(() => null);
+          if (remote && remote.data === null && confirm(`게스트 '${guest.p.name}'의 진행 상황을 '${u.username}' 계정으로 옮길까요?`)) {
+            await this.localStore.save(acct.id, guest.save);
+          }
+        }
+        close();
+        await this.enter(acct);
+      } catch (e) {
+        msg.textContent = e instanceof ApiError ? e.message : '서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.';
+      }
+    };
+    pass.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') void submit('login');
+    });
+    overlay.append(h('div.panel.login', {},
+      h('h2', {}, '🔐 로그인'),
+      h('p.muted', {}, '로그인하면 진행 상황이 계정에 저장되어 다른 기기에서도 이어서 할 수 있어요.'),
+      h('div.title-actions', {}, user, pass),
+      msg,
+      h('div.btn-row', {},
+        h('button.btn', { onclick: close }, '닫기'),
+        h('button.btn', { onclick: () => void submit('register') }, '회원가입'),
+        h('button.btn.primary', { onclick: () => void submit('login') }, '로그인'),
+      ),
+    ));
+    this.root.firstElementChild?.append(overlay);
+    user.focus();
+  }
+
   // ───────────────────── 스테이지 지도 ─────────────────────
 
   private topBar(title: string, back?: () => void): HTMLElement {
     return h('div.topbar', {},
       back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `👤 ${this.profile?.name ?? ''}`),
       h('h2.top-title', {}, title),
-      h('div.money', {}, `💰 ${fmt(this.save.money)}`),
+      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `💰 ${fmt(this.save.money)}`)),
     );
   }
 

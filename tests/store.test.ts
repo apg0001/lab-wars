@@ -48,3 +48,21 @@ describe('프로필과 저장', () => {
     expect(sanitizeName('가'.repeat(30))).toHaveLength(12);
   });
 });
+
+describe('계정 저장 충돌 해결', async () => {
+  const { pickBetter, progressScore } = await import('../src/save/remote');
+  it('별·성장이 더 많은 쪽을 남기고, 같으면 최근 것을 남긴다', () => {
+    const a = newSave();
+    const b = newSave();
+    a.stars['1-1'] = 3;
+    b.money = 99_999;
+    expect(progressScore(a)).toBeGreaterThan(progressScore(b));
+    expect(pickBetter(a, b)).toBe(a);
+    expect(pickBetter(b, a)).toBe(a);
+    const c = newSave();
+    const d = newSave();
+    c.updatedAt = 1;
+    d.updatedAt = 2;
+    expect(pickBetter(c, d)).toBe(d);
+  });
+});

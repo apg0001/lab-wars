@@ -104,6 +104,23 @@ export class ProfileManager {
     return p;
   }
 
+  /** 계정 로그인 시 계정 프로필을 등록(또는 갱신)한다. */
+  upsertAccount(userId: number, username: string): Profile {
+    const id = `acct:${userId}`;
+    // 한 기기에는 계정 하나만 로그인한다 (다른 계정 프로필은 목록에서 뺀다)
+    const list = this.list().filter((p) => p.kind !== 'account' || p.id === id);
+    const found = list.find((p) => p.id === id);
+    const p: Profile = found ? { ...found, name: username } : { id, name: username, kind: 'account', createdAt: Date.now() };
+    this.write(found ? list.map((x) => (x.id === id ? p : x)) : [...list, p]);
+    return p;
+  }
+
+  /** 목록에서만 뺀다 (계정 로그아웃) */
+  drop(id: string): void {
+    this.write(this.list().filter((p) => p.id !== id));
+    if (kv.get('session') === id) this.forget();
+  }
+
   rename(id: string, name: string): void {
     this.write(this.list().map((p) => (p.id === id ? { ...p, name: sanitizeName(name) } : p)));
   }
