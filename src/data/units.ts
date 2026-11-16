@@ -30,7 +30,7 @@ export const UNITS: UnitDef[] = [
     desc: '노트북에서 버그를 발사한다. 공중 공격 가능.',
     cost: 30, cooldown: 3.5,
     hp: 70, atk: 13, range: 160, speed: 42, interval: 1.1,
-    unlock: { stage: '1-3' },
+    unlock: { stage: '1-4' },
     look: { kind: 'student', color: '#b59cff', prop: 'laptop' },
   },
   {
@@ -40,7 +40,7 @@ export const UNITS: UnitDef[] = [
     desc: '읽지 않은 논문 더미로 모든 걸 막아낸다.',
     cost: 45, cooldown: 6,
     hp: 450, atk: 9, range: 22, speed: 30, interval: 1.2,
-    unlock: { stage: '2-1' },
+    unlock: { stage: '2-5' },
     look: { kind: 'student', color: '#c9a27a', prop: 'shield' },
   },
   {
@@ -51,7 +51,7 @@ export const UNITS: UnitDef[] = [
     cost: 55, cooldown: 6,
     hp: 90, atk: 18, range: 140, speed: 38, interval: 1.6, splash: 45,
     knockback: { chance: 0.3, dist: 45 },
-    unlock: { stage: '2-3' },
+    unlock: { stage: '3-3' },
     look: { kind: 'student', color: '#f4f4f4', accent: '#5fd3b0', prop: 'flask' },
   },
   {
@@ -62,7 +62,7 @@ export const UNITS: UnitDef[] = [
     cost: 75, cooldown: 8,
     hp: 320, atk: 48, range: 26, speed: 40, interval: 1.3,
     knockback: { chance: 0.25, dist: 40 },
-    unlock: { stage: '3-1' },
+    unlock: { stage: '4-4' },
     look: { kind: 'student', color: '#ff8a65', prop: 'headband' },
   },
   {
@@ -73,7 +73,7 @@ export const UNITS: UnitDef[] = [
     cost: 65, cooldown: 10,
     hp: 220, atk: 12, range: 22, speed: 40, interval: 1.0,
     aura: { atkMul: 1.25, radius: 140 },
-    unlock: { stage: '3-3' },
+    unlock: { stage: '5-2' },
     look: { kind: 'student', color: '#ffd54f', prop: 'clipboard' },
   },
   {
@@ -83,7 +83,7 @@ export const UNITS: UnitDef[] = [
     desc: '지상 적에게 막히지 않고 날아가 공격한다.',
     cost: 40, cooldown: 5,
     hp: 90, atk: 11, range: 120, speed: 60, interval: 1.0, flying: true,
-    unlock: { stage: '1-5' },
+    unlock: { stage: '1-6' },
     look: { kind: 'drone', color: '#90a4ae', accent: '#4fc3f7' },
   },
   {
@@ -94,7 +94,7 @@ export const UNITS: UnitDef[] = [
     cost: 120, cooldown: 14,
     hp: 700, atk: 60, range: 30, speed: 22, interval: 2.0, buildingMul: 3,
     knockback: { chance: 0.2, dist: 50 },
-    unlock: { stage: '4-1' },
+    unlock: { stage: '6-2' },
     look: { kind: 'gpu', color: '#37474f', accent: '#76ff03' },
   },
   {
@@ -105,7 +105,7 @@ export const UNITS: UnitDef[] = [
     cost: 40, cooldown: 7,
     hp: 110, atk: 10, range: 150, speed: 40, interval: 1.2,
     heal: { amount: 12, every: 2, radius: 120 },
-    unlock: { stage: '1-5', subscribe: 600 },
+    unlock: { stage: '1-6', subscribe: 600 },
     look: { kind: 'claudy', color: '#f4a261', accent: '#fff3e0' },
   },
   {
@@ -115,7 +115,7 @@ export const UNITS: UnitDef[] = [
     desc: '터미널에서 코드를 쉴 새 없이 쏟아낸다. (패러디 캐릭터)',
     cost: 50, cooldown: 6,
     hp: 85, atk: 7, range: 170, speed: 40, interval: 0.35,
-    unlock: { stage: '2-2', subscribe: 900 },
+    unlock: { stage: '3-1', subscribe: 900 },
     look: { kind: 'codexy', color: '#263238', accent: '#69f0ae' },
   },
   {
@@ -125,7 +125,7 @@ export const UNITS: UnitDef[] = [
     desc: '한 번 부르면 둘이 온다. 재미는 두 배. (패러디 캐릭터)',
     cost: 45, cooldown: 6, count: 2,
     hp: 120, atk: 15, range: 22, speed: 48, interval: 0.9,
-    unlock: { stage: '2-5', subscribe: 1200 },
+    unlock: { stage: '3-6', subscribe: 1200 },
     look: { kind: 'jaeminai', color: '#7986cb', accent: '#b39ddb' },
   },
 ];

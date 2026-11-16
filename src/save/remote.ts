@@ -25,6 +25,21 @@ export class ApiError extends Error {
   }
 }
 
+export interface RankRow {
+  rank: number;
+  name: string;
+  endless: number;
+  stars: number;
+  cleared: number;
+  title: string;
+}
+
+export interface Leaderboard {
+  top: RankRow[];
+  me: RankRow | null;
+  total: number;
+}
+
 /** 계정 서버 클라이언트. 갱신 토큰은 기기에 보관해 자동 로그인에 쓴다. */
 export class AccountApi {
   private access = '';
@@ -108,6 +123,12 @@ export class AccountApi {
     return { data: r.data, version: Number(r.version) || 0 };
   }
 
+  /** 순위표. 로그인 상태면 내 순위도 받는다. */
+  async leaderboard(): Promise<Leaderboard> {
+    const r = this.user ? await this.authed('GET', '/api/leaderboard').catch(() => this.raw('GET', '/api/leaderboard')) : await this.raw('GET', '/api/leaderboard');
+    return r as unknown as Leaderboard;
+  }
+
   async putSave(data: SaveData, version: number): Promise<number> {
     const r = await this.authed('PUT', '/api/save', { data, version });
     return Number(r.version);
@@ -119,7 +140,7 @@ export function progressScore(s: SaveData): number {
   const stars = Object.values(s.stars).reduce((a, b) => a + b, 0);
   const growth = Object.values(s.units).reduce((a, u) => a + u.level + (u.tier - 1) * 15, 0)
     + Object.values(s.facilities).reduce((a, b) => a + b, 0) + s.subs.length * 5;
-  return stars * 1e6 + growth * 1e3 + Math.min(999, Math.floor(s.money / 100));
+  return (stars + s.endless * 2) * 1e6 + growth * 1e3 + Math.min(999, Math.floor(s.money / 100));
 }
 
 export function pickBetter(a: SaveData, b: SaveData): SaveData {

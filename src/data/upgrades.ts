@@ -13,9 +13,9 @@ export interface SkillDef {
 
 export const SKILLS: SkillDef[] = [
   { id: 'snack', name: '야식 배달', icon: '🍗', cost: 35, desc: '모든 아군 HP를 최대치의 35% 회복' },
-  { id: 'allnight', name: '밤샘 모드', icon: '🌙', cost: 50, desc: '8초간 아군 공격 속도 ×1.6, 이동 속도 ×1.2', unlockStage: '1-5' },
-  { id: 'aircon', name: '에어컨 풀가동', icon: '❄️', cost: 45, desc: '6초간 적 이동·공격 속도 ×0.5', unlockStage: '2-5' },
-  { id: 'bombard', name: '논문 투고 폭격', icon: '📚', cost: 60, desc: '탭한 지점에 150 피해 (반경 90)', unlockStage: '3-5', targeted: true },
+  { id: 'allnight', name: '밤샘 모드', icon: '🌙', cost: 50, desc: '8초간 아군 공격 속도 ×1.6, 이동 속도 ×1.2', unlockStage: '1-6' },
+  { id: 'aircon', name: '에어컨 풀가동', icon: '❄️', cost: 45, desc: '6초간 적 이동·공격 속도 ×0.5', unlockStage: '3-6' },
+  { id: 'bombard', name: '논문 투고 폭격', icon: '📚', cost: 60, desc: '탭한 지점에 150 피해 (반경 90)', unlockStage: '5-6', targeted: true },
 ];
 
 export type FacilityId = 'remodel' | 'coffee' | 'tumbler' | 'meditate' | 'printer' | 'printerRange';

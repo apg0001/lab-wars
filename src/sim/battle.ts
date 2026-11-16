@@ -174,7 +174,7 @@ export class Battle {
   }
 
   get caffeineRegen(): number {
-    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1));
+    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1);
   }
 
   /** 다음 단계 비용 (최고 단계면 null) */
@@ -348,8 +348,9 @@ export class Battle {
     if (!boss && this.alive('enemy').length >= MAX_ENEMIES) return null;
     const scale = def.boss ? 1 : this.stage.scale;
     const atkScale = 1 + (scale - 1) * 0.7;
-    const stats: CombatStats = { ...def, hp: Math.round(def.hp * scale * (def.boss ? 1 : ENEMY_HP_MUL)), atk: def.atk * atkScale };
-    const f = this.addFighter('enemy', id, def.name, def.look, 1, stats, x, Math.round(def.reward * KILL_REWARD_MUL));
+    const bs = def.boss ? (this.stage.bossScale ?? 1) : 1;
+    const stats: CombatStats = { ...def, hp: Math.round(def.hp * scale * bs * (def.boss ? 1 : ENEMY_HP_MUL)), atk: def.atk * atkScale * (1 + (bs - 1) * 0.6) };
+    const f = this.addFighter('enemy', id, def.name, def.look, 1, stats, x, Math.round(def.reward * KILL_REWARD_MUL * (this.stage.killMul ?? 1)));
     f.isBoss = !!def.boss;
     f.summonCd = def.boss?.summon?.every ?? 0;
     f.stompCd = def.boss?.stomp?.every ?? 0;

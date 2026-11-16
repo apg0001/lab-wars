@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UNIT_BY_ID } from '../src/data/units';
-import { STAGE_BY_ID, STAGES } from '../src/data/stages';
+import { STAGE_BY_ID, STAGES, FINAL_STAGE, endlessStage } from '../src/data/stages';
 import {
   applyOutcome, canSubscribe, evolve, evolveCost, isStageOpen, isUnitOwned, levelCap, levelUp, levelUpCost,
   makeLoadout, newSave, normalizeSave, takeMigrationNotes, starsFor, subscribe, unitProgress, unitStats, upgradeFacility,
@@ -54,7 +54,7 @@ describe('성장 시스템', () => {
     const c = UNIT_BY_ID.claudy!;
     s.money = 5000;
     expect(canSubscribe(s, c)).toBe(false);
-    s.stars['1-5'] = 1;
+    s.stars['1-6'] = 1;
     expect(isUnitOwned(s, c)).toBe(false);
     expect(subscribe(s, c)).toBe(true);
     expect(isUnitOwned(s, c)).toBe(true);
@@ -99,7 +99,7 @@ describe('성장 시스템', () => {
   });
 
   it('손상된 저장 데이터를 안전하게 정리한다', () => {
-    const s = normalizeSave({ money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
+    const s = normalizeSave({ v: 2, money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
     expect(s.money).toBe(0);
     expect(s.stars['1-1']).toBe(3);
     expect(s.units.grunt).toEqual({ level: 15, tier: 3 });
@@ -107,5 +107,32 @@ describe('성장 시스템', () => {
     expect(s.subs).toEqual(['claudy']);
     expect(s.facilities.remodel).toBe(10);
     expect(normalizeSave('garbage')).toEqual({ ...newSave(), updatedAt: 0 });
+  });
+
+  it('예전 4챕터 저장은 같은 난이도 지점까지 클리어로 옮긴다', () => {
+    takeMigrationNotes();
+    const all = normalizeSave({ v: 1, stars: { '1-1': 3, '4-5': 3 } });
+    expect(STAGES.every((s) => all.stars[s.id] === 3)).toBe(true);
+    const mid = normalizeSave({ v: 1, stars: { '1-1': 2, '2-5': 2 } });
+    expect(mid.stars['4-2']).toBe(2);
+    expect(mid.stars['4-3'] ?? 0).toBe(0);
+    expect(takeMigrationNotes()).toHaveLength(2);
+    const fresh = normalizeSave({ v: 1, stars: {} });
+    expect(Object.values(fresh.stars).every((v) => v === 0)).toBe(true);
+  });
+
+  it('무한 모드는 캠페인 클리어 후 한 판씩 열리고 최고 기록을 남긴다', () => {
+    const s = newSave();
+    const e1 = endlessStage(1);
+    expect(isStageOpen(s, e1)).toBe(false);
+    s.stars[FINAL_STAGE.id] = 1;
+    expect(isStageOpen(s, e1)).toBe(true);
+    expect(isStageOpen(s, endlessStage(2))).toBe(false);
+    const out = applyOutcome(s, e1, true, 0.9, 10);
+    expect(out.firstClear).toBe(true);
+    expect(s.endless).toBe(1);
+    expect(isStageOpen(s, endlessStage(2))).toBe(true);
+    expect(endlessStage(10).boss).toBeTruthy();
+    expect(endlessStage(20).scale).toBeGreaterThan(endlessStage(10).scale);
   });
 });
