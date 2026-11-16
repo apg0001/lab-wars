@@ -5,7 +5,7 @@
 ## 구성
 
 - Node 24(TypeScript 직접 실행) + 내장 SQLite, 외부 패키지 없음 (`server/src`)
-- 데이터: Docker 볼륨 `manga-wars-data`의 `/data/manga-wars.db`
+- 데이터: Docker 볼륨 `lab-wars-data`의 `/data/lab-wars.db`
 - 컨테이너는 `127.0.0.1:8787`에만 열고, 인터넷 공개는 프록시(Tailscale Funnel)가 맡습니다.
 
 ## API
@@ -48,13 +48,13 @@ tailscale funnel status
 - 공개 후 GitHub 저장소 변수 `MW_API_URL`에 주소를 넣고 Pages를 다시 배포하면 게임에 로그인 버튼이 나타납니다.
 
 ```bash
-gh variable set MW_API_URL -R apg0001/manga-wars --body "https://<주소>:10000"
-gh workflow run "Deploy Pages" -R apg0001/manga-wars --ref main
+gh variable set MW_API_URL -R apg0001/lab-wars --body "https://<주소>:10000"
+gh workflow run "Deploy Pages" -R apg0001/lab-wars --ref main
 ```
 
 ## 백업
 
 ```bash
-docker compose exec api sh -c 'cp /data/manga-wars.db /data/backup.db'
-docker compose cp api:/data/backup.db ./manga-wars-$(date +%F).db
+docker compose exec api sh -c 'cp /data/lab-wars.db /data/backup.db'
+docker compose cp api:/data/backup.db ./lab-wars-$(date +%F).db
 ```
