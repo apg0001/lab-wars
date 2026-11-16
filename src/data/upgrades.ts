@@ -18,7 +18,7 @@ export const SKILLS: SkillDef[] = [
   { id: 'bombard', name: '논문 투고 폭격', icon: '📚', cost: 60, desc: '탭한 지점에 150 피해 (반경 90)', unlockStage: '3-5', targeted: true },
 ];
 
-export type FacilityId = 'remodel' | 'coffee' | 'tumbler' | 'meditate' | 'mug' | 'printer';
+export type FacilityId = 'remodel' | 'coffee' | 'tumbler' | 'meditate' | 'mug' | 'printer' | 'printerRange';
 
 export interface FacilityDef {
   id: FacilityId;
@@ -36,6 +36,7 @@ export const FACILITIES: FacilityDef[] = [
   { id: 'meditate', name: '명상 앱', icon: '🧘', desc: '멘탈 충전 +0.25/초', max: 8, baseCost: 110 },
   { id: 'mug', name: '머그컵 투척기', icon: '🫖', desc: '투척 피해 +20%', max: 10, baseCost: 70 },
   { id: 'printer', name: '자동 프린터 포탑', icon: '🖨️', desc: '포탑 피해 +20%', max: 10, baseCost: 90 },
+  { id: 'printerRange', name: '프린터 사거리 연장', icon: '📏', desc: '포탑 사거리 +20 (기본 280)', max: 8, baseCost: 160 },
 ];
 
 export const facilityCost = (f: FacilityDef, level: number): number => Math.round(f.baseCost * 1.45 ** level);

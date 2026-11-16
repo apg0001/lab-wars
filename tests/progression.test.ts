@@ -77,6 +77,16 @@ describe('성장 시스템', () => {
     expect(s.money).toBe(first.clearReward + 10 + again.clearReward + 25);
   });
 
+  it('프린터 사거리 연장은 레벨당 20씩 늘고, 예전 저장 데이터는 0레벨로 시작한다', () => {
+    const old = normalizeSave({ money: 1000, facilities: { remodel: 1, printer: 2 } });
+    expect(old.facilities.printerRange).toBe(0);
+    expect(makeLoadout(old).printerRange).toBe(280);
+    old.money = 100_000;
+    expect(upgradeFacility(old, 'printerRange')).toBe(true);
+    expect(upgradeFacility(old, 'printerRange')).toBe(true);
+    expect(makeLoadout(old).printerRange).toBe(320);
+  });
+
   it('손상된 저장 데이터를 안전하게 정리한다', () => {
     const s = normalizeSave({ money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
     expect(s.money).toBe(0);

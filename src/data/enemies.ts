@@ -51,7 +51,7 @@ export const ENEMIES: EnemyDef[] = [
     boss: { summon: { id: 'ta', every: 11, count: 2 }, stomp: { dmg: 50, radius: 125, every: 7 } },
     look: { kind: 'professor', color: '#311b92', accent: '#ffd54f', scale: 2.1 } },
   { id: 'president', name: '총장님', role: '최종 보스', reward: 600,
-    hp: 7000, atk: 80, range: 36, speed: 16, interval: 1.6,
+    hp: 8000, atk: 80, range: 36, speed: 16, interval: 1.6,
     boss: { summon: { id: 'meeting', every: 10, count: 3 }, stomp: { dmg: 55, radius: 140, every: 7 } },
     look: { kind: 'professor', color: '#212121', accent: '#ffd54f', scale: 2.3 } },
 ];

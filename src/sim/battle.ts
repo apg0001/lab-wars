@@ -13,7 +13,7 @@ export const ALLY_FRONT = 30 + BASE_W;
 export const ENEMY_FRONT = WORLD_W - 30 - BASE_W;
 const STEP = 1 / 60;
 const MAX_ENEMIES = 45;
-const TOWER_RANGE = { ally: 280, enemy: 260 };
+const ENEMY_TOWER_RANGE = 260;
 export const BREW_MAX = 6;
 /** 단계 n → n+1 비용 */
 export const BREW_COST = [30, 50, 75, 105, 140];
@@ -497,7 +497,7 @@ export class Battle {
     for (const o of this.fighters) {
       if (o.dead || o.side === b.side) continue;
       const d = Math.abs(o.x - front);
-      if (d <= TOWER_RANGE[b.side] && d < bestD) {
+      if (d <= (ally ? this.loadout.printerRange : ENEMY_TOWER_RANGE) && d < bestD) {
         bestD = d;
         best = o;
       }
