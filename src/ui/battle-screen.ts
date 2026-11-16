@@ -66,6 +66,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const menFill = h('div.res-fill.men');
   const menTxt = h('span.res-txt');
   const mugBtn = h('div.mug-chip', { title: '전장을 탭하면 머그컵 투척' }, '🫖');
+  const brewLv = h('span.brew-lv');
+  const brewCost = h('span.brew-cost');
+  const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, '☕', brewLv, brewCost);
 
   const unitBtns = opt.loadout.deck.map((d, i) => {
     const cd = h('div.cd-mask');
@@ -93,6 +96,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       h('div.res', {}, h('div.res-track', {}, cafFill), cafTxt),
       h('div.res', {}, h('div.res-track', {}, menFill), menTxt),
       mugBtn,
+      brewBtn,
     ),
     h('div.unit-row', {}, ...unitBtns.map((u) => u.btn)),
     h('div.skill-row', {}, ...skillBtns.map((s) => s.btn)),
@@ -171,6 +175,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === 'Escape' || e.key === 'p') return setPaused(!paused);
     if (paused) return;
+    if (e.key === 'q') battle.brew();
     const n = Number(e.key);
     if (n >= 1 && n <= 9) unitBtns[n - 1]?.entry && battle.summon(unitBtns[n - 1]!.entry.def.id);
     if (e.key === 'ArrowLeft' || e.key === 'a') camX = clamp(camX - 60, 0, maxCam);
@@ -219,8 +224,12 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     enemyTxt.textContent = fmt(battle.enemy.hp);
     const sec = Math.floor(battle.t);
     timeTxt.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-    cafFill.style.width = `${(battle.caffeine / L.caffeineMax) * 100}%`;
-    cafTxt.textContent = `☕ ${Math.floor(battle.caffeine)}/${L.caffeineMax}`;
+    cafFill.style.width = `${(battle.caffeine / battle.caffeineMax) * 100}%`;
+    cafTxt.textContent = `☕ ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`;
+    const bc = battle.brewCost();
+    brewLv.textContent = `Lv${battle.brewLevel}`;
+    brewCost.textContent = bc === null ? 'MAX' : `☕${bc}`;
+    brewBtn.classList.toggle('off', !battle.canBrew());
     menFill.style.width = `${(battle.mental / L.mentalMax) * 100}%`;
     menTxt.textContent = `🧠 ${Math.floor(battle.mental)}`;
     mugBtn.style.setProperty('--p', String(1 - battle.mugCd / battle.mugCooldown));
