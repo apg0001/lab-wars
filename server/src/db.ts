@@ -95,6 +95,11 @@ export class Store {
     return next;
   }
 
+  /** 순위 계산용: 저장이 있는 모든 사용자 */
+  allSaves(): { user_id: number; username: string; data: string; updated_at: number }[] {
+    return this.db.prepare('SELECT s.user_id, u.username, s.data, s.updated_at FROM saves s JOIN users u ON u.id = s.user_id').all() as { user_id: number; username: string; data: string; updated_at: number }[];
+  }
+
   close(): void {
     this.db.close();
   }

@@ -95,4 +95,29 @@ describe('계정 서버', () => {
     for (let i = 0; i < 12; i++) last = (await call('POST', '/api/auth/login', { username: 'x', password: 'yyyyyyyy' })).status;
     expect(last).toBe(429);
   });
+
+  it('순위표: 무한 기록 → 별 순, 로그인하면 내 순위, 저장하면 갱신', async () => {
+    const mk = async (name: string, data: object) => {
+      const r = await call('POST', '/api/auth/register', { username: name, password: 'password123' });
+      await call('PUT', '/api/save', { data, version: 0 }, r.json.access);
+      return r.json.access as string;
+    };
+    const stars = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`${Math.floor(i / 6) + 1}-${(i % 6) + 1}`, 3]));
+    await mk('학부생1', { v: 2, stars: stars(3), endless: 0 });
+    const prof = await mk('교수님', { v: 2, stars: stars(42), endless: 7 });
+    await mk('석사생', { v: 2, stars: stars(20), endless: 0 });
+    await mk('예전저장', { v: 1, stars: { '4-5': 3 } });
+    await mk('사기꾼', { v: 2, stars: { '9-9': 3, hack: 99 }, endless: 'lots' });
+
+    const pub = await call('GET', '/api/leaderboard');
+    expect(pub.status).toBe(200);
+    expect(pub.json.top.map((r: { name: string }) => r.name)).toEqual(['교수님', '석사생', '학부생1']);
+    expect(pub.json.top[0]).toMatchObject({ rank: 1, endless: 7, stars: 126, cleared: 42, title: '교수' });
+    expect(pub.json.top[1]).toMatchObject({ title: '석사', cleared: 20 });
+    expect(pub.json.top[0].uid).toBeUndefined();
+    expect(pub.json.me).toBeNull();
+
+    const mine = await call('GET', '/api/leaderboard', undefined, prof);
+    expect(mine.json.me).toMatchObject({ rank: 1, name: '교수님' });
+  });
 });
