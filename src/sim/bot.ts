@@ -1,7 +1,7 @@
 import { STAGES, type StageDef } from '../data/stages';
 import { UNITS } from '../data/units';
 import { FACILITIES, facilityCost } from '../data/upgrades';
-import { Battle, makeRng } from './battle';
+import { ALLY_FRONT, Battle, makeRng } from './battle';
 import {
   applyOutcome, canEvolve, canLevelUp, evolve, evolveCost, levelUp, levelUpCost, makeLoadout, subscribe,
   canSubscribe, unitProgress, upgradeFacility, type SaveData,
@@ -26,6 +26,12 @@ export function playBot(battle: Battle, limit = 300, seed = 4242): void {
 function botThink(b: Battle, rng: () => number): void {
   const enemies = b.alive('enemy');
   const allies = b.alive('ally');
+  // 적이 연구실 가까이 없으면 커피머신에 투자한다.
+  const nearest = enemies.reduce((m, e) => Math.min(m, e.x), Infinity);
+  if (b.canBrew() && (nearest - ALLY_FRONT > 450 || b.caffeine >= b.caffeineMax - 1)) {
+    b.brew();
+    return;
+  }
   // 가장 비싼 유닛을 우선 소환하되, 카페인이 넘칠 때만 고급 유닛을 기다린다.
   const deck = [...b.loadout.deck].sort((x, y) => y.def.cost - x.def.cost);
   for (const d of deck) {
@@ -34,7 +40,7 @@ function botThink(b: Battle, rng: () => number): void {
       break;
     }
     // 고급 유닛을 위해 모으는 중이면 싼 유닛은 참는다.
-    if (b.caffeine < d.def.cost && (b.unitCd[d.def.id] ?? 0) <= 0 && d.def.cost <= b.loadout.caffeineMax * 0.9 && enemies.length < 4) break;
+    if (b.caffeine < d.def.cost && (b.unitCd[d.def.id] ?? 0) <= 0 && d.def.cost <= b.caffeineMax * 0.9 && enemies.length < 4) break;
   }
   // 사람 수준: 투척 기회의 60%만 쓰고, 조준은 ±35px 빗나간다.
   if (enemies.length && b.canThrowMug() && rng() < 0.6) {

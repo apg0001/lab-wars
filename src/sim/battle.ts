@@ -14,6 +14,9 @@ export const ENEMY_FRONT = WORLD_W - 30 - BASE_W;
 const STEP = 1 / 60;
 const MAX_ENEMIES = 45;
 const TOWER_RANGE = { ally: 280, enemy: 260 };
+export const BREW_MAX = 6;
+/** 단계 n → n+1 비용 */
+export const BREW_COST = [30, 50, 75, 105, 140];
 
 export interface Fighter {
   uid: number;
@@ -111,6 +114,8 @@ export class Battle {
   unitCd: Record<string, number> = {};
   mugCd = 0;
   readonly mugCooldown = 1.2;
+  /** 전투 중 커피머신 단계 (1~BREW_MAX) */
+  brewLevel = 1;
   hasteT = 0;
   freezeT = 0;
   result: BattleResult = null;
@@ -134,6 +139,33 @@ export class Battle {
   }
 
   // ───────────── 플레이어 조작 ─────────────
+
+  get caffeineMax(): number {
+    return Math.round(this.loadout.caffeineMax * (1 + 0.25 * (this.brewLevel - 1)));
+  }
+
+  get caffeineRegen(): number {
+    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1));
+  }
+
+  /** 다음 단계 비용 (최고 단계면 null) */
+  brewCost(): number | null {
+    return this.brewLevel < BREW_MAX ? BREW_COST[this.brewLevel - 1]! : null;
+  }
+
+  canBrew(): boolean {
+    const c = this.brewCost();
+    return !this.result && c !== null && this.caffeine >= c;
+  }
+
+  /** 카페인을 써서 커피머신 단계를 올린다: 최대치 +25%, 충전 +20% */
+  brew(): boolean {
+    if (!this.canBrew()) return false;
+    this.caffeine -= this.brewCost()!;
+    this.brewLevel++;
+    this.fx.push({ kind: 'text', x: 105, y: GROUND_Y - 280, t: 0, life: 1.2, text: `☕ 커피머신 Lv${this.brewLevel}!`, color: '#ffe0b2' });
+    return true;
+  }
 
   canSummon(unitId: string): boolean {
     const entry = this.loadout.deck.find((d) => d.def.id === unitId);
@@ -228,7 +260,7 @@ export class Battle {
     }
     this.t += dt;
     const L = this.loadout;
-    this.caffeine = Math.min(L.caffeineMax, this.caffeine + L.caffeineRegen * dt);
+    this.caffeine = Math.min(this.caffeineMax, this.caffeine + this.caffeineRegen * dt);
     this.mental = Math.min(L.mentalMax, this.mental + L.mentalRegen * dt);
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
     this.mugCd = Math.max(0, this.mugCd - dt);
