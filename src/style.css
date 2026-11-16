@@ -335,3 +335,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
   background: #fff8e1; border: 0.22cqw solid var(--ink); border-radius: 1cqw; padding: 0.8cqw 1.6cqw; font-size: 1.7cqw;
   box-shadow: 0 0.35cqw 0 var(--ink);
 }
+.install-guide { max-width: 64cqw; text-align: left; }
+.install-guide h2 { text-align: center; }
+.install-guide ol { font-size: 1.9cqw; line-height: 1.6; padding-left: 3cqw; }
+.install-guide .btn { display: block; margin: 1cqw auto 0; }
