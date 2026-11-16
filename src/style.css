@@ -32,13 +32,16 @@ html, body {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* 가로 모드에서는 노치가 좌우에만 있다. 위·아래까지 비우면 홈 바 높이만큼 빈 띠가 생긴다. */
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  /* 무대 크기는 dvh 대신 실제 화면 상자 기준 (전체 화면 전환 직후에도 정확) */
+  container-type: size;
 }
 
 /* 16:9 무대. 내부 크기는 cqw(무대 너비의 1%) 단위로 잡는다. */
 .stage {
   position: relative;
-  width: min(100%, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 16 / 9));
+  width: min(100cqw, 100cqh * 16 / 9);
   aspect-ratio: 16 / 9;
   container-type: size;
   overflow: hidden;
@@ -139,7 +142,9 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .boss-fill { height: 100%; background: linear-gradient(90deg, #ff5252, #ffd54f); }
 
 .hud-bottom {
-  position: absolute; left: 0.8cqw; right: 0.8cqw; bottom: 0.8cqw;
+  position: absolute; left: 0.8cqw; right: 0.8cqw;
+  /* 아이폰 홈 바와 겹치지 않게 그 높이의 절반만큼 띄운다 */
+  bottom: calc(0.8cqw + env(safe-area-inset-bottom) * 0.5);
   display: grid; grid-template-columns: 15cqw 1fr auto; gap: 0.8cqw; align-items: end;
   pointer-events: none;
 }
