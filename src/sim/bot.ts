@@ -1,0 +1,116 @@
+import { STAGES, type StageDef } from '../data/stages';
+import { UNITS } from '../data/units';
+import { FACILITIES, facilityCost } from '../data/upgrades';
+import { Battle, makeRng } from './battle';
+import {
+  applyOutcome, canEvolve, canLevelUp, evolve, evolveCost, levelUp, levelUpCost, makeLoadout, subscribe,
+  canSubscribe, unitProgress, upgradeFacility, type SaveData,
+} from './progression';
+
+/**
+ * 밸런스 검증용 자동 플레이어. 사람 수준으로 플레이하도록 판단 주기를 0.4초로 두고,
+ * 머그컵은 기회의 일부만 쓰며 조준 오차를 둔다.
+ */
+export function playBot(battle: Battle, limit = 300, seed = 4242): void {
+  const rng = makeRng(seed);
+  let think = 0;
+  while (!battle.result && battle.t < limit) {
+    battle.step(1 / 60);
+    think += 1 / 60;
+    if (think < 0.4) continue;
+    think = 0;
+    botThink(battle, rng);
+  }
+}
+
+function botThink(b: Battle, rng: () => number): void {
+  const enemies = b.alive('enemy');
+  const allies = b.alive('ally');
+  // 가장 비싼 유닛을 우선 소환하되, 카페인이 넘칠 때만 고급 유닛을 기다린다.
+  const deck = [...b.loadout.deck].sort((x, y) => y.def.cost - x.def.cost);
+  for (const d of deck) {
+    if (b.canSummon(d.def.id)) {
+      b.summon(d.def.id);
+      break;
+    }
+    // 고급 유닛을 위해 모으는 중이면 싼 유닛은 참는다.
+    if (b.caffeine < d.def.cost && (b.unitCd[d.def.id] ?? 0) <= 0 && d.def.cost <= b.loadout.caffeineMax * 0.9 && enemies.length < 4) break;
+  }
+  // 사람 수준: 투척 기회의 60%만 쓰고, 조준은 ±35px 빗나간다.
+  if (enemies.length && b.canThrowMug() && rng() < 0.6) {
+    const front = enemies.reduce((m, e) => (e.x < m.x ? e : m));
+    b.throwMug(front.x + (rng() - 0.5) * 70);
+  }
+  for (const s of b.loadout.skills) {
+    if (!b.canCast(s.id)) continue;
+    if (s.id === 'snack' && allies.filter((a) => a.hp < a.maxHp * 0.5).length >= 3) b.cast('snack');
+    else if (s.id === 'allnight' && allies.length >= 5) b.cast('allnight');
+    else if (s.id === 'aircon' && enemies.length >= 6) b.cast('aircon');
+    else if (s.id === 'bombard' && enemies.length >= 4) {
+      const front = enemies.reduce((m, e) => (e.x < m.x ? e : m));
+      b.cast('bombard', front.x + 30);
+    }
+  }
+}
+
+/** 남은 돈으로 가장 싼 업그레이드부터 산다 (단순 성장 전략). */
+export function botShop(save: SaveData): void {
+  for (;;) {
+    const options: { cost: number; buy: () => boolean }[] = [];
+    for (const u of UNITS) {
+      if (canSubscribe(save, u)) options.push({ cost: u.unlock.subscribe!, buy: () => subscribe(save, u) });
+      const p = unitProgress(save, u.id);
+      if (canLevelUp(save, u)) options.push({ cost: levelUpCost(u, p.level), buy: () => levelUp(save, u) });
+      if (canEvolve(save, u)) options.push({ cost: evolveCost(u, p.tier), buy: () => evolve(save, u) });
+    }
+    for (const f of FACILITIES) {
+      const lv = save.facilities[f.id];
+      if (lv < f.max && save.money >= facilityCost(f, lv)) options.push({ cost: facilityCost(f, lv), buy: () => upgradeFacility(save, f.id) });
+    }
+    const affordable = options.filter((o) => o.cost <= save.money).sort((a, b) => a.cost - b.cost);
+    if (!affordable.length) return;
+    affordable[0]!.buy();
+  }
+}
+
+export interface StageRun {
+  stage: string;
+  attempts: number;
+  stars: number;
+  seconds: number;
+}
+
+/**
+ * 캠페인 전체를 봇으로 진행한다. 지면 직전 스테이지를 한 번 다시 돌아 연구비를 모은 뒤 재도전한다.
+ */
+export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7): { runs: StageRun[]; stuckAt: string | null } {
+  const runs: StageRun[] = [];
+  let s = seed;
+  for (const stage of STAGES) {
+    let attempts = 0;
+    for (;;) {
+      attempts++;
+      botShop(save);
+      const r = playOnce(save, stage, s++);
+      if (r.win) {
+        runs.push({ stage: stage.id, attempts, stars: r.stars, seconds: Math.round(r.seconds) });
+        break;
+      }
+      if (attempts >= maxAttempts) return { runs, stuckAt: stage.id };
+      const prev = STAGES[stage.order - 1];
+      if (prev) {
+        botShop(save);
+        playOnce(save, prev, s++);
+      }
+    }
+  }
+  return { runs, stuckAt: null };
+}
+
+export function playOnce(save: SaveData, stage: StageDef, seed: number): { win: boolean; stars: number; seconds: number } {
+  const battle = new Battle(stage, makeLoadout(save), seed);
+  playBot(battle, 300, seed * 31 + 7);
+  const win = battle.result === 'win';
+  const out = applyOutcome(save, stage, win, battle.ally.hp / battle.ally.maxHp, battle.killReward);
+  return { win, stars: out.stars, seconds: battle.t };
+}
