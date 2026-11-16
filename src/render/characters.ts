@@ -581,10 +581,34 @@ function notif(ctx: Ctx, look: Look, pose: Pose): void {
   label(ctx, '99+', 7, -15.5);
 }
 
-function professor(ctx: Ctx, look: Look, pose: Pose, isDean: boolean): void {
+function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
+  const isDean = variant === 'dean';
+  const isPresident = variant === 'president';
+  const isChair = variant === 'chair';
   line(ctx);
   legs(ctx, pose, 10, 12, '#212121');
   // 정장
+  if (isPresident) {
+    // 총장 학위 가운: 넓은 망토와 금색 줄
+    ctx.beginPath();
+    ctx.moveTo(-14, -50);
+    ctx.lineTo(-24, -6);
+    ctx.lineTo(24, -6);
+    ctx.lineTo(14, -50);
+    ctx.closePath();
+    ctx.fillStyle = look.color;
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = look.accent ?? '#ffd54f';
+    ctx.lineWidth = 3;
+    for (const sx of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sx * 9, -48);
+      ctx.lineTo(sx * 15, -8);
+      ctx.stroke();
+    }
+    line(ctx);
+  }
   rrect(ctx, -16, -48, 32, 38, 8, look.color);
   ctx.fillStyle = '#fff';
   ctx.beginPath();
@@ -630,7 +654,27 @@ function professor(ctx: Ctx, look: Look, pose: Pose, isDean: boolean): void {
   ctx.stroke();
   blob(ctx, -15, 6, 3.5, 3.5, SKIN);
   ctx.restore();
-  if (isDean) {
+  if (isChair) {
+    // 학회 명찰과 마이크
+    ctx.strokeStyle = '#4db6ac';
+    ctx.beginPath();
+    ctx.moveTo(-8, -48);
+    ctx.lineTo(-3, -30);
+    ctx.lineTo(3, -48);
+    ctx.stroke();
+    line(ctx);
+    rrect(ctx, -9, -32, 12, 9, 1, '#fff');
+    ctx.fillStyle = '#00695c';
+    ctx.font = 'bold 5px Jua, sans-serif';
+    label(ctx, '학회', -7, -26);
+    ctx.save();
+    ctx.translate(15, -36);
+    ctx.rotate(0.3 - pose.swing * 0.5);
+    rrect(ctx, -2, -2, 4, 14, 1, '#424242');
+    blob(ctx, 0, -5, 5, 5, '#9e9e9e');
+    ctx.restore();
+  }
+  if (isPresident) {
     ctx.fillStyle = '#ffd54f';
     ctx.beginPath();
     ctx.moveTo(-10, hy - 13);
@@ -670,7 +714,7 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'binder': binder(ctx, look, pose); break;
     case 'revision': revision(ctx, look, pose); break;
     case 'notif': notif(ctx, look, pose); break;
-    case 'professor': professor(ctx, look, pose, defId === 'dean'); break;
+    case 'professor': professor(ctx, look, pose, defId); break;
   }
   ctx.restore();
 }
