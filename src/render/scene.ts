@@ -1,5 +1,7 @@
 import { ALLY_FRONT, ENEMY_FRONT, GROUND_Y, WORLD_W, type Battle, type Base, type Fighter, type Projectile } from '../sim/battle';
+import { RANGED_THRESHOLD } from '../data/types';
 import { drawCharacter, INK } from './characters';
+import type { Juice } from './juice';
 
 /** 기준 화면 크기 (16:9). 더 넓은 화면에서는 세로를 고정하고 가로로 더 보여준다. */
 export const VIEW_W = 960;
@@ -17,21 +19,58 @@ export function setViewAspect(aspect: number): number {
 
 type Ctx = CanvasRenderingContext2D;
 
-export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number): void {
+export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juice?: Juice): void {
   ctx.save();
   drawBackdrop(ctx, camX);
   ctx.translate(-camX, 0);
   drawPrinterRange(ctx, ALLY_FRONT + b.loadout.printerRange);
-  drawLab(ctx, b.ally, time);
-  drawOffice(ctx, b.enemy, time);
+  withBaseShake(ctx, b.ally, () => drawLab(ctx, b.ally, time));
+  withBaseShake(ctx, b.enemy, () => drawOffice(ctx, b.enemy, time));
 
   // 지상 → 공중 순, 같은 층은 깊이(y) 순으로 그린다
   const sorted = [...b.fighters].sort((p, q) => Number(!!p.stats.flying) - Number(!!q.stats.flying) || b.fy(p) - b.fy(q));
   for (const f of sorted) drawFighter(ctx, b, f, time);
   for (const p of b.projectiles) drawProjectile(ctx, p, time);
+  juice?.draw(ctx);
   drawFx(ctx, b, false);
   ctx.restore();
+  drawMood(ctx, b, time, juice);
   drawFx(ctx, b, true);
+}
+
+/** 건물이 맞으면 잠깐 흔들린다. */
+function withBaseShake(ctx: Ctx, base: Base, draw: () => void): void {
+  if (base.hitFlash <= 0) return draw();
+  ctx.save();
+  ctx.translate((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 2);
+  draw();
+  ctx.restore();
+}
+
+/** 화면 분위기: 스킬 색조, 연구실 위기 비네트, 번쩍임 */
+function drawMood(ctx: Ctx, b: Battle, time: number, juice?: Juice): void {
+  if (b.freezeT > 0) {
+    ctx.fillStyle = `rgba(129,212,250,${0.1 * Math.min(1, b.freezeT)})`;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
+  if (b.hasteT > 0) {
+    ctx.fillStyle = `rgba(103,58,183,${0.07 * Math.min(1, b.hasteT)})`;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
+  const hp = b.ally.hp / b.ally.maxHp;
+  if (hp < 0.3 && !b.result) {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 5);
+    const a = (0.3 - hp) / 0.3 * (0.25 + 0.2 * pulse);
+    const g = ctx.createRadialGradient(viewW / 2, VIEW_H / 2, VIEW_H * 0.45, viewW / 2, VIEW_H / 2, viewW * 0.7);
+    g.addColorStop(0, 'rgba(229,57,53,0)');
+    g.addColorStop(1, `rgba(229,57,53,${a})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
+  if (juice && juice.flash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${juice.flash * 0.6})`;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
 }
 
 // ─────────────── 배경 ───────────────
@@ -264,17 +303,49 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
   const y = b.fy(f);
   const facing = f.side === 'ally' ? 1 : -1;
   ctx.save();
-  if (f.dead) {
-    ctx.globalAlpha = Math.max(0, 1 - f.deathT / 0.6);
-    ctx.translate(0, -f.deathT * 30);
-  }
   // 그림자
-  ctx.fillStyle = 'rgba(0,0,0,.15)';
-  ctx.beginPath();
-  ctx.ellipse(f.x, (f.stats.flying ? GROUND_Y : y) + 2, 14 * (f.look.scale ?? 1), 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  const shakeX = f.hitFlash > 0 ? (Math.random() - 0.5) * 3 : 0;
-  drawCharacter(ctx, f.look, { walk: f.walk, swing: f.swing, tier: f.tier, time, moving: !f.attacking && !f.dead }, f.x + shakeX, y, facing as 1 | -1, f.defId);
+  if (!f.dead) {
+    ctx.fillStyle = 'rgba(0,0,0,.15)';
+    ctx.beginPath();
+    ctx.ellipse(f.x, (f.stats.flying ? GROUND_Y : y) + 2, 14 * (f.look.scale ?? 1), 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 근접은 앞으로 튀어나가고(런지), 원거리는 살짝 반동
+  const melee = f.stats.range < RANGED_THRESHOLD;
+  const sw = Math.sin(Math.min(1, f.swing) * Math.PI);
+  let ox = (melee ? sw * 8 : -sw * 3) * facing;
+  let oy = 0;
+  let rot = 0;
+  let sx = 1;
+  let sy = 1;
+  if (f.dead) {
+    // 처치: 뒤로 날아가며 빙글
+    const k = Math.min(1, f.deathT / 0.6);
+    ox += -facing * k * (f.isBoss ? 40 : 90);
+    oy = -Math.sin(k * Math.PI) * (f.isBoss ? 20 : 45) + k * k * 10;
+    rot = -facing * k * (f.isBoss ? 0.6 : 5);
+    ctx.globalAlpha = Math.max(0, 1 - k * k);
+  } else if (f.kbT > 0) {
+    rot = -facing * 0.18;
+  } else if (f.hitFlash > 0) {
+    // 맞으면 찌그러진다
+    const k = f.hitFlash / 0.12;
+    sx = 1 + 0.14 * k;
+    sy = 1 - 0.12 * k;
+    ox += (Math.random() - 0.5) * 3;
+  } else if (!f.attacking && !f.stats.flying) {
+    // 숨쉬기
+    sy = 1 + Math.sin(time * 3 + f.uid) * 0.015;
+  }
+  ctx.translate(f.x + ox, y + oy);
+  if (rot) {
+    ctx.translate(0, -20);
+    ctx.rotate(rot);
+    ctx.translate(0, 20);
+  }
+  ctx.scale(sx, sy);
+  if (f.hitFlash > 0 && !f.dead) ctx.filter = 'brightness(1.9) saturate(0.5)';
+  drawCharacter(ctx, f.look, { walk: f.walk, swing: f.swing, tier: f.tier, time, moving: !f.attacking && !f.dead }, 0, 0, facing as 1 | -1, f.defId);
   ctx.restore();
 
   // 체력바 (다쳤을 때만, 보스는 상단 HUD에서 표시)
@@ -384,14 +455,22 @@ function drawFx(ctx: Ctx, b: Battle, screenSpace: boolean): void {
     ctx.save();
     ctx.globalAlpha = Math.max(0, 1 - k * k);
     switch (e.kind) {
-      case 'dmg':
-        ctx.font = 'bold 15px Jua, sans-serif';
-        ctx.lineWidth = 3;
+      case 'dmg': {
+        // 처음에 크게 튀었다가 줄어든다. 큰 피해는 더 크고 노랗게.
+        const n = Number(e.text) || 0;
+        const big = n >= 100 ? 1.6 : n >= 45 ? 1.3 : 1;
+        const pop = k < 0.15 ? 1.5 - (k / 0.15) * 0.5 : 1;
+        const size = Math.round(15 * big * pop);
+        ctx.font = `bold ${size}px Jua, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 3 + (big > 1 ? 1 : 0);
         ctx.strokeStyle = INK;
-        ctx.strokeText(e.text ?? '', e.x - 8, e.y - k * 26);
-        ctx.fillStyle = e.color ?? '#fff';
-        ctx.fillText(e.text ?? '', e.x - 8, e.y - k * 26);
+        const ty = e.y - k * 26 - (big > 1 ? 6 : 0);
+        ctx.strokeText(e.text ?? '', e.x, ty);
+        ctx.fillStyle = big > 1 && e.color === '#fff' ? '#ffe082' : e.color ?? '#fff';
+        ctx.fillText(e.text ?? '', e.x, ty);
         break;
+      }
       case 'text':
         if (isBanner) {
           ctx.font = 'bold 30px Jua, sans-serif';

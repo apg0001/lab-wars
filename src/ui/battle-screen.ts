@@ -7,6 +7,11 @@ import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { keyOf } from './keys';
 import { isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
+import { Juice } from '../render/juice';
+import { audio } from '../audio/engine';
+import { music } from '../audio/music';
+import { playBattleSfx } from '../audio/sfx';
+import { showAudioSettings } from './audio-settings';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
@@ -46,6 +51,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   let ended = false;
   let raf = 0;
   let last = performance.now();
+  const juice = new Juice();
+  music.play('battle');
 
   // ── HUD ──
   const allyBar = h('div.hp-fill.ally');
@@ -129,12 +136,14 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (ended) return;
     paused = p;
     overlay.hidden = !p;
+    audio.duck(p);
     if (p) {
       overlay.replaceChildren(h('div.panel', {},
         h('h2', {}, '일시정지'),
         h('p.muted', {}, '전장 드래그: 시점 이동 · 숫자키: 소환 · Q: 커피머신 · W/E/R/T: 스킬'),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
+          h('button.btn', { onclick: () => showAudioSettings(screen) }, '🔊 소리 설정'),
           isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? '✕ 전체 화면 끄기' : '⛶ 전체 화면'),
           h('button.btn', { onclick: () => { cleanup(); opt.onQuit(); } }, '후퇴하기'),
         ),
@@ -221,10 +230,28 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   function frame(now: number): void {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    if (!paused) battle.update(dt * speed);
+    if (!paused) {
+      // 히트스톱: 큰 타격 순간 아주 잠깐 시간을 느리게
+      const slow = juice.hitStop > 0 ? 0.08 : 1;
+      juice.hitStop = Math.max(0, juice.hitStop - dt);
+      battle.update(dt * speed * slow);
+      juice.update(dt * slow);
+    }
+    for (const e of battle.drainEvents()) {
+      juice.onEvent(e);
+      playBattleSfx(e, camX, viewW);
+      if (e.type === 'bossSpawn') music.play('boss');
+      if (e.type === 'end') music.stop(0.4);
+    }
     const k = canvas.width / viewW;
-    ctx.setTransform(k, 0, 0, k, 0, 0);
-    drawBattle(ctx, battle, camX, now / 1000);
+    const sh = juice.offset();
+    ctx.setTransform(k, 0, 0, k, sh.x * k, sh.y * k);
+    // 흔들릴 때 가장자리가 비지 않도록 바깥을 먼저 칠한다
+    if (sh.x || sh.y) {
+      ctx.fillStyle = '#1d1a22';
+      ctx.fillRect(-20, -20, viewW + 40, VIEW_H + 40);
+    }
+    drawBattle(ctx, battle, camX, now / 1000, juice);
     if (armed) {
       ctx.fillStyle = 'rgba(30,136,229,.12)';
       ctx.fillRect(0, 0, viewW, VIEW_H);
@@ -298,6 +325,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     ro.disconnect();
     window.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVis);
+    audio.duck(false);
   }
   return cleanup;
 }

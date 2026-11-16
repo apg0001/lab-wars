@@ -88,6 +88,27 @@ export interface Fx {
   r?: number;
 }
 
+/**
+ * 연출·소리용 이벤트. 게임 로직에는 영향이 없고, 화면이 매 프레임 drainEvents()로 가져간다.
+ */
+export type BattleEvent =
+  | { type: 'summon'; x: number }
+  | { type: 'hit'; x: number; y: number; dmg: number; melee: boolean; to: Side }
+  | { type: 'kill'; x: number; y: number; side: Side; boss: boolean }
+  | { type: 'boom'; x: number; y: number; r: number; side: Side; big: boolean }
+  | { type: 'stomp'; x: number; r: number }
+  | { type: 'knockback'; x: number; y: number }
+  | { type: 'baseHit'; side: Side; x: number; dmg: number }
+  | { type: 'shoot'; kind: ProjectileKind; x: number; side: Side; tower: boolean }
+  | { type: 'brew'; level: number }
+  | { type: 'skill'; id: SkillId }
+  | { type: 'heal' }
+  | { type: 'bossSpawn' }
+  | { type: 'rush' }
+  | { type: 'end'; result: 'win' | 'lose' };
+
+const MAX_EVENTS = 256;
+
 export interface Base {
   side: Side;
   hp: number;
@@ -119,6 +140,8 @@ export class Battle {
   fighters: Fighter[] = [];
   projectiles: Projectile[] = [];
   fx: Fx[] = [];
+  /** 연출·소리 이벤트 (화면이 가져가지 않으면 MAX_EVENTS까지만 쌓인다) */
+  events: BattleEvent[] = [];
   unitCd: Record<string, number> = {};
   /** 전투 중 커피머신 단계 (1~BREW_MAX) */
   brewLevel = 1;
@@ -169,6 +192,7 @@ export class Battle {
     if (!this.canBrew()) return false;
     this.caffeine -= this.brewCost()!;
     this.brewLevel++;
+    this.emit({ type: 'brew', level: this.brewLevel });
     this.fx.push({ kind: 'text', x: 105, y: GROUND_Y - 280, t: 0, life: 1.2, text: `☕ 커피머신 Lv${this.brewLevel}!`, color: '#ffe0b2' });
     return true;
   }
@@ -189,6 +213,7 @@ export class Battle {
       f.depth = i * 10 + this.rng() * 6;
     }
     this.fx.push({ kind: 'spawn', x: ALLY_FRONT - 10, y: GROUND_Y, t: 0, life: 0.4 });
+    this.emit({ type: 'summon', x: ALLY_FRONT - 10 });
     return true;
   }
 
@@ -202,6 +227,7 @@ export class Battle {
     const s = this.loadout.skills.find((k) => k.id === id)!;
     if (s.targeted && x === undefined) return false;
     this.mental -= s.cost;
+    this.emit({ type: 'skill', id });
     switch (id) {
       case 'snack':
         for (const f of this.alive('ally')) {
@@ -274,6 +300,7 @@ export class Battle {
 
   private finish(r: BattleResult): void {
     this.result = r;
+    if (r) this.emit({ type: 'end', result: r });
     this.banner(r === 'win' ? '교수실 함락!' : '연구실이 망가졌다…');
   }
 
@@ -285,6 +312,7 @@ export class Battle {
       this.bossSpawned = true;
       this.spawnEnemy(st.boss, true);
       this.banner(`⚠️ ${ENEMY_BY_ID[st.boss]!.name} 등장!`);
+      this.emit({ type: 'bossSpawn' });
     }
     // 장기전 방지: 3분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
     const overtime = this.t > 180 ? Math.max(0.5, 1 - (this.t - 180) / 240) : 1;
@@ -298,6 +326,7 @@ export class Battle {
       this.nextRush += st.rush.every;
       for (let i = 0; i < st.rush.size; i++) this.queue.push({ at: this.t + i * 0.45, id: this.pickEnemy() });
       this.banner('📢 잡무 러시!');
+      this.emit({ type: 'rush' });
     }
     while (this.queue.length && this.queue[0]!.at <= this.t) this.spawnEnemy(this.queue.shift()!.id);
   }
@@ -413,12 +442,15 @@ export class Battle {
       f.healCd -= dt;
       if (f.healCd <= 0) {
         f.healCd = s.heal.every;
+        let healed = false;
         for (const o of this.alive(f.side)) {
           if (Math.abs(o.x - f.x) <= s.heal.radius && o.hp < o.maxHp) {
             o.hp = Math.min(o.maxHp, o.hp + s.heal.amount);
             this.fx.push({ kind: 'heal', x: o.x, y: this.fy(o) - 34, t: 0, life: 0.7 });
+            healed = true;
           }
         }
+        if (healed) this.emit({ type: 'heal' });
       }
     }
 
@@ -443,7 +475,7 @@ export class Battle {
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
-      else this.damageFighter(target, atk, f.side, s.knockback);
+      else this.damageFighter(target, atk, f.side, s.knockback, true);
     } else {
       const bx = f.side === 'ally' ? ENEMY_FRONT + 20 : ALLY_FRONT - 20;
       if (ranged) this.shoot(f, atk, bx, GROUND_Y - 80, null, true);
@@ -468,6 +500,7 @@ export class Battle {
           if (!o.stats.flying && Math.abs(o.x - f.x) <= b.stomp.radius) this.damageFighter(o, b.stomp.dmg, 'enemy', { chance: 0.5, dist: 45 });
         }
         this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.6, r: b.stomp.radius });
+        this.emit({ type: 'stomp', x: f.x, r: b.stomp.radius });
         this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 160, t: 0, life: 1, text: '버럭!', color: '#ff5252' });
       }
     }
@@ -477,6 +510,7 @@ export class Battle {
     const y0 = this.fy(f) - 24;
     const dist = Math.abs(tx - f.x);
     const kind = projectileKind(f.defId);
+    this.emit({ type: 'shoot', kind, x: f.x, side: f.side, tower: false });
     this.projectiles.push({
       kind, side: f.side, x0: f.x, y0, x1: tx, y1: ty, t: 0, dur: 0.12 + dist / 520,
       dmg, splash: f.stats.splash ?? 0, buildingMul: f.stats.buildingMul ?? 1,
@@ -503,6 +537,7 @@ export class Battle {
     if (!best) return;
     b.towerCd = ally ? 0.8 : 1.2;
     const x0 = ally ? 105 : WORLD_W - 105;
+    this.emit({ type: 'shoot', kind: ally ? 'paper' : 'laser', x: x0, side: b.side, tower: true });
     this.projectiles.push({
       kind: ally ? 'paper' : 'laser', side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
       t: 0, dur: 0.1 + bestD / 900, dmg: ally ? this.loadout.printerAtk : this.stage.towerAtk,
@@ -542,14 +577,16 @@ export class Battle {
       const front = p.side === 'ally' ? ENEMY_FRONT : ALLY_FRONT;
       if (Math.abs(p.x1 - front) <= p.splash) this.damageBase(base, p.dmg * p.buildingMul, p.x1);
       this.fx.push({ kind: 'boom', x: p.x1, y: p.y1, t: 0, life: 0.45, r: p.splash });
+      this.emit({ type: 'boom', x: p.x1, y: p.y1, r: p.splash, side: p.side, big: p.kind === 'book' });
       return;
     }
     const tgt = this.fighters.find((f) => f.uid === p.targetUid && !f.dead);
     if (tgt) this.damageFighter(tgt, p.dmg, p.side, p.knockback);
   }
 
-  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }): void {
+  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }, melee = false): void {
     if (f.dead) return;
+    this.emit({ type: 'hit', x: f.x, y: this.fy(f) - 20 * (f.look.scale ?? 1), dmg, melee, to: f.side });
     if (kb && !f.isBoss && f.hp > dmg && this.rng() < kb.chance) this.knockback(f, kb.dist);
     f.hp -= dmg;
     f.hitFlash = 0.12;
@@ -558,6 +595,7 @@ export class Battle {
       f.dead = true;
       f.hp = 0;
       this.fx.push({ kind: 'poof', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5 });
+      this.emit({ type: 'kill', x: f.x, y: this.fy(f) - 16, side: f.side, boss: f.isBoss });
       if (f.side === 'enemy') {
         this.kills++;
         this.killReward += f.reward;
@@ -576,12 +614,25 @@ export class Battle {
     f.kbV = (f.side === 'ally' ? -1 : 1) * dist * 6;
     f.swing = 0;
     this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 0.6, text: '넉백!', color: '#80d8ff' });
+    this.emit({ type: 'knockback', x: f.x, y: this.fy(f) - 20 });
   }
 
   private damageBase(b: Base, dmg: number, x: number): void {
     b.hp = Math.max(0, b.hp - dmg);
     b.hitFlash = 0.1;
+    this.emit({ type: 'baseHit', side: b.side, x, dmg });
     this.fx.push({ kind: 'dmg', x, y: GROUND_Y - 120 - this.rng() * 60, t: 0, life: 0.6, text: String(Math.round(dmg)), color: b.side === 'enemy' ? '#ffe082' : '#ff8a80' });
+  }
+
+  private emit(e: BattleEvent): void {
+    if (this.events.length < MAX_EVENTS) this.events.push(e);
+  }
+
+  /** 쌓인 이벤트를 꺼내고 비운다. */
+  drainEvents(): BattleEvent[] {
+    const out = this.events;
+    this.events = [];
+    return out;
   }
 
   private banner(text: string): void {
