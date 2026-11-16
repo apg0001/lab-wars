@@ -5,6 +5,7 @@ import type { BattleLoadout } from '../sim/progression';
 import { drawBattle, VIEW_H, VIEW_W } from '../render/scene';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
+import { isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
 
 export interface BattleEnd {
   win: boolean;
@@ -124,6 +125,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
         h('p.muted', {}, '전장 드래그: 시점 이동 · 숫자키: 소환 · Q: 커피머신'),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
+          isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? '✕ 전체 화면 끄기' : '⛶ 전체 화면'),
           h('button.btn', { onclick: () => { cleanup(); opt.onQuit(); } }, '후퇴하기'),
         ),
       ));
