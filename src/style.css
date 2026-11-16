@@ -408,3 +408,21 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .cut-skip { position: absolute; top: calc(1.6 * var(--u)); right: calc(1.6 * var(--u)); z-index: 2; }
 .story-list { max-width: calc(70 * var(--u)); }
 .story-grid { display: flex; flex-wrap: wrap; gap: calc(0.8 * var(--u)); justify-content: center; max-height: calc(30 * var(--u)); overflow-y: auto; margin: calc(1 * var(--u)) 0; }
+
+/* ───── 순위표 ───── */
+.rank-panel { width: min(calc(72 * var(--u)), 94%); }
+.rank-sub { font-size: calc(1.4 * var(--u)); margin: 0; }
+.rank-body { margin: calc(1 * var(--u)) 0; }
+.rank-list { display: flex; flex-direction: column; gap: calc(0.4 * var(--u)); max-height: calc(26 * var(--u)); overflow-y: auto; touch-action: pan-y; }
+.rank-list.mine { margin-top: calc(0.8 * var(--u)); border-top: calc(0.2 * var(--u)) dashed var(--ink); padding-top: calc(0.8 * var(--u)); }
+.rank-row {
+  display: grid; grid-template-columns: calc(5 * var(--u)) 1fr calc(8 * var(--u)) calc(9 * var(--u)) calc(7 * var(--u)); align-items: center;
+  gap: calc(0.6 * var(--u)); background: #fff; border: calc(0.2 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u));
+  padding: calc(0.4 * var(--u)) calc(1 * var(--u)); font-size: calc(1.7 * var(--u)); text-align: left;
+}
+.rank-row.me { background: #e3f2fd; }
+.rank-row.top1 { background: #fff8e1; }
+.rank-no { text-align: center; font-size: calc(1.9 * var(--u)); }
+.rank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-title { font-size: calc(1.4 * var(--u)); color: #6d4c41; }
+.rank-endless, .rank-stars { text-align: right; }

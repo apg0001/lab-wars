@@ -10,7 +10,7 @@ import {
 } from '../sim/progression';
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
-import { AccountApi, AccountSaveStore, API_URL, ApiError, progressScore, type SyncState } from '../save/remote';
+import { AccountApi, AccountSaveStore, API_URL, ApiError, progressScore, type RankRow, type SyncState } from '../save/remote';
 import { mountBattle } from './battle-screen';
 import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
@@ -479,9 +479,45 @@ export class App {
     });
   }
 
+  /** 순위표: 무한 모드 최고 기록 → 캠페인 별 순 */
   private showLeaderboard(): void {
-    this.notice = '🏆 순위표는 곧 열려요!';
-    this.showMap();
+    const overlay = h('div.overlay');
+    const close = (): void => overlay.remove();
+    const body = h('div.rank-body', {}, h('p.muted', {}, '불러오는 중…'));
+    const isAccount = this.profile?.kind === 'account';
+    overlay.append(h('div.panel.rank-panel', {},
+      h('h2', {}, '🏆 연구실 순위'),
+      h('p.muted.rank-sub', {}, '무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 아이디가 표시돼요.'),
+      body,
+      isAccount || !this.api ? null : h('p.notice', {}, '🔐 로그인하면 내 기록도 순위에 올라가요.'),
+      h('button.btn.primary', { onclick: close }, '닫기'),
+    ));
+    this.root.firstElementChild?.append(overlay);
+    if (!this.api) {
+      body.replaceChildren(h('p.muted', {}, '순위 서버가 연결되지 않은 버전이에요.'));
+      return;
+    }
+    // 내 최신 기록이 반영되도록 먼저 저장을 밀어 둔다
+    if (isAccount) this.persist();
+    const row = (r: RankRow, me = false): HTMLElement => h(`div.rank-row${me ? '.me' : ''}${r.rank <= 3 ? `.top${r.rank}` : ''}`, {},
+      h('span.rank-no', {}, r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1]! : String(r.rank)),
+      h('span.rank-name', {}, r.name),
+      h('span.rank-title', {}, r.title),
+      h('span.rank-endless', {}, r.endless ? `♾️ ${r.endless}판` : '—'),
+      h('span.rank-stars', {}, `★ ${r.stars}`),
+    );
+    this.api.leaderboard().then((lb) => {
+      if (!lb.top.length) {
+        body.replaceChildren(h('p.muted', {}, '아직 순위에 오른 사람이 없어요. 첫 번째가 되어 보세요!'));
+        return;
+      }
+      const meName = this.api?.user?.username;
+      body.replaceChildren(
+        h('div.rank-list', {}, ...lb.top.map((r) => row(r, r.name === meName))),
+        ...(lb.me && lb.me.rank > lb.top.length ? [h('div.rank-list.mine', {}, row(lb.me, true))] : []),
+        h('p.muted', {}, `총 ${lb.total}명`),
+      );
+    }).catch(() => body.replaceChildren(h('p.muted', {}, '순위를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')));
   }
 
   private unlockSnapshot(): Set<string> {

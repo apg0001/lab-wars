@@ -19,6 +19,7 @@
 | POST | `/api/auth/logout` | `{refresh}` 폐기 |
 | GET | `/api/save` | `{data, version}` (Bearer 토큰) |
 | PUT | `/api/save` | `{data, version}` → `{version}`, 버전이 어긋나면 409 + 서버 데이터 |
+| GET | `/api/leaderboard` | `{top, me, total}` 순위표 (공개, Bearer 토큰이 있으면 `me`에 내 순위). 30초 캐시, 저장 시 갱신. 저장 데이터에서 무한 기록·별을 검증해 계산 |
 
 ## 보안
 

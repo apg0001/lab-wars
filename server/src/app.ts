@@ -37,7 +37,66 @@ class HttpError extends Error {
 // 비밀번호 확인 시간 차이로 아이디 존재 여부가 드러나지 않게 쓰는 가짜 해시
 const DUMMY_HASH = hashPassword('dummy-password-for-timing');
 
+export interface RankRow {
+  rank: number;
+  name: string;
+  /** 무한 모드 최고 판 */
+  endless: number;
+  /** 캠페인 별 합 */
+  stars: number;
+  /** 클리어한 캠페인 스테이지 수 */
+  cleared: number;
+  /** 지금 신분 (학부생 ~ 교수) */
+  title: string;
+}
+
+const TITLES = ['학부생', '학연생', '학석사', '석사', '석박', '박사', '포닥'];
+const CAMPAIGN_ID = /^([1-7])-([1-6])$/;
+
+/** 저장 데이터에서 순위 점수를 뽑는다. 이상한 값은 걸러낸다. */
+export function rankStats(raw: unknown): { endless: number; stars: number; cleared: number; title: string } {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as { v?: unknown; stars?: unknown; endless?: unknown };
+  const legacy = typeof r.v !== 'number' || r.v < 2;
+  let stars = 0;
+  let cleared = 0;
+  let top = 0;
+  if (!legacy && r.stars && typeof r.stars === 'object') {
+    for (const [id, v] of Object.entries(r.stars as Record<string, unknown>)) {
+      const m = CAMPAIGN_ID.exec(id);
+      const n = typeof v === 'number' && Number.isFinite(v) ? Math.min(3, Math.max(0, Math.floor(v))) : 0;
+      if (!m || n === 0) continue;
+      stars += n;
+      cleared++;
+      top = Math.max(top, (Number(m[1]) - 1) * 6 + Number(m[2]));
+    }
+  }
+  const endless = typeof r.endless === 'number' && Number.isFinite(r.endless) ? Math.min(100_000, Math.max(0, Math.floor(r.endless))) : 0;
+  const title = cleared >= 42 ? '교수' : TITLES[Math.min(6, Math.floor(top / 6))]!;
+  return { endless, stars, cleared, title };
+}
+
 export function createApp(store: Store, cfg: Config) {
+  // 순위표는 30초 동안 캐시한다.
+  let board: { at: number; rows: (RankRow & { uid: number })[] } | null = null;
+  const leaderboard = (): (RankRow & { uid: number })[] => {
+    const now = cfg.now();
+    if (board && now - board.at < 30_000) return board.rows;
+    const rows = store.allSaves().map((s) => {
+      let data: unknown = null;
+      try {
+        data = JSON.parse(s.data);
+      } catch {
+        /* 깨진 저장은 0점 */
+      }
+      return { uid: s.user_id, name: s.username, at: s.updated_at, ...rankStats(data) };
+    }).filter((r) => r.cleared > 0 || r.endless > 0)
+      // 무한 기록 → 별 → 먼저 달성한 사람
+      .sort((a, b) => b.endless - a.endless || b.stars - a.stars || b.cleared - a.cleared || a.at - b.at)
+      .map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title }));
+    board = { at: now, rows };
+    return rows;
+  };
+
   const hits = new Map<string, { count: number; reset: number }>();
 
   const limit = (ip: string): void => {
@@ -102,6 +161,16 @@ export function createApp(store: Store, cfg: Config) {
       return { ok: true };
     },
 
+    // 순위표: 누구나 볼 수 있고, 로그인했으면 내 순위도 준다.
+    'GET /api/leaderboard': (req) => {
+      const rows = leaderboard();
+      const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
+      const uid = m ? verifyAccess(cfg.secret, m[1]!, cfg.now()) : null;
+      const strip = ({ uid: _u, ...r }: RankRow & { uid: number }): RankRow => r;
+      const mine = uid === null ? undefined : rows.find((r) => r.uid === uid);
+      return { top: rows.slice(0, 50).map(strip), me: mine ? strip(mine) : null, total: rows.length };
+    },
+
     'GET /api/save': (req) => {
       const uid = authed(req);
       const row = store.getSave(uid);
@@ -114,6 +183,7 @@ export function createApp(store: Store, cfg: Config) {
       const json = JSON.stringify(b.data);
       if (json.length > cfg.maxSaveBytes) throw new HttpError(413, '저장 데이터가 너무 커요.');
       const next = store.putSave(uid, json, b.version, cfg.now());
+      if (next !== null) board = null;
       if (next === null) {
         const cur = store.getSave(uid)!;
         throw Object.assign(new HttpError(409, '다른 기기에서 먼저 저장했어요.'), { extra: { data: JSON.parse(cur.data), version: cur.version, updatedAt: cur.updated_at } });
