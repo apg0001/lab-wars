@@ -259,7 +259,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .node-id { font-size: 2.2cqw; }
 .node-name { font-size: 1.6cqw; text-align: center; line-height: 1.1; }
 .node-stars { color: #ffb300; font-size: 1.5cqw; letter-spacing: 0.1cqw; }
-.map-actions { display: flex; justify-content: center; padding: 1cqw 0 1.5cqw; }
+.map-actions { display: flex; justify-content: center; gap: 1.5cqw; padding: 1cqw 0 1.5cqw; }
 .lab-btn { font-size: 2.2cqw; background: #e8f5e9; }
 
 .stage-info { max-width: 70cqw; }
@@ -292,3 +292,30 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .lock-note { font-size: 1.6cqw; opacity: 0.7; }
 .btn.evolve { background: linear-gradient(90deg, #ffd54f, #ffb74d); }
 .fs-btn { position: absolute; top: 1.2cqw; right: 1.2cqw; font-size: 1.6cqw; }
+
+/* ───── 도감 ───── */
+.dex-btn { font-size: 2.2cqw; background: #fff8e1; }
+.dex { background: linear-gradient(180deg, #fff8e1, #fffaf0); display: flex; flex-direction: column; }
+.dex-grid {
+  flex: 1; overflow-y: auto; padding: 1cqw 1.5cqw 2cqw; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1cqw;
+  align-content: start; touch-action: pan-y; border-top: 0.22cqw solid var(--ink);
+}
+.dex-ally { background: #fff; border: 0.22cqw solid var(--ink); border-radius: 1.2cqw; padding: 0.8cqw; font-size: 1.9cqw; }
+.dex-ally-head { display: flex; align-items: baseline; gap: 0.4cqw; margin-bottom: 0.4cqw; }
+.dex-lock { margin-left: auto; font-size: 1.4cqw; background: #eceff1; border-radius: 0.8cqw; padding: 0 0.8cqw; }
+.dex-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5cqw; }
+.dex-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 0.2cqw; padding: 0.4cqw;
+  background: #fafafa; border: 0.18cqw solid #cfd8dc; border-radius: 1cqw; font-size: 1.4cqw;
+}
+.dex-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+.dex-cell.enemy { background: #fff; border: 0.22cqw solid var(--ink); font-size: 1.8cqw; }
+.dex-cell.enemy img { width: 60%; }
+.dex-cell.boss { background: #ede7f6; }
+.dex-cell.unknown img { filter: brightness(0) opacity(0.35); }
+.dex .dex-grid:has(.enemy) { grid-template-columns: repeat(4, 1fr); }
+.dex-detail { display: flex; gap: 2cqw; align-items: center; text-align: left; max-width: 86cqw; }
+.dex-canvas { width: 38cqw; height: 28.5cqw; background: linear-gradient(180deg, #f3efe6, #e4ddcc); border-radius: 1cqw; border: 0.22cqw solid var(--ink); }
+.dex-info { flex: 1; display: flex; flex-direction: column; gap: 0.6cqw; font-size: 1.8cqw; }
+.dex-info h2 { margin: 0; }
+.dex-info .btn { align-self: flex-start; }
