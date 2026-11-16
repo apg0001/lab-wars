@@ -5,6 +5,7 @@ import type { BattleLoadout } from '../sim/progression';
 import { drawBattle, VIEW_H, VIEW_W } from '../render/scene';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
+import { keyOf } from './keys';
 import { isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
@@ -179,16 +180,17 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   });
 
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' || e.key === 'p') return setPaused(!paused);
+    // 한글 입력 상태에서도 동작하도록 글자(e.key)가 아니라 물리 키 위치(e.code)로 판정한다.
+    const k = keyOf(e);
+    if (k === 'escape' || k === 'p') return setPaused(!paused);
     if (paused) return;
-    const k = e.key.toLowerCase();
     if (k === 'q') battle.brew();
     const si = SKILL_KEYS.indexOf(k);
     if (si >= 0 && skillBtns[si]) useSkill(skillBtns[si].skill);
-    const n = Number(e.key);
-    if (n >= 1 && n <= 9) unitBtns[n - 1]?.entry && battle.summon(unitBtns[n - 1]!.entry.def.id);
-    if (e.key === 'ArrowLeft' || k === 'a') camX = clamp(camX - 60, 0, maxCam);
-    if (e.key === 'ArrowRight' || k === 'd') camX = clamp(camX + 60, 0, maxCam);
+    const n = Number(k);
+    if (k.length === 1 && n >= 1 && n <= 9) unitBtns[n - 1]?.entry && battle.summon(unitBtns[n - 1]!.entry.def.id);
+    if (k === 'arrowleft' || k === 'a') camX = clamp(camX - 60, 0, maxCam);
+    if (k === 'arrowright' || k === 'd') camX = clamp(camX + 60, 0, maxCam);
   };
   window.addEventListener('keydown', onKey);
 
