@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { UNIT_BY_ID } from '../src/data/units';
 import { STAGE_BY_ID, STAGES, FINAL_STAGE, endlessStage } from '../src/data/stages';
 import {
-  applyOutcome, canSubscribe, evolve, evolveCost, isStageOpen, isUnitOwned, levelCap, levelUp, levelUpCost,
+  applyOutcome, canSubscribe, evolve, evolveCost, isStageOpen, isSideOpen, isUnitOwned, levelCap, levelUp, levelUpCost,
   makeLoadout, newSave, normalizeSave, takeMigrationNotes, starsFor, subscribe, unitProgress, unitStats, upgradeFacility,
 } from '../src/sim/progression';
 
@@ -176,12 +176,13 @@ describe('성장 시스템', () => {
     expect(normalizeSave(JSON.parse(JSON.stringify(s))).stars['S2-1']).toBe(3);
   });
 
-  it('무한 모드는 캠페인 클리어 후 한 판씩 열리고 최고 기록을 남긴다', () => {
+  it('무한 모드는 처음부터 한 판씩 열리고 최고 기록을 남긴다 (외전은 엔딩 후)', () => {
     const s = newSave();
     const e1 = endlessStage(1);
-    expect(isStageOpen(s, e1)).toBe(false);
-    s.stars[FINAL_STAGE.id] = 1;
     expect(isStageOpen(s, e1)).toBe(true);
+    expect(isSideOpen(s)).toBe(false);
+    s.stars[FINAL_STAGE.id] = 1;
+    expect(isSideOpen(s)).toBe(true);
     expect(isStageOpen(s, endlessStage(2))).toBe(false);
     const out = applyOutcome(s, e1, true, 0.9, 10);
     expect(out.firstClear).toBe(true);

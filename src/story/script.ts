@@ -275,7 +275,7 @@ const S: Scene[] = [
       { who: 'newbie', text: '(서류 더미가… 걸어온다?!)', emote: '💦' },
       { text: '그렇게 또 한 명의 교수님이 탄생했다.' },
       { text: '그리고 연구실의 하루는 오늘도 끝나지 않는다.' },
-      { text: '— 랩워즈 끝 —   무한 모드가 열렸습니다.', do: [{ a: 'banner', text: 'THE END?' }] },
+      { text: '— 랩워즈 끝 —   외전 3편이 열렸습니다.', do: [{ a: 'banner', text: 'THE END?' }] },
       { text: '기획·개발·대학원 생존: 박기찬', do: [{ a: 'banner', text: 'made by 박기찬' }] },
       { text: '플레이해 주셔서 감사합니다. 오늘도 버티는 모든 대학원생에게.' },
     ],

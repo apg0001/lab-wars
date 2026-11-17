@@ -9,7 +9,7 @@ import { UNITS } from '../data/units';
 import { FACILITIES, SKILLS, facilityCost } from '../data/upgrades';
 import type { UnitDef } from '../data/types';
 import {
-  applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isEndlessOpen, isSkillOpen, isStageOpen,
+  applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isEndlessOpen, isSideOpen, isSkillOpen, isStageOpen,
   isUnitOwned, levelCap, levelUp, levelUpCost, makeLoadout, newSave, subscribe, unitProgress, unitStats,
   upgradeFacility, takeMigrationNotes, REPLAY_MUL, type SaveData,
 } from '../sim/progression';
@@ -316,7 +316,8 @@ export class App {
   showMap(): void {
     music.play('lobby');
     const endlessOpen = isEndlessOpen(this.save);
-    if (this.chapter > CHAPTERS.length && !endlessOpen) this.chapter = CHAPTERS.length;
+    const sideOpen = isSideOpen(this.save);
+    if (this.chapter === SIDE_TAB && !sideOpen) this.chapter = CHAPTERS.length;
     const tabs = h('div.chapter-tabs', {}, ...CHAPTERS.map((c) => {
       const open = isStageOpen(this.save, STAGE_BY_ID[`${c.id}-1`]!);
       return h(`button.chapter-tab${c.id === this.chapter ? '.on' : ''}`, {
@@ -327,9 +328,9 @@ export class App {
       disabled: endlessOpen ? undefined : 'true',
       onclick: () => { this.chapter = CHAPTERS.length + 1; this.showMap(); },
     }, endlessOpen ? '{infinity} 무한' : '{lock} {infinity}'), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
-      disabled: endlessOpen ? undefined : 'true',
+      disabled: sideOpen ? undefined : 'true',
       onclick: () => { this.chapter = SIDE_TAB; this.showMap(); },
-    }, endlessOpen ? '{redbook} 외전' : '{lock} {redbook}'));
+    }, sideOpen ? '{redbook} 외전' : '{lock} {redbook}'));
     if (this.chapter === SIDE_TAB) return this.showSideMap(tabs);
     if (this.chapter > CHAPTERS.length) return this.showEndlessMap(tabs);
     const ch = CHAPTERS[this.chapter - 1]!;
@@ -588,7 +589,7 @@ export class App {
             this.swap(h('div.screen.story-backdrop'));
             this.play([clearScene], () => {
               this.chapter = CHAPTERS.length + 1;
-              this.notice = '{infinity} 무한 모드와 {redbook} 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
+              this.notice = '{redbook} 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
               this.showMap();
             }, 7);
           } }];

@@ -178,8 +178,10 @@ export function takeMigrationNotes(): string[] {
 
 export const isCleared = (save: SaveData, stageId: string): boolean => (save.stars[stageId] ?? 0) > 0;
 
-/** 캠페인을 끝내면 무한 모드가 열린다. */
-export const isEndlessOpen = (save: SaveData): boolean => isCleared(save, FINAL_STAGE.id);
+/** 무한 모드는 처음부터 열려 있다 (0.15.0~) */
+export const isEndlessOpen = (_save: SaveData): boolean => true;
+/** 외전은 엔딩(최종 보스)을 본 뒤에 열린다 */
+export const isSideOpen = (save: SaveData): boolean => isCleared(save, FINAL_STAGE.id);
 
 export function isStageOpen(save: SaveData, stage: StageDef): boolean {
   if (stage.kind === 'endless') return isEndlessOpen(save) && stage.index <= save.endless + 1;
