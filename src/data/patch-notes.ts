@@ -22,6 +22,22 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.16.1',
+    date: '2026-11-17',
+    title: '내 얼굴을 걸고',
+    items: [
+      '{star} 대표 캐릭터: 옷장에서 가진 유닛 하나를 대표로 정하면, 입힌 차림 그대로 프로필과 순위표에 나와요',
+      '{trophy} 순위표에 심사 결과 칭호가 이름 아래 함께 보여요',
+    ],
+    en: {
+      title: 'Putting a Face on It',
+      items: [
+        '{star} Profile character: pick any unit you own in the Wardrobe and it shows on your profile and the leaderboard, outfit and all',
+        '{trophy} Your Peer Review title now appears under your name on the leaderboard',
+      ],
+    },
+  },
+  {
     version: '0.16.0',
     date: '2026-11-17',
     title: 'Hello, World!',

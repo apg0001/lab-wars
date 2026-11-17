@@ -118,7 +118,7 @@ describe('심사 결과 꾸미기 뽑기', () => {
 
   it('예전 저장은 빈 옷장으로, 이상한 꾸미기 기록은 정리한다', () => {
     const old = normalizeSave({ v: 4, money: 500, stars: { '1-1': 3 } });
-    expect(old.cosmetics).toEqual({ owned: [], outfits: {}, title: '', pity: 0, draws: 0 });
+    expect(old.cosmetics).toEqual({ owned: [], outfits: {}, title: '', avatar: '', pity: 0, draws: 0 });
     const s = normalizeSave({
       v: 4,
       cosmetics: {
@@ -148,5 +148,21 @@ describe('심사 결과 꾸미기 뽑기', () => {
     expect(after.cosmetics.owned.length).toBeGreaterThan(0);
     expect(progressScore(after)).toBeGreaterThan(progressScore(before));
     expect(pickBetter(before, after)).toBe(after);
+  });
+});
+
+describe('대표 캐릭터', () => {
+  it('가진 유닛만 대표로 정할 수 있고, null이면 주인공으로 돌아간다', async () => {
+    const { newSave, normalizeSave } = await import('../src/sim/progression');
+    const { setAvatar } = await import('../src/sim/gacha');
+    const s = newSave();
+    expect(setAvatar(s, 'grunt')).toBe(true);
+    expect(s.cosmetics.avatar).toBe('grunt');
+    expect(setAvatar(s, 'gpu')).toBe(false); // 아직 없는 유닛
+    expect(setAvatar(s, 'nope')).toBe(false);
+    expect(normalizeSave(JSON.parse(JSON.stringify(s))).cosmetics.avatar).toBe('grunt');
+    expect(normalizeSave({ cosmetics: { avatar: 'nope' } }).cosmetics.avatar).toBe('');
+    expect(setAvatar(s, null)).toBe(true);
+    expect(s.cosmetics.avatar).toBe('');
   });
 });
