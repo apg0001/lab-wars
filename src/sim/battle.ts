@@ -207,6 +207,11 @@ export type BattleResult = 'win' | 'lose' | null;
 export interface BattleOptions {
   /** 학회 경품 추첨 카드 (기본 켜짐) */
   cards?: boolean;
+  /**
+   * 추첨이 열리기 전 연출 시간 (전투 시간 초, 기본 0 = 바로 열림).
+   * 이 동안 전투는 그대로 흘러가고, 화면은 이 구간을 슬로우모션으로 보여 준다.
+   */
+  draftIntro?: number;
 }
 
 /** 이번 판에 쌓인 카드 효과 배율 */
@@ -300,6 +305,11 @@ export class Battle {
   /** 아군 무적 남은 시간 */
   invulnT = 0;
   private readonly cardsOn: boolean;
+  private readonly draftIntroLen: number;
+  /** 연출이 끝나면 열릴 추첨 카드 (연출 중이 아니면 null) */
+  pendingDraft: CardDef[] | null = null;
+  /** 추첨 연출의 남은 시간 (전투 시간 초) */
+  draftIntroT = 0;
   private lastDraftT = 0;
   /** 아직 살아 있는 러시 적 uid (다 쓰러뜨리면 러시를 버텨 낸 것) */
   private rushUids = new Set<number>();
@@ -308,6 +318,7 @@ export class Battle {
     this.rng = makeRng(seed);
     this.cardRng = makeRng((seed ^ 0x5eedca7d) + 17);
     this.cardsOn = opts.cards ?? true;
+    this.draftIntroLen = Math.max(0, opts.draftIntro ?? 0);
     this.caffeine = loadout.caffeineStart;
     this.ally = { side: 'ally', hp: loadout.baseHp, maxHp: loadout.baseHp, towerCd: 0, hitFlash: 0 };
     this.enemy = { side: 'enemy', hp: stage.enemyBaseHp, maxHp: stage.enemyBaseHp, towerCd: 0, hitFlash: 0 };
@@ -456,8 +467,19 @@ export class Battle {
   step(dt: number): void {
     if (this.draft) return;
     if (this.result) {
+      this.pendingDraft = null;
       this.tickFx(dt);
       return;
+    }
+    if (this.pendingDraft) {
+      this.draftIntroT -= dt;
+      if (this.draftIntroT <= 0) {
+        this.draft = this.pendingDraft;
+        this.pendingDraft = null;
+        this.draftIntroT = 0;
+        this.acc = 0;
+        return;
+      }
     }
     this.t += dt;
     const L = this.loadout;
@@ -526,7 +548,7 @@ export class Battle {
 
   /** 러시를 버텨 냈거나 오래 추첨이 없었으면 추첨을 연다. */
   private checkDraft(): void {
-    if (!this.cardsOn || this.result || this.draft || this.draws >= MAX_DRAWS) return;
+    if (!this.cardsOn || this.result || this.draft || this.pendingDraft || this.draws >= MAX_DRAWS) return;
     let survived = false;
     if (this.rushUids.size && !this.queue.some((q) => q.rush)) {
       for (const uid of this.rushUids) if (!this.fighters.some((f) => f.uid === uid && !f.dead)) this.rushUids.delete(uid);
@@ -539,7 +561,7 @@ export class Battle {
 
   /** 카드 3장을 뽑아 추첨을 연다 (전투는 pickCard까지 멈춘다). */
   openDraft(survived = false): void {
-    if (this.result || this.draft) return;
+    if (this.result || this.draft || this.pendingDraft) return;
     const hand: CardDef[] = [];
     for (let i = 0; i < 3; i++) {
       const rarity = this.rollRarity();
@@ -547,7 +569,11 @@ export class Battle {
       if (!pool.length) pool = CARDS.filter((c) => c.rarity === 'common' && !hand.includes(c) && this.cardUsable(c));
       hand.push(pool[Math.floor(this.cardRng() * pool.length)]!);
     }
-    this.draft = hand;
+    if (this.draftIntroLen > 0) {
+      // 연출 먼저: 끝나면 step()이 카드를 연다
+      this.pendingDraft = hand;
+      this.draftIntroT = this.draftIntroLen;
+    } else this.draft = hand;
     this.draws++;
     this.lastDraftT = this.t;
     this.acc = 0;

@@ -83,6 +83,26 @@ describe('추첨 시점', () => {
 });
 
 describe('추첨 진행', () => {
+  it('연출 옵션: 추첨 전 잠깐 전투가 흐른 뒤 카드가 열리고, 연출 중에는 다시 열리지 않는다', () => {
+    const b = new Battle(stage, makeLoadout(newSave()), 1, { draftIntro: 0.2 });
+    b.ally.hp = b.ally.maxHp = 1e9;
+    b.enemy.hp = b.enemy.maxHp = 1e9;
+    b.openDraft();
+    expect(b.draft).toBeNull();
+    expect(b.pendingDraft).toHaveLength(3);
+    const hand = b.pendingDraft!;
+    const t = b.t;
+    b.openDraft(); // 연출 중에 또 열려도 무시
+    expect(b.draws).toBe(1);
+    for (let i = 0; i < 6; i++) b.step(1 / 60);
+    expect(b.t).toBeGreaterThan(t); // 연출 동안 전투는 흐른다
+    expect(b.draft).toBeNull();
+    for (let i = 0; i < 12 && !b.draft; i++) b.step(1 / 60);
+    expect(b.draft).toBe(hand);
+    expect(b.pendingDraft).toBeNull();
+    expect(b.pickCard(0)).toBe(true);
+  });
+
   it('추첨 대기 중에는 전투가 멈추고 조작도 막힌다', () => {
     const b = make();
     b.caffeine = 999;
