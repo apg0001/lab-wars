@@ -234,7 +234,7 @@ export function playBattleSfx(e: BattleEvent, camX: number, viewW: number): void
     case 'brew': sfx.brew(); break;
     case 'heal': sfx.heal(); break;
     case 'skill': sfx.skill(e.id); break;
-    case 'bossSpawn': sfx.bossSpawn(); break;
+    case 'bossSpawn': case 'alarm': sfx.bossSpawn(); break;
     case 'rush': sfx.rush(); break;
     case 'end': if (e.result === 'win') sfx.win(); else sfx.lose(); break;
   }
