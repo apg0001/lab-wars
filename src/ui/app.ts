@@ -30,7 +30,8 @@ import { playMarathon, playScenes } from '../story/player';
 const KIND_ICON: Partial<Record<StageKind, string>> = { vacation: '🏖️', conference: '🎤', thesis: '📝' };
 
 interface Settings {
-  speed2x: boolean;
+  /** 전투 배속 1~3 */
+  speed: number;
   /** 스토리 몰아보기: 다음에 볼 장면 id */
   storyAt?: string;
 }
@@ -44,7 +45,7 @@ export class App {
   private notice = '';
   private profile: Profile | null = null;
   private save: SaveData = newSave();
-  private settings: Settings = { speed2x: false };
+  private settings: Settings = { speed: 1 };
   private chapter = 1;
   private cleanup: (() => void) | null = null;
 
@@ -71,7 +72,11 @@ export class App {
       };
     }
     try {
-      this.settings = { ...this.settings, ...JSON.parse(kv.get('settings') ?? '{}') };
+      const raw = JSON.parse(kv.get('settings') ?? '{}') as Partial<Settings> & { speed2x?: boolean };
+      // 예전 2배속 켜기/끄기 설정을 이어받는다
+      if (raw.speed === undefined && raw.speed2x) raw.speed = 2;
+      delete raw.speed2x;
+      this.settings = { ...this.settings, ...raw };
     } catch {
       /* 기본값 사용 */
     }
@@ -511,8 +516,8 @@ export class App {
     this.cleanup = mountBattle(holder, {
       stage,
       loadout: makeLoadout(this.save),
-      speed2x: this.settings.speed2x,
-      onSpeedChange: (on) => { this.settings.speed2x = on; this.saveSettings(); },
+      speed: this.settings.speed,
+      onSpeedChange: (sp) => { this.settings.speed = sp; this.saveSettings(); },
       onEnd: (e) => {
         const out = applyOutcome(this.save, stage, e.win, e.baseHpRatio, e.killReward);
         this.persist();

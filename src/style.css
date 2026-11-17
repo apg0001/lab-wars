@@ -463,3 +463,4 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .side-map { background: linear-gradient(180deg, #1a1626, #2d2440); }
 .side-map .chapter-title { color: #f3e5f5; }
 .chapter-tab.side-tab { flex: 0.8; }
+.icon-btn.fast { background: #ffe082; }
