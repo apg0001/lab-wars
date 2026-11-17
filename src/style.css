@@ -788,6 +788,26 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .dex-ally.hidden .dex-cell span { font-size: calc(2.2 * var(--u)); opacity: 0.5; }
 
 /* 지도 버튼 뽑기권 배지 */
+.gift-btn { background: #ffebee; }
+.gift-btn.has-gift { animation: gift-wiggle 1.6s ease-in-out infinite; }
+@keyframes gift-wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-4deg); } 90% { transform: rotate(4deg); } 95% { transform: rotate(-2deg); } }
+.gift-btn .badge { margin-left: calc(0.5 * var(--u)); font-size: calc(1.4 * var(--u)); background: #ef5350; color: #fff; border: calc(0.15 * var(--u)) solid var(--ink); border-radius: 999px; padding: 0 calc(0.6 * var(--u)); }
+.map-actions .gift-btn { font-size: calc(2.2 * var(--u)); }
+.gift-box { width: min(calc(64 * var(--u)), 94%); }
+.gift-what { margin-right: auto; }
+.gift-admin .fb-bar { justify-content: flex-start; flex-wrap: wrap; }
+.gift-all { display: flex; align-items: center; gap: calc(0.5 * var(--u)); margin-right: auto; font-size: calc(1.5 * var(--u)); }
+.gift-search { width: calc(22 * var(--u)); font-size: calc(1.5 * var(--u)); padding: calc(0.3 * var(--u)) calc(0.8 * var(--u)); }
+.gift-players { max-height: calc(22 * var(--u)); }
+.gift-player { display: flex; align-items: center; gap: calc(0.8 * var(--u)); font-size: calc(1.5 * var(--u)); cursor: pointer; }
+.gift-player.on { background: #fff8e1; }
+.gift-player input, .gift-all input { width: calc(2 * var(--u)); height: calc(2 * var(--u)); }
+.gift-stats { margin-left: auto; font-size: calc(1.3 * var(--u)); }
+.gift-seen { font-size: calc(1.2 * var(--u)); }
+.gift-form { display: flex; align-items: center; gap: calc(1 * var(--u)); flex-wrap: wrap; justify-content: center; }
+.gift-form label { display: flex; align-items: center; gap: calc(0.4 * var(--u)); font-size: calc(1.8 * var(--u)); }
+.gift-num { width: calc(14 * var(--u)); font-size: calc(1.6 * var(--u)); padding: calc(0.3 * var(--u)) calc(0.8 * var(--u)); }
+.gift-note { flex: 1; min-width: calc(20 * var(--u)); font-size: calc(1.5 * var(--u)); padding: calc(0.3 * var(--u)) calc(0.8 * var(--u)); }
 .gacha-btn .badge { margin-left: calc(0.5 * var(--u)); font-size: calc(1.4 * var(--u)); background: #ffca28; border: calc(0.15 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); padding: 0 calc(0.5 * var(--u)); }
 
 /* 장비 지원 탭 */
@@ -1059,6 +1079,56 @@ html[lang='en'] body { font-weight: 500; }
 /* ── 장비 지원: 열정 설명 ── */
 .grant { overflow-y: auto; touch-action: pan-y; }
 .passion-help { background: #fff3e0; border: calc(0.2 * var(--u)) dashed #ef6c00; border-radius: calc(0.8 * var(--u)); padding: calc(0.5 * var(--u)) calc(0.8 * var(--u)); line-height: 1.35; }
+
+/* ── 정렬 · 간단히/자세히 보기 (연구실 동료 · 도감) ── */
+.sort-bar { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: calc(0.5 * var(--u)); font-size: calc(1.5 * var(--u)); }
+.sort-bar .muted { font-size: calc(1.4 * var(--u)); }
+.sort-select { font: inherit; font-size: calc(1.5 * var(--u)); border: calc(0.22 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); background: #fff; padding: calc(0.25 * var(--u)) calc(0.6 * var(--u)); }
+.sort-bar .chapter-tab { flex: 0 0 auto; border-radius: calc(1 * var(--u)); padding: calc(0.3 * var(--u)) calc(1 * var(--u)); }
+.view-toggle { display: flex; gap: calc(0.3 * var(--u)); margin-left: auto; }
+.card .stats.more { opacity: 0.8; }
+.card .ability, .dex-tags { margin: 0; font-size: calc(1.35 * var(--u)); line-height: 1.3; }
+.dex-ally .dex-more { margin-top: calc(0.4 * var(--u)); }
+.dex-ally .desc { margin-top: calc(0.2 * var(--u)); }
+/* 간단히: 작은 카드를 촘촘하게 */
+.card-grid.compact { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(0.7 * var(--u)); }
+.card.mini { flex-direction: column; gap: calc(0.3 * var(--u)); padding: calc(0.5 * var(--u)); }
+.card.mini .card-pic { flex: none; height: calc(7.5 * var(--u)); }
+.card.mini .card-body { font-size: calc(1.5 * var(--u)); gap: calc(0.25 * var(--u)); }
+.card.mini .card-body b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.mini .lv { font-size: calc(1.3 * var(--u)); }
+.card.mini .btn.small { font-size: calc(1.3 * var(--u)); padding: calc(0.3 * var(--u)) calc(0.5 * var(--u)); }
+.card.mini .lock-note { font-size: calc(1.3 * var(--u)); }
+.dex .dex-grid.compact { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: calc(0.6 * var(--u)); }
+.dex-mini { background: #fff; border-color: var(--uc, #cfd8dc); }
+.dex-mini span, .dex-grid.compact .dex-cell.enemy span { font-size: calc(1.3 * var(--u)); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dex-mini.unowned:not(.hidden) img { filter: grayscale(1) opacity(0.6); }
+.dex-mini.hidden { cursor: default; }
+.dex-grid.compact .dex-cell.enemy img { width: 80%; }
+.portrait .card-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.portrait .dex .dex-grid.compact { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.portrait .view-toggle { margin-left: 0; }
+
+/* ── 첫 전투 튜토리얼 (src/ui/tutorial.ts): 동그라미 + 말풍선 ── */
+.coach { position: absolute; inset: 0; z-index: 18; overflow: hidden; animation: fade-in 0.25s ease-out; }
+.coach-ring {
+  position: absolute; border: calc(0.35 * var(--u)) solid #ffd54f; border-radius: calc(1.4 * var(--u));
+  box-shadow: 0 0 0 200vmax rgba(20, 16, 26, 0.5); transition: all 0.25s ease; pointer-events: none;
+}
+.coach-bubble {
+  position: absolute; width: max-content; max-width: min(calc(46 * var(--u)), calc(100% - 16px)); box-sizing: border-box;
+  background: var(--paper); border: calc(0.25 * var(--u)) solid var(--ink); border-radius: calc(1.4 * var(--u));
+  padding: calc(1.2 * var(--u)) calc(1.6 * var(--u)); box-shadow: 0 calc(0.4 * var(--u)) 0 var(--ink);
+}
+.coach-text { margin: 0 0 calc(1 * var(--u)); font-size: calc(1.9 * var(--u)); line-height: 1.4; }
+.coach-btns { display: flex; align-items: center; justify-content: flex-end; gap: calc(0.8 * var(--u)); }
+.coach-count { margin-right: auto; font-size: calc(1.3 * var(--u)); opacity: 0.6; }
+.portrait .coach-text { font-size: calc(2.2 * var(--u)); }
+/* 편성 첫 안내 */
+.squad-guide { max-width: calc(60 * var(--u)); }
+.squad-guide p { font-size: calc(1.8 * var(--u)); line-height: 1.5; }
+.squad-btn { font-size: calc(2.2 * var(--u)); background: #e3f2fd; }
+.map-actions { flex-wrap: wrap; }
 .donate-panel { max-width: calc(52 * var(--u)); text-align: left; }
 .donate-panel h2 { text-align: center; }
 .donate-steps { margin: calc(0.6 * var(--u)) 0; padding-left: calc(2.4 * var(--u)); font-size: calc(1.6 * var(--u)); }

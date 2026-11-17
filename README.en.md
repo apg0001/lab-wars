@@ -151,7 +151,7 @@ src/
   audio/     Web Audio synthesized SFX and music
   story/     story scripts (main, per-stage, Side Stories) and the animated cutscene player
   i18n/      language detection, switching, and the tr() helper
-  ui/        title, map, lab upgrades, encyclopedia, Peer Review (cosmetics), battle HUD (DOM)
+  ui/        title, map, lab upgrades, squad, first-battle tutorial, encyclopedia, Peer Review (cosmetics), battle HUD (DOM)
   save/      save store interface, on-device profiles, account server sync
 server/      account server (Node + SQLite, Docker)
 tests/       Vitest tests

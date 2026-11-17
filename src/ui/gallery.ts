@@ -1,7 +1,7 @@
 import { ENEMIES } from '../data/enemies';
 import { ENDLESS_BUG_BOSSES, ENDLESS_ENEMIES, SIDE_STAGES, STAGES } from '../data/stages';
 import { UNITS, UNIT_RARITIES, isGachaUnit, rarityLabel, rarityOf } from '../data/units';
-import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitRarity } from '../data/types';
+import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitDef, type UnitRarity } from '../data/types';
 import { drawCharacter } from '../render/characters';
 import { isEndlessOpen, isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
 import { SKILLS } from '../data/upgrades';
@@ -9,6 +9,7 @@ import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { iconEl } from '../render/doodle';
 import { tr } from '../i18n';
+import { RARITY_RANK, loadPref, sortBar, sortByPref, type SortKey } from './sort';
 
 type Tab = 'ally' | 'skill' | 'enemy' | 'boss';
 
@@ -27,7 +28,8 @@ function seenEnemies(save: SaveData): Set<string> {
   return seen;
 }
 
-function tags(st: CombatStats): string {
+/** 능력 요약 한 줄 (도감 상세·연구실 자세히 보기) */
+export function statTags(st: CombatStats): string {
   const t: string[] = [];
   if (st.flying) t.push(tr('공중', 'Air'));
   if (st.range >= RANGED_THRESHOLD) t.push(tr('원거리·대공', 'Ranged · Anti-air'));
@@ -64,29 +66,49 @@ function tags(st: CombatStats): string {
 /** 동료 탭의 등급 필터 */
 let rarityFilter: UnitRarity | 'all' = 'all';
 
+/** 정렬 기준: 동료 / 적·보스 (기기에 기억) */
+const ALLY_SORT: SortKey[] = ['default', 'rarity', 'cost', 'atk', 'hp', 'name'];
+const ENEMY_SORT: SortKey[] = ['default', 'name', 'hp', 'atk'];
+
 export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => void, initial: Tab = 'ally'): () => void {
   let stopPreview: (() => void) | null = null;
   const seen = seenEnemies(save);
+  const allyPref = loadPref('dex-ally', ALLY_SORT);
+  const enemyPref = loadPref('dex-enemy', ENEMY_SORT);
 
   const render = (tab: Tab): void => {
     stopPreview?.();
     const grid = h('div.dex-grid');
     if (tab === 'ally') {
+      if (allyPref.compact) grid.classList.add('compact');
       grid.append(h('div.rarity-filter', {}, ...(['all', ...UNIT_RARITIES] as const).map((r) => h(`button.chapter-tab${r === 'all' ? '' : `.u-${r}`}${rarityFilter === r ? '.on' : ''}`, {
         onclick: () => { rarityFilter = r; render('ally'); },
-      }, r === 'all' ? tr('전체', 'All') : rarityLabel(r)))));
-      for (const u of UNITS) {
+      }, r === 'all' ? tr('전체', 'All') : rarityLabel(r)))), sortBar('dex-ally', allyPref, ALLY_SORT, () => render('ally')));
+      // 못 얻은 뽑기 장비(실루엣)는 정렬 값을 숨기고 맨 뒤로
+      const hiddenOf = (u: UnitDef): boolean => isGachaUnit(u) && !isUnitOwned(save, u);
+      const list = sortByPref(UNITS.filter((u) => rarityFilter === 'all' || rarityFilter === rarityOf(u)), allyPref, (u, key) => (hiddenOf(u) ? null
+        : key === 'rarity' ? RARITY_RANK[rarityOf(u)] : key === 'name' ? u.names[0] : key === 'cost' ? u.cost : key === 'atk' ? u.atk : key === 'hp' ? u.hp : 0));
+      for (const u of list) {
         const r = rarityOf(u);
-        if (rarityFilter !== 'all' && rarityFilter !== r) continue;
         const owned = isUnitOwned(save, u);
         // 아직 못 얻은 뽑기 장비는 실루엣과 '?'로만
-        const hidden = isGachaUnit(u) && !owned;
+        const hidden = hiddenOf(u);
+        const show = (tier: number): void => { if (!hidden) preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: [u.desc, u.lore ? `"${u.lore}"` : ''].filter(Boolean).join(' '), stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }); };
+        if (allyPref.compact) {
+          // 간단히: 1단계 그림과 이름만, 누르면 미리보기
+          grid.append(h(`button.dex-cell.dex-mini.u-${r}${hidden ? '.hidden' : ''}${owned ? '' : '.unowned'}`, { onclick: () => show(1) },
+            h('img', { src: portrait(u.look, 1, u.id, 1, undefined, hidden), alt: '' }), h('span', {}, hidden ? '???' : u.names[0])));
+          continue;
+        }
         const lock = owned ? null : h('span.dex-lock', {}, hidden ? tr('{crate} 장비 지원에서 획득', '{crate} From Equipment Grant') : u.unlock.subscribe ? tr('구독 필요', 'Subscription') : tr(`${u.unlock.stage} 클리어 시 합류`, `Joins after ${u.unlock.stage}`));
         grid.append(h(`div.dex-ally.u-${r}${hidden ? '.hidden' : ''}`, {},
           h('div.dex-ally-head', {}, r !== 'basic' ? h('span.rarity-chip.mini', {}, rarityLabel(r)) : null, h('b', {}, hidden ? '???' : u.names[0]), hidden ? null : h('span.muted', {}, ` ${u.role}`), lock),
-          h('div.dex-tiers', {}, ...[1, 2, 3].map((tier) => h('button.dex-cell', {
-            onclick: () => !hidden && preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: [u.desc, u.lore ? `"${u.lore}"` : ''].filter(Boolean).join(' '), stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }),
-          }, h('img', { src: portrait(u.look, tier, u.id, 1, undefined, hidden), alt: '' }), h('span', {}, hidden ? '?' : u.names[tier - 1]!)))),
+          h('div.dex-tiers', {}, ...[1, 2, 3].map((tier) => h('button.dex-cell', { onclick: () => show(tier) },
+            h('img', { src: portrait(u.look, tier, u.id, 1, undefined, hidden), alt: '' }), h('span', {}, hidden ? '?' : u.names[tier - 1]!)))),
+          // 자세히: 기본 능력치·능력·설명
+          hidden ? null : h('div.stats.dex-more', {}, `{heart}${fmt(u.hp)} {sword}${Math.round(u.atk)} {coffee}${u.cost}${u.count ? ` ×${u.count}` : ''} {clock}${u.cooldown}${tr('초', 's')}`),
+          hidden ? null : h('p.muted.dex-tags', {}, statTags(u)),
+          hidden ? null : h('p.desc', {}, u.desc),
         ));
       }
     } else if (tab === 'skill') {
@@ -102,12 +124,19 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       });
       grid.append(h('p.muted.dex-skill-tip', {}, tr('스킬은 멘탈을 써요. {remodel} 시설의 {meditate} 명상 앱으로 멘탈 충전을 늘리면 스킬을 더 자주 쓸 수 있어요.', 'Skills cost Sanity. Upgrade the {meditate} Meditation App in {remodel} Facilities to charge Sanity faster and use skills more often.')));
     } else {
-      const list = ENEMIES.filter((e) => (tab === 'boss') === !!e.boss);
+      if (enemyPref.compact) grid.classList.add('compact');
+      grid.append(sortBar('dex-enemy', enemyPref, ENEMY_SORT, () => render(tab)));
+      const list = sortByPref(ENEMIES.filter((e) => (tab === 'boss') === !!e.boss), enemyPref, (e, key) => (!seen.has(e.id) ? null
+        : key === 'name' ? e.name : key === 'hp' ? e.hp : key === 'atk' ? e.atk : 0));
       for (const e of list) {
         const known = seen.has(e.id);
         grid.append(h(`button.dex-cell.enemy${known ? '' : '.unknown'}${e.boss ? '.boss' : ''}`, {
           onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: [e.desc, bossDesc(e.boss)].filter(Boolean).join(' '), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
-        }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'), h('small.muted', {}, known ? e.role : tr('아직 만나지 않음', 'Not met yet'))));
+        }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'),
+        enemyPref.compact ? null : h('small.muted', {}, known ? e.role : tr('아직 만나지 않음', 'Not met yet')),
+        // 자세히: 능력치와 능력
+        known && !enemyPref.compact ? h('small.stats', {}, `{heart}${fmt(e.hp)} {sword}${Math.round(e.atk)}`) : null,
+        known && !enemyPref.compact ? h('small.muted.dex-tags', {}, statTags(e)) : null));
       }
     }
     const owned = UNITS.filter((u) => isUnitOwned(save, u)).length;
@@ -170,7 +199,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       canvas,
       h('div.dex-info', {},
         h('h2', {}, p.name),
-        h('p.muted', {}, `${p.role} · ${tags(p.stats)}`),
+        h('p.muted', {}, `${p.role} · ${statTags(p.stats)}`),
         h('div.stats', {}, `{heart} ${fmt(p.stats.hp)}  {sword} ${Math.round(p.stats.atk)}  {target} ${p.stats.range}  {boot} ${p.stats.speed}  {clock} ${p.stats.interval}${tr('초', 's')}`),
         h('p.muted', {}, p.extra),
         p.desc ? h('p', {}, p.desc) : null,

@@ -22,6 +22,32 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.18.0',
+    date: '2026-11-17',
+    title: '편해진 연구실',
+    items: [
+      '{bolt} 전투가 훨씬 가벼워졌어요. 캐릭터 그림을 미리 그려 두고 찍어서, 유닛이 많은 난전과 교수님 비상 소집 순간에도 덜 끊겨요',
+      '{swords} 지도에 편성 버튼이 따로 생겼어요. 연구실 강화는 동료·시설만 다뤄요',
+      '{flask} 연구실 강화와 도감에서 정렬 기준(등급·레벨·비용·공격력·체력·이름)과 순서를 고를 수 있어요',
+      '{book} 간단히 보기로 카드를 한눈에, 자세히 보기로 능력치와 능력 설명까지 볼 수 있어요. 고른 방식은 기억해요',
+      '{cap} 처음 하는 분을 위한 첫 전투 안내가 생겼어요. 편성을 아직 안 해 본 분께는 한 번 편성 화면을 안내해요',
+      '{gift} 선물함이 생겼어요. 운영자가 보낸 연구비·장비 뽑기권을 선물함에서 받을 수 있어요 (계정 로그인)',
+      '{book} 기본 동료와 모든 적·보스에 도감 설정 글이 생겼어요. 리뷰어 2가 왜 그러는지 이제 알 수 있어요',
+    ],
+    en: {
+      title: 'A Comfier Lab',
+      items: [
+        '{bolt} Battles run much lighter. Characters are pre-drawn and stamped, so big fights and the Prof\'s emergency summons stutter far less',
+        '{swords} The map now has its own Squad button; Upgrade Lab handles labmates and facilities',
+        '{flask} Upgrade Lab and the Codex can sort by rarity, level, cost, attack, HP or name, in either order',
+        '{book} Compact view shows more cards at once; detailed view adds stats and ability text. Your choice is remembered',
+        '{cap} New players get a short guide in their first battle, and players who haven\'t set a squad get one pointer to it',
+        '{gift} Gift box: claim funds and gear tickets sent by the dev (account login)',
+        '{book} Starter labmates and every enemy and boss now have Codex entries. Now you know why Reviewer 2 is like that',
+      ],
+    },
+  },
+  {
     version: '0.17.2',
     date: '2026-11-17',
     title: '세로 화면 다듬기',

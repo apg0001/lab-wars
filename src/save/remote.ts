@@ -34,6 +34,40 @@ export interface FeedbackItem {
   doneAt: number | null;
 }
 
+/** 관리자가 보낸 선물 (선물함) */
+export interface GiftItem {
+  id: number;
+  money: number;
+  tickets: number;
+  message: string;
+  sender: string;
+  createdAt: number;
+}
+
+/** 관리자 선물 화면의 플레이어 한 줄 */
+export interface PlayerRow {
+  id: number;
+  username: string;
+  nickname: string;
+  createdAt: number;
+  lastSave: number | null;
+  money: number;
+  tickets: number;
+  cleared: number;
+  endless: number;
+  title: string;
+}
+
+export interface SentGift {
+  id: number;
+  to: string;
+  money: number;
+  tickets: number;
+  message: string;
+  createdAt: number;
+  claimedAt: number | null;
+}
+
 interface Tokens {
   access: string;
   refresh: string;
@@ -198,6 +232,32 @@ export class AccountApi {
 
   async markFeedback(id: number, done: boolean): Promise<void> {
     await this.authed('PATCH', '/api/admin/feedback', { id, done });
+  }
+
+  /** 내 선물함: 아직 받지 않은 선물 */
+  async gifts(): Promise<GiftItem[]> {
+    return ((await this.authed('GET', '/api/gifts')).items ?? []) as GiftItem[];
+  }
+
+  /** 선물 받기 (ids가 없으면 전부). 서버가 받음 처리한 선물과 합계를 돌려준다. */
+  async claimGifts(ids?: number[]): Promise<{ items: GiftItem[]; money: number; tickets: number }> {
+    const r = await this.authed('POST', '/api/gifts/claim', ids ? { ids } : {});
+    return { items: (r.items ?? []) as GiftItem[], money: Number(r.money) || 0, tickets: Number(r.tickets) || 0 };
+  }
+
+  /** 관리자: 선물 보낼 플레이어 목록 */
+  async players(): Promise<PlayerRow[]> {
+    return ((await this.authed('GET', '/api/admin/players')).players ?? []) as PlayerRow[];
+  }
+
+  /** 관리자: 여러 명에게 같은 선물 보내기. 실제로 보낸 사람 수 */
+  async sendGifts(userIds: number[], money: number, tickets: number, message: string): Promise<number> {
+    return Number((await this.authed('POST', '/api/admin/gifts', { userIds, money, tickets, message })).sent) || 0;
+  }
+
+  /** 관리자: 보낸 선물 기록 */
+  async sentGifts(): Promise<SentGift[]> {
+    return ((await this.authed('GET', '/api/admin/gifts')).items ?? []) as SentGift[];
   }
 }
 
