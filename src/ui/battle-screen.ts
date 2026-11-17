@@ -7,7 +7,7 @@ import { drawBattle, setViewAspect, VIEW_H, VIEW_W } from '../render/scene';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { keyOf } from './keys';
-import { isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
+import { fullscreenButton, isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
 import { Juice } from '../render/juice';
 import { audio } from '../audio/engine';
 import { music } from '../audio/music';
@@ -84,7 +84,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     h('div.hp-box', {}, h('span.hp-label', {}, iconEl('lab'), '연구실'), h('div.hp-track', {}, allyBar), allyTxt),
     h('div.hud-mid', {}, h('div.stage-tag', {}, `${opt.stage.id} ${opt.stage.name}`), timeTxt),
     h('div.hp-box.right', {}, h('span.hp-label', {}, '교수실', iconEl('prof')), h('div.hp-track', {}, enemyBar), enemyTxt),
-    h('div.hud-btns', {}, speedBtn, pauseBtn),
+    h('div.hud-btns', {}, speedBtn, pauseBtn, fullscreenButton(() => screen)),
   );
 
   const cafFill = h('div.res-fill.caf');

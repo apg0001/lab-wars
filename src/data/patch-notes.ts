@@ -13,6 +13,16 @@ export interface PatchNote {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.14.1',
+    date: '2026-11-17',
+    title: '전체 화면은 어디서든',
+    items: [
+      '{fullscreen} 지도·연구실·도감·전투·컷신 어디서든 전체 화면을 켜고 끌 수 있어요',
+      '{check} 짧은 화면에서 패치노트 창 아래가 잘려 확인 버튼이 안 보이던 문제를 고쳤어요',
+      '{sparkle} 제작자 크레딧을 실명(박기찬)으로 바꿨어요',
+    ],
+  },
+  {
     version: '0.14.0',
     date: '2026-11-17',
     title: '야근 금지, 호통 주의',
@@ -24,7 +34,7 @@ export const PATCH_NOTES: PatchNote[] = [
       '{user} 닉네임: 로그인 아이디와 별개로 순위표에 보일 이름을 정할 수 있어요',
       '{megaphone} 의견 보내기: 타이틀에서 문의·건의·버그를 보내 주세요. 다음 패치에 반영할게요',
       '{scroll} 접속하면 업데이트 소식을 보여 주고, 타이틀에서 패치노트를 언제든 볼 수 있어요',
-      '{sparkle} 타이틀과 엔딩에 제작자 크레딧 (made by apg0001)',
+      '{sparkle} 타이틀과 엔딩에 제작자 크레딧 (made by 박기찬)',
     ],
   },
   {
