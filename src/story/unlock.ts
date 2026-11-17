@@ -3,7 +3,7 @@ import { SCENES } from './script';
 
 /** 이 스테이지 앞뒤로 나오는 장면 id들 */
 export function scenesOfStage(stage: StageDef): { before: string[]; after: string[] } {
-  if (stage.kind === 'endless') return { before: [], after: [] };
+  if (stage.kind === 'endless' || stage.course) return { before: [], after: [] };
   if (stage.side) {
     const n = stage.side;
     const before = [

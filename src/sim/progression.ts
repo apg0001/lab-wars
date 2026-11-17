@@ -1,7 +1,9 @@
 import type { CombatStats, UnitDef } from '../data/types';
 import { tr } from '../i18n';
 import { UNITS, UNIT_BY_ID, isGachaUnit } from '../data/units';
-import { FINAL_STAGE, SIDE_STAGES, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
+import { COURSE_STAGES, FINAL_STAGE, SIDE_STAGES, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
+import { COURSE_BY_ID, GRADES, type Grade } from '../data/major';
+import { isCourseOpen } from './grades';
 
 /** 0.8(7챕터×6)에는 없던, 챕터 사이에 새로 생긴 스테이지 */
 const v2Gap = (s: StageDef): boolean => s.chapter <= 7 && [2, 4, 6, 8].includes(s.index);
@@ -71,6 +73,8 @@ export interface SaveData {
   loadout: string[];
   /** 편성 프리셋 (PRESET_COUNT개) */
   presets: string[][];
+  /** 전공 모드 과목 id → 최고 학점 (재수강하면 바뀐다) */
+  grades: Record<string, Grade>;
   updatedAt: number;
 }
 
@@ -90,6 +94,7 @@ export function newSave(): SaveData {
     gear: newGear(),
     loadout: ['grunt'],
     presets: Array.from({ length: PRESET_COUNT }, () => []),
+    grades: {},
     updatedAt: Date.now(),
   };
 }
@@ -179,7 +184,7 @@ export function normalizeSave(raw: unknown): SaveData {
       }
       if (reach >= 0) migrationNotes.push(tr('📚 챕터마다 스테이지가 10개로 늘었어요. 깬 스테이지는 그대로 옮겼고, 사이에 새로 생긴 스테이지는 열어 뒀어요.', '📚 Each chapter now has 10 stages. Your cleared stages carried over, and the new ones in between are unlocked.'));
     } else {
-      for (const s of [...STAGES, ...SIDE_STAGES]) base.stars[s.id] = starOf(r.stars[s.id]);
+      for (const s of [...STAGES, ...SIDE_STAGES, ...COURSE_STAGES]) base.stars[s.id] = starOf(r.stars[s.id]);
       if (num(r.v, 1) < 4) {
         // 0.9.0 이전 버그: 사이 스테이지를 깬 것으로 채웠다. 실제로 들어가 본 기록(장면)이 없으면 되돌린다.
         const seen = new Set(Array.isArray(r.seen) ? r.seen : []);
@@ -231,6 +236,11 @@ export function normalizeSave(raw: unknown): SaveData {
     if (!Array.isArray(r.loadout)) base.loadout = ownedUnits(base).slice(0, LOADOUT_MAX).map((u) => u.id);
   }
   if (Array.isArray(r.presets)) base.presets = base.presets.map((_, i) => cleanSquad(base, (r.presets as unknown[])[i]));
+  if (r.grades && typeof r.grades === 'object') {
+    for (const [id, g] of Object.entries(r.grades as Record<string, unknown>)) {
+      if (COURSE_BY_ID[id] && GRADES.includes(g as Grade)) base.grades[id] = g as Grade;
+    }
+  }
   base.updatedAt = num(r.updatedAt, 0);
   return base;
 }
@@ -251,6 +261,7 @@ export const isSideOpen = (save: SaveData): boolean => isCleared(save, FINAL_STA
 
 export function isStageOpen(save: SaveData, stage: StageDef): boolean {
   if (stage.kind === 'endless') return isEndlessOpen(save) && stage.index <= save.endless + 1;
+  if (stage.course) return isCourseOpen(save, stage.course);
   if (stage.side) {
     // 외전: 엔딩을 본 뒤 외전마다 첫 판부터 차례로
     if (!isCleared(save, FINAL_STAGE.id)) return false;
