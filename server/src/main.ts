@@ -16,6 +16,8 @@ const store = new Store(dbPath);
 const cfg = defaultConfig(secret);
 if (process.env.MW_ORIGINS) cfg.allowedOrigins = process.env.MW_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
 cfg.trustProxy = process.env.MW_TRUST_PROXY === '1';
+// 관리자 아이디 (쉼표로 여러 개). 비워 두면 기본값(apg0001)을 쓴다.
+if (process.env.ADMIN_USERS) cfg.adminUsers = process.env.ADMIN_USERS.split(',').map((s) => s.trim()).filter(Boolean);
 
 const port = Number(process.env.PORT ?? 8787);
 const host = process.env.HOST ?? '0.0.0.0';

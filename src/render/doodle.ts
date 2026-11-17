@@ -75,6 +75,8 @@ const P: Record<string, string> = {
   student: '<circle cx="16" cy="14" r="7" fill="#ffe0c2"/><path d="M2 8l14-5 14 5-14 5z" fill="#37474f"/><path d="M6 29c0-6 4-8 10-8s10 2 10 8z" fill="#7cc4ff"/><circle cx="13" cy="15" r="1.2" fill="#2b2430"/><circle cx="19" cy="15" r="1.2" fill="#2b2430"/>',
   pause: '<rect x="8" y="6" width="5.5" height="20" rx="1.5" fill="#fff"/><rect x="18.5" y="6" width="5.5" height="20" rx="1.5" fill="#fff"/>',
   fullscreen: '<path d="M5 12V5h7M27 12V5h-7M5 20v7h7M27 20v7h-7" stroke-width="2.8"/>',
+  pencil: '<path d="M21 5l6 6-14 14-7 1 1-7z" fill="#ffd54f"/><path d="M18 8l6 6"/><path d="M7 19l6 6" stroke-width="1.6"/><path d="M21 5l6 6 1.5-1.5a2 2 0 0 0 0-3L26.5 4.5a2 2 0 0 0-3 0z" fill="#f48fb1"/>',
+  mail: '<rect x="4" y="8" width="24" height="17" rx="2" fill="#fff"/><path d="M5 10l11 8 11-8"/><circle cx="25" cy="8" r="4" fill="#ef5350" stroke-width="1.8"/>',
 };
 
 export type IconName = keyof typeof P;

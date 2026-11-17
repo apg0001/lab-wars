@@ -262,7 +262,7 @@ export class Battle {
         this.banner('{snack} 야식 도착!');
         break;
       case 'allnight':
-        this.hasteT = 8;
+        this.hasteT = 6;
         this.banner('{moon} 밤샘 모드!');
         break;
       case 'aircon':
@@ -449,12 +449,12 @@ export class Battle {
   }
 
   private speedMul(f: Fighter): number {
-    if (f.side === 'ally') return this.hasteT > 0 ? 1.2 : 1;
+    if (f.side === 'ally') return this.hasteT > 0 ? 1.15 : 1;
     return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
   }
 
   private atkRateMul(f: Fighter): number {
-    if (f.side === 'ally') return this.hasteT > 0 ? 1.6 : 1;
+    if (f.side === 'ally') return this.hasteT > 0 ? 1.4 : 1;
     return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
   }
 

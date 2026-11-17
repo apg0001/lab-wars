@@ -234,6 +234,11 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .title-actions { display: flex; flex-direction: column; align-items: center; gap: calc(0.8 * var(--u)); }
 .btn.big { font-size: calc(2.4 * var(--u)); padding: calc(1 * var(--u)) calc(3.5 * var(--u)); }
 .title-foot { margin: 0; font-size: calc(1.2 * var(--u)); opacity: 0.6; }
+.title-credit {
+  position: absolute; right: calc(1.4 * var(--u)); bottom: calc(1 * var(--u));
+  font-size: calc(1.2 * var(--u)); font-weight: 700; color: var(--ink); opacity: 0.75; text-decoration: none;
+  padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)); border: calc(0.2 * var(--u)) solid var(--ink); border-radius: 999px; background: #fffbe8;
+}
 .name-input {
   font: inherit; font-size: calc(2 * var(--u)); padding: calc(0.8 * var(--u)) calc(1.5 * var(--u)); width: calc(30 * var(--u)); text-align: center;
   border: calc(0.25 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); background: #fff; user-select: text; -webkit-user-select: text;
@@ -477,3 +482,37 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .node-kind .ico { width: 1em; height: 1em; }
 .dex-skill-icon .ico { width: 1.3em; height: 1.3em; }
 .btn .ico, .icon-btn .ico { margin-right: 0.15em; }
+
+/* ───── 의견 보내기 · 의견함 ───── */
+.fb-panel { width: min(calc(64 * var(--u)), 94%); max-width: none; }
+.fb-cats { margin-bottom: calc(0.8 * var(--u)); flex-wrap: wrap; }
+.btn.fb-cat.on { background: var(--gold); }
+.fb-text {
+  display: block; width: 100%; font: inherit; font-size: calc(1.8 * var(--u)); line-height: 1.4; padding: calc(0.8 * var(--u)) calc(1.2 * var(--u));
+  border: calc(0.25 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); background: #fff; resize: none; height: calc(13 * var(--u));
+  user-select: text; -webkit-user-select: text;
+}
+.fb-meta { display: flex; justify-content: space-between; align-items: center; gap: calc(1 * var(--u)); margin-top: calc(0.6 * var(--u)); }
+.fb-name { width: calc(24 * var(--u)); font-size: calc(1.6 * var(--u)); padding: calc(0.4 * var(--u)) calc(1 * var(--u)); }
+.fb-count { font-size: calc(1.3 * var(--u)); opacity: 0.6; }
+.fb-inbox { width: min(calc(84 * var(--u)), 96%); }
+.fb-bar { display: flex; align-items: center; justify-content: flex-end; gap: calc(0.8 * var(--u)); }
+.fb-bar .muted { margin-right: auto; }
+.fb-list { display: flex; flex-direction: column; gap: calc(0.6 * var(--u)); max-height: calc(28 * var(--u)); overflow-y: auto; touch-action: pan-y; margin: calc(1 * var(--u)) 0; text-align: left; }
+.fb-item { background: #fff; border: calc(0.2 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); padding: calc(0.6 * var(--u)) calc(1 * var(--u)); }
+.fb-item.done { opacity: 0.55; }
+.fb-head { display: flex; align-items: center; gap: calc(0.8 * var(--u)); font-size: calc(1.5 * var(--u)); }
+.fb-head .muted { font-size: calc(1.3 * var(--u)); margin-right: auto; }
+.fb-tag { border: calc(0.15 * var(--u)) solid var(--ink); border-radius: 999px; padding: 0 calc(0.8 * var(--u)); font-size: calc(1.3 * var(--u)); background: #e3f2fd; }
+.fb-tag.cat-버그 { background: #ffebee; }
+.fb-tag.cat-건의 { background: #fff8e1; }
+.panel p.fb-body { margin: calc(0.4 * var(--u)) 0 0; font-size: calc(1.7 * var(--u)); white-space: pre-wrap; word-break: break-word; user-select: text; -webkit-user-select: text; }
+.title-actions .btn-row { flex-wrap: wrap; }
+/* 패치노트 / 업데이트 소식: 짧은 가로 화면에서도 목록만 스크롤 */
+.title-corner .patch-btn { font-size: calc(1.6 * var(--u)); }
+.patch-panel { width: min(calc(68 * var(--u)), 92%); max-height: calc(100% - 4 * var(--u)); box-sizing: border-box; display: flex; flex-direction: column; }
+.patch-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; text-align: left; margin-bottom: calc(1.2 * var(--u)); padding-right: calc(0.6 * var(--u)); }
+.patch-note + .patch-note { margin-top: calc(1.2 * var(--u)); padding-top: calc(1.2 * var(--u)); border-top: calc(0.2 * var(--u)) dashed var(--ink); }
+.patch-head { display: flex; justify-content: space-between; align-items: baseline; gap: calc(1 * var(--u)); font-size: calc(1.9 * var(--u)); }
+.patch-note ul { margin: calc(0.5 * var(--u)) 0 0; padding-left: calc(2.4 * var(--u)); }
+.patch-note li { margin: calc(0.3 * var(--u)) 0; font-size: calc(1.7 * var(--u)); }
