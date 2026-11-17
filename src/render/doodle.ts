@@ -79,6 +79,8 @@ const P: Record<string, string> = {
   hanger: '<path d="M16 9a3 3 0 1 1 3-3"/><path d="M16 9v3L4 21a2 2 0 0 0 1 3.5h22A2 2 0 0 0 28 21L16 12" fill="#fff"/><path d="M8 24.5h16" stroke="#ef5350" stroke-width="1.6"/>',
   stamp: '<path d="M12 4h8v8l3 4H9l3-4z" fill="#8d6e63"/><rect x="5" y="16" width="22" height="6" rx="1.5" fill="#ef5350"/><path d="M6 27h20" stroke="#ef5350" stroke-width="3"/>',
   crown: '<path d="M5 24l-1-14 7 6 5-9 5 9 7-6-1 14z" fill="#ffd54f"/><circle cx="16" cy="19" r="2" fill="#e53935" stroke-width="1.6"/><path d="M5 24h22"/>',
+  meeting: '<rect x="8" y="4" width="16" height="24" rx="1.5" fill="#a1887f"/><circle cx="20.5" cy="17" r="1.3" fill="#2b2430" stroke="none"/><path d="M12 8l4-3 4 3"/><rect x="5" y="9" width="22" height="7" rx="1.5" fill="#fff59d"/><path d="M8.5 12.5h4M15 12.5h2M19.5 12.5h4" stroke="#e53935" stroke-width="1.8"/>',
+  envelope: '<rect x="3" y="7" width="26" height="18" rx="2" fill="#fff8e1"/><path d="M4 9l12 9 12-9"/><path d="M4 24l8.5-7.5M28 24l-8.5-7.5" stroke-width="1.6"/><circle cx="16" cy="17.5" r="3.6" fill="#e53935"/><path d="M14.6 17.5h2.8" stroke="#ffcdd2" stroke-width="1.4"/>',
   mail: '<rect x="4" y="8" width="24" height="17" rx="2" fill="#fff"/><path d="M5 10l11 8 11-8"/><circle cx="25" cy="8" r="4" fill="#ef5350" stroke-width="1.8"/>',
 };
 

@@ -3,6 +3,7 @@ import { ENEMY_BY_ID } from '../data/enemies';
 import type { StageDef } from '../data/stages';
 import type { SkillId } from '../data/upgrades';
 import type { BattleLoadout } from './progression';
+import { CARDS, DRAFT_FALLBACK, DRAFT_GAP, DRAFT_MIN_T, MAX_DRAWS, RARITY_ODDS, type CardDef, type CardId, type CardRarity } from '../data/cards';
 
 export const WORLD_W = 1800;
 export const GROUND_Y = 400;
@@ -120,6 +121,8 @@ export type BattleEvent =
   | { type: 'rage'; x: number }
   | { type: 'timeWarn' }
   | { type: 'rush' }
+  | { type: 'draft' }
+  | { type: 'card'; id: CardId; rarity: CardRarity }
   | { type: 'end'; result: 'win' | 'lose' };
 
 const MAX_EVENTS = 256;
@@ -133,6 +136,30 @@ export interface Base {
 }
 
 export type BattleResult = 'win' | 'lose' | null;
+
+export interface BattleOptions {
+  /** 학회 경품 추첨 카드 (기본 켜짐) */
+  cards?: boolean;
+}
+
+/** 이번 판에 쌓인 카드 효과 배율 */
+export interface CardMods {
+  allyAtk: number;
+  enemyAtk: number;
+  printerAtk: number;
+  auraRadius: number;
+  reward: number;
+  regen: number;
+  /** 적 출현 간격 배율 (작을수록 자주) */
+  spawnEvery: number;
+}
+
+/** 고른 카드 (timed 카드는 until까지) */
+export interface PickedCard {
+  card: CardDef;
+  at: number;
+  until?: number;
+}
 
 /** 시드 기반 난수 (재현 가능한 테스트용) */
 export function makeRng(seed: number): () => number {
@@ -175,14 +202,32 @@ export class Battle {
   kills = 0;
   private spawnTimer = 0;
   private nextRush: number;
-  private queue: { at: number; id: string }[] = [];
+  private queue: { at: number; id: string; rush?: boolean }[] = [];
   private bossSpawned = false;
   private uidSeq = 1;
   private acc = 0;
   private readonly rng: () => number;
+  /** 카드 추첨 전용 난수 (전투 난수 흐름과 분리해 같은 시드면 같은 카드가 나온다) */
+  private readonly cardRng: () => number;
+  /** 추첨 대기 중인 카드 3장. 있는 동안 전투는 멈춘다 (pickCard로 고른다). */
+  draft: CardDef[] | null = null;
+  /** 이번 판 추첨 횟수 */
+  draws = 0;
+  picked: PickedCard[] = [];
+  cardMods: CardMods = { allyAtk: 1, enemyAtk: 1, printerAtk: 1, auraRadius: 1, reward: 1, regen: 1, spawnEvery: 1 };
+  /** 교수님 회의 중: 적 생산 정지 남은 시간 */
+  meetingT = 0;
+  /** 아군 무적 남은 시간 */
+  invulnT = 0;
+  private readonly cardsOn: boolean;
+  private lastDraftT = 0;
+  /** 아직 살아 있는 러시 적 uid (다 쓰러뜨리면 러시를 버텨 낸 것) */
+  private rushUids = new Set<number>();
 
-  constructor(readonly stage: StageDef, readonly loadout: BattleLoadout, seed = 1) {
+  constructor(readonly stage: StageDef, readonly loadout: BattleLoadout, seed = 1, opts: BattleOptions = {}) {
     this.rng = makeRng(seed);
+    this.cardRng = makeRng((seed ^ 0x5eedca7d) + 17);
+    this.cardsOn = opts.cards ?? true;
     this.caffeine = loadout.caffeineStart;
     this.ally = { side: 'ally', hp: loadout.baseHp, maxHp: loadout.baseHp, towerCd: 0, hitFlash: 0 };
     this.enemy = { side: 'enemy', hp: stage.enemyBaseHp, maxHp: stage.enemyBaseHp, towerCd: 0, hitFlash: 0 };
@@ -199,7 +244,7 @@ export class Battle {
   }
 
   get caffeineRegen(): number {
-    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1);
+    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1) * this.cardMods.regen;
   }
 
   /** 다음 단계 비용 (최고 단계면 null) */
@@ -209,7 +254,7 @@ export class Battle {
 
   canBrew(): boolean {
     const c = this.brewCost();
-    return !this.result && c !== null && this.caffeine >= c;
+    return !this.result && !this.draft && c !== null && this.caffeine >= c;
   }
 
   /** 카페인을 써서 커피머신 단계를 올린다: 최대치 +25%, 충전 +20% */
@@ -224,7 +269,7 @@ export class Battle {
 
   canSummon(unitId: string): boolean {
     const entry = this.loadout.deck.find((d) => d.def.id === unitId);
-    return !!entry && !this.result && (this.unitCd[unitId] ?? 0) <= 0 && this.caffeine >= entry.def.cost;
+    return !!entry && !this.result && !this.draft && (this.unitCd[unitId] ?? 0) <= 0 && this.caffeine >= entry.def.cost;
   }
 
   summon(unitId: string): boolean {
@@ -244,7 +289,7 @@ export class Battle {
 
   canCast(id: SkillId): boolean {
     const s = this.loadout.skills.find((k) => k.id === id);
-    return !!s && !this.result && this.mental >= s.cost;
+    return !!s && !this.result && !this.draft && this.mental >= s.cost;
   }
 
   cast(id: SkillId, x?: number): boolean {
@@ -290,16 +335,21 @@ export class Battle {
 
   // ───────────── 진행 ─────────────
 
-  /** 실제 경과 시간을 받아 고정 간격으로 시뮬레이션한다. */
+  /** 실제 경과 시간을 받아 고정 간격으로 시뮬레이션한다. 카드 추첨 중에는 멈춘다. */
   update(dt: number): void {
+    if (this.draft) {
+      this.acc = 0;
+      return;
+    }
     this.acc += Math.min(dt, 0.25);
-    while (this.acc >= STEP) {
+    while (this.acc >= STEP && !this.draft) {
       this.acc -= STEP;
       this.step(STEP);
     }
   }
 
   step(dt: number): void {
+    if (this.draft) return;
     if (this.result) {
       this.tickFx(dt);
       return;
@@ -325,6 +375,8 @@ export class Battle {
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
     this.hasteT = Math.max(0, this.hasteT - dt);
     this.freezeT = Math.max(0, this.freezeT - dt);
+    this.meetingT = Math.max(0, this.meetingT - dt);
+    this.invulnT = Math.max(0, this.invulnT - dt);
     this.ally.hitFlash = Math.max(0, this.ally.hitFlash - dt);
     this.enemy.hitFlash = Math.max(0, this.enemy.hitFlash - dt);
 
@@ -350,12 +402,116 @@ export class Battle {
       this.banner('{clock} 퇴근 1분 전!');
       this.emit({ type: 'timeWarn' });
     }
+    this.checkDraft();
   }
 
   private finish(r: BattleResult): void {
     this.result = r;
+    this.draft = null;
     if (r) this.emit({ type: 'end', result: r });
     this.banner(r === 'win' ? '교수실 함락!' : this.timedOut ? '{clock} 야근 확정… 시간 초과' : '연구실이 망가졌다…');
+  }
+
+  // ───────────── 학회 경품 추첨 ─────────────
+
+  /** 러시를 버텨 냈거나 오래 추첨이 없었으면 추첨을 연다. */
+  private checkDraft(): void {
+    if (!this.cardsOn || this.result || this.draft || this.draws >= MAX_DRAWS) return;
+    let survived = false;
+    if (this.rushUids.size && !this.queue.some((q) => q.rush)) {
+      for (const uid of this.rushUids) if (!this.fighters.some((f) => f.uid === uid && !f.dead)) this.rushUids.delete(uid);
+      survived = !this.rushUids.size;
+    }
+    if (this.t < DRAFT_MIN_T) return;
+    const since = this.t - this.lastDraftT;
+    if ((survived && (this.draws === 0 || since >= DRAFT_GAP)) || since >= DRAFT_FALLBACK) this.openDraft(survived);
+  }
+
+  /** 카드 3장을 뽑아 추첨을 연다 (전투는 pickCard까지 멈춘다). */
+  openDraft(survived = false): void {
+    if (this.result || this.draft) return;
+    const hand: CardDef[] = [];
+    for (let i = 0; i < 3; i++) {
+      const rarity = this.rollRarity();
+      let pool = CARDS.filter((c) => c.rarity === rarity && !hand.includes(c) && this.cardUsable(c));
+      if (!pool.length) pool = CARDS.filter((c) => c.rarity === 'common' && !hand.includes(c) && this.cardUsable(c));
+      hand.push(pool[Math.floor(this.cardRng() * pool.length)]!);
+    }
+    this.draft = hand;
+    this.draws++;
+    this.lastDraftT = this.t;
+    this.acc = 0;
+    if (survived) this.banner('{check} 러시를 버텨 냈다!');
+    this.emit({ type: 'draft' });
+  }
+
+  private rollRarity(): CardRarity {
+    let r = this.cardRng();
+    for (const k of ['legend', 'curse', 'rare', 'common'] as CardRarity[]) {
+      r -= RARITY_ODDS[k];
+      if (r < 0) return k;
+    }
+    return 'common';
+  }
+
+  /** 지금 골라도 의미 있는 카드인지 */
+  private cardUsable(c: CardDef): boolean {
+    if (c.id === 'megaphone') return this.loadout.deck.some((d) => d.def.aura);
+    if (c.id === 'repair') return this.brewLevel < BREW_MAX;
+    return true;
+  }
+
+  /** 추첨 중인 카드 중 i번째를 고르고 효과를 적용한다. */
+  pickCard(i: number): boolean {
+    const c = this.draft?.[i];
+    if (!c) return false;
+    this.draft = null;
+    this.applyCard(c);
+    return true;
+  }
+
+  /** 카드 효과 적용 */
+  applyCard(c: CardDef): void {
+    const m = this.cardMods;
+    switch (c.id as CardId) {
+      case 'refill': this.caffeine = Math.min(this.caffeineMax, this.caffeine + 40); break;
+      case 'cooldown': for (const k of Object.keys(this.unitCd)) this.unitCd[k] = 0; break;
+      case 'toner': m.printerAtk += 0.25; break;
+      case 'walk': this.mental = Math.min(this.loadout.mentalMax, this.mental + 30); break;
+      case 'beans': m.regen += 0.1; break;
+      case 'cleanup': this.ally.hp = Math.min(this.ally.maxHp, this.ally.hp + this.ally.maxHp * 0.15); break;
+      case 'megaphone': m.auraRadius *= 2; break;
+      case 'payroll': m.reward += 0.3; break;
+      case 'repair':
+        if (this.brewLevel < BREW_MAX) {
+          this.brewLevel++;
+          this.emit({ type: 'brew', level: this.brewLevel });
+        }
+        break;
+      case 'deadline': m.allyAtk += 0.1; break;
+      case 'allnighter': this.hasteT = Math.max(this.hasteT, c.dur!); break;
+      case 'meeting': this.meetingT = Math.max(this.meetingT, c.dur!); break;
+      case 'afterparty':
+        for (const f of this.alive('ally')) {
+          f.hp = f.maxHp;
+          this.fx.push({ kind: 'heal', x: f.x, y: this.fy(f) - 30, t: 0, life: 0.8 });
+        }
+        this.invulnT = Math.max(this.invulnT, c.dur!);
+        break;
+      case 'bestpaper': this.damageBase(this.enemy, this.enemy.maxHp * 0.1, ENEMY_FRONT); break;
+      case 'reviewer2': m.reward += 0.5; m.enemyAtk += 0.15; break;
+      case 'weekend': m.regen += 0.3; m.spawnEvery /= 1.2; break;
+    }
+    this.picked.push({ card: c, at: this.t, until: c.kind === 'timed' ? this.t + c.dur! : undefined });
+    this.emit({ type: 'card', id: c.id, rarity: c.rarity });
+    this.banner(`{${c.icon}} ${c.name}!`);
+  }
+
+  /** HUD에 보여 줄 적용 중인 카드 (즉시 카드와 끝난 timed 카드는 빼고) */
+  activeCards(): { card: CardDef; left: number | null }[] {
+    return this.picked
+      .filter((p) => p.card.kind === 'battle' || (p.until !== undefined && p.until > this.t))
+      .map((p) => ({ card: p.card, left: p.until !== undefined ? p.until - this.t : null }));
   }
 
   // ───────────── 적 출현 ─────────────
@@ -370,7 +526,13 @@ export class Battle {
     }
     // 장기전 방지: 3분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
     const overtime = this.t > 180 ? Math.max(0.5, 1 - (this.t - 180) / 240) : 1;
-    const every = st.spawnEvery * overtime;
+    const every = st.spawnEvery * overtime * this.cardMods.spawnEvery;
+    // 교수님 회의 중: 새 적이 나오지 않고 러시·대기열도 그만큼 미뤄진다
+    if (this.meetingT > 0) {
+      this.nextRush += dt;
+      for (const q of this.queue) q.at += dt;
+      return;
+    }
     this.spawnTimer += dt;
     if (this.spawnTimer >= every) {
       this.spawnTimer -= every * (0.8 + this.rng() * 0.4);
@@ -378,11 +540,15 @@ export class Battle {
     }
     if (this.t >= this.nextRush) {
       this.nextRush += st.rush.every;
-      for (let i = 0; i < st.rush.size; i++) this.queue.push({ at: this.t + i * 0.45, id: this.pickEnemy() });
+      for (let i = 0; i < st.rush.size; i++) this.queue.push({ at: this.t + i * 0.45, id: this.pickEnemy(), rush: true });
       this.banner('{megaphone} 잡무 러시!');
       this.emit({ type: 'rush' });
     }
-    while (this.queue.length && this.queue[0]!.at <= this.t) this.spawnEnemy(this.queue.shift()!.id);
+    while (this.queue.length && this.queue[0]!.at <= this.t) {
+      const q = this.queue.shift()!;
+      const f = this.spawnEnemy(q.id);
+      if (f && q.rush) this.rushUids.add(f.uid);
+    }
   }
 
   private pickEnemy(): string {
@@ -439,7 +605,8 @@ export class Battle {
     for (const f of this.fighters) {
       f.auraMul = 1;
       for (const a of auras) {
-        if (a.side === f.side && a !== f && Math.abs(a.x - f.x) <= a.stats.aura!.radius) f.auraMul = Math.max(f.auraMul, a.stats.aura!.atkMul);
+        const r = a.stats.aura!.radius * (a.side === 'ally' ? this.cardMods.auraRadius : 1);
+        if (a.side === f.side && a !== f && Math.abs(a.x - f.x) <= r) f.auraMul = Math.max(f.auraMul, a.stats.aura!.atkMul);
       }
     }
   }
@@ -538,7 +705,7 @@ export class Battle {
     if (f.cd > 0) return;
     f.cd = s.interval;
     f.swing = 1;
-    const atk = s.atk * f.auraMul * (f.side === 'ally' && this.broken ? 0.75 : 1);
+    const atk = s.atk * f.auraMul * (f.side === 'ally' ? (this.broken ? 0.75 : 1) * this.cardMods.allyAtk : this.cardMods.enemyAtk);
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
@@ -551,7 +718,7 @@ export class Battle {
   }
 
   private tickBoss(f: Fighter, b: NonNullable<typeof ENEMY_BY_ID[string]['boss']>, dt: number): void {
-    if (b.summon) {
+    if (b.summon && this.meetingT <= 0) {
       f.summonCd -= dt;
       if (f.summonCd <= 0) {
         f.summonCd = b.summon.every;
@@ -607,7 +774,7 @@ export class Battle {
     this.emit({ type: 'shoot', kind: ally ? 'paper' : 'laser', x: x0, side: b.side, tower: true });
     this.projectiles.push({
       kind: ally ? 'paper' : 'laser', side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
-      t: 0, dur: 0.1 + bestD / 900, dmg: ally ? this.loadout.printerAtk : this.stage.towerAtk,
+      t: 0, dur: 0.1 + bestD / 900, dmg: ally ? this.loadout.printerAtk * this.cardMods.printerAtk : this.stage.towerAtk,
       splash: 0, buildingMul: 1, targetUid: best.uid, hitsBase: false, arc: 0,
     });
   }
@@ -653,6 +820,8 @@ export class Battle {
 
   private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }, melee = false): void {
     if (f.dead) return;
+    // 학회 뒤풀이: 아군 무적
+    if (f.side === 'ally' && this.invulnT > 0) return;
     this.emit({ type: 'hit', x: f.x, y: this.fy(f) - 20 * (f.look.scale ?? 1), dmg, melee, to: f.side });
     if (kb && !f.isBoss && f.hp > dmg && this.rng() < kb.chance) this.knockback(f, kb.dist);
     f.hp -= dmg;
@@ -666,13 +835,14 @@ export class Battle {
       this.emit({ type: 'kill', x: f.x, y: this.fy(f) - 16, side: f.side, boss: f.isBoss });
       if (f.side === 'enemy') {
         this.kills++;
-        this.killReward += f.reward;
+        const reward = Math.round(f.reward * this.cardMods.reward);
+        this.killReward += reward;
         // 적 세기(기본 처치 보상)에 비례해 카페인을 얻는다
         const caf = killCaffeine(f.defId);
         // 멘탈 고갈 외전: 처치하면 멘탈이 조금 돌아온다
         if (this.stage.mods?.drain) this.mental = Math.min(this.loadout.mentalMax, this.mental + 3 + caf * 0.5);
         this.caffeine = Math.min(this.caffeineMax, this.caffeine + caf);
-        this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${f.reward}{coin} +${caf}{coffee}`, color: '#ffd54f' });
+        this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${reward}{coin} +${caf}{coffee}`, color: '#ffd54f' });
       }
     }
   }
