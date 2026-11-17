@@ -396,7 +396,7 @@ export function playMarathon(host: Element, scenes: Scene[], start: number, opt:
 
 // ─────────────── 배경 ───────────────
 
-const THEME_OF: Partial<Record<Bg, Theme>> = { haunted: 'haunted', tenure: 'tenure', rain: 'gloom' };
+const THEME_OF: Partial<Record<Bg, Theme>> = { haunted: 'haunted', tenure: 'tenure', rain: 'gloom', deadline: 'deadline', ai: 'ai', startup: 'startup', blackout: 'blackout' };
 
 function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sign?: string): void {
   const theme = THEME_OF[bg];
@@ -404,7 +404,7 @@ function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sig
     drawThemeBackdrop(ctx, theme, w, GROUND - 10, H, 0, t);
     return;
   }
-  const sky: Record<Exclude<Bg, 'haunted' | 'tenure' | 'rain'>, [string, string]> = {
+  const sky: Record<Exclude<Bg, 'haunted' | 'tenure' | 'rain' | 'deadline' | 'ai' | 'startup' | 'blackout'>, [string, string]> = {
     classroom: ['#fdf6e3', '#f1e6c8'],
     lab: ['#eef3f7', '#dfe7ee'],
     night: ['#1f2440', '#2e3561'],
