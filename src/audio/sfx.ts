@@ -57,12 +57,28 @@ export const sfx = {
       case 'laser':
         audio.tone(o, { f0: 1500, f1: 380, dur: 0.12, gain: 0.08 });
         break;
+      case 'beam':
+        audio.tone(o, { type: 'sawtooth', f0: 220, f1: 1200, dur: 0.22, gain: 0.06, lp: 2400 });
+        break;
+      case 'spark':
+        audio.noise(o, { filter: 'highpass', freq: 4000, dur: 0.09, gain: 0.16 });
+        audio.tone(o, { type: 'square', f0: jitter(120), dur: 0.08, gain: 0.04, lp: 1800 });
+        break;
+      case 'pulse':
+      case 'dot':
+        audio.tone(o, { type: 'square', f0: jitter(660, 0.1), f1: 990, dur: 0.05, gain: 0.04, lp: 2600 });
+        break;
       case 'flask':
       case 'bomb':
+      case 'coolant':
+      case 'solder':
         audio.noise(o, { filter: 'bandpass', freq: 500, freqEnd: 1400, q: 2, dur: 0.16, gain: 0.12 });
         break;
       case 'code':
         audio.tone(o, { type: 'square', f0: jitter(1760, 0.15), dur: 0.02, gain: 0.025, lp: 3000 });
+        break;
+      case 'wave':
+        audio.tone(o, { type: 'sine', f0: 440, f1: 1760, dur: 0.12, gain: 0.07 });
         break;
       default:
         audio.tone(o, { type: 'triangle', f0: jitter(880), f1: 1320, dur: 0.05, gain: 0.07 });
@@ -275,6 +291,8 @@ export function playBattleSfx(e: BattleEvent, camX: number, viewW: number): void
     case 'summon': sfx.summon(); break;
     case 'brew': sfx.brew(); break;
     case 'heal': sfx.heal(); break;
+    case 'strike': sfx.skill('bombard'); break;
+    case 'revive': sfx.brew(); break;
     case 'skill': sfx.skill(e.id); break;
     case 'bossSpawn': case 'alarm': sfx.bossSpawn(); break;
     case 'rush': sfx.rush(); break;

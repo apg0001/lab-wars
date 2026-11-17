@@ -261,6 +261,34 @@ export function legacyOrder(oldId: string): number | null {
 
 const ENDLESS_BOSSES = ['prof2', 'reviewer2', 'chair', 'committee', 'dean', 'president'];
 
+/** 무한 모드 전용 버그 군단: from판부터 출현 목록에 weight로 합류한다 */
+export const ENDLESS_ENEMIES: { id: string; from: number; weight: number }[] = [
+  { id: 'segfault', from: 3, weight: 1.2 },
+  { id: 'leak', from: 6, weight: 1 },
+  { id: 'loop', from: 10, weight: 1 },
+  { id: 'conflict', from: 15, weight: 1 },
+  { id: 'bsod', from: 20, weight: 0.8 },
+  { id: 'outage', from: 25, weight: 1 },
+];
+
+/** 무한 모드 버그 보스: from판부터 10판마다(30·40·50…) 번갈아 나온다. 사이 보스 판(35·45…)은 원래 순환 */
+export const ENDLESS_BUG_BOSSES: { id: string; from: number }[] = [
+  { id: 'kernelpanic', from: 30 },
+  { id: 'legacy', from: 40 },
+];
+
+/** 무한 모드 n번째 판의 보스 (보스 판이 아니면 undefined) */
+export function endlessBoss(n: number): string | undefined {
+  if (n % 5 !== 0) return undefined;
+  if (n >= ENDLESS_BUG_BOSSES[0]!.from && n % 10 === 0) {
+    const open = ENDLESS_BUG_BOSSES.filter((b) => b.from <= n);
+    // 처음 합류하는 판에는 그 보스가 바로 나온다
+    const fresh = open.find((b) => b.from === n);
+    return (fresh ?? open[(n / 10 - 3) % open.length]!).id;
+  }
+  return ENDLESS_BOSSES[(n / 5 - 1) % ENDLESS_BOSSES.length];
+}
+
 /** 무한 모드 n번째 판 (1부터). 판마다 조금씩 강해지고 5판마다 보스가 나온다. */
 /** 무한 모드 판당 곡선 상승폭 (캠페인 끝 c=19에서 시작) */
 const ENDLESS_STEP = 0.75;
@@ -287,9 +315,9 @@ export function endlessStage(n: number): StageDef {
     enemyBaseHp: Math.round(700 + c * 180),
     towerAtk: Math.round(10 * (1 + c * 0.12)),
     spawnEvery: Math.max(1.4, 2.8 - c * 0.06) * (isBoss ? 1.5 : 1),
-    pool: poolAt(c, kind === 'boss' ? 'normal' : kind),
+    pool: [...poolAt(c, kind === 'boss' ? 'normal' : kind), ...ENDLESS_ENEMIES.filter((e) => e.from <= n).map(({ id, weight }) => ({ id, weight }))],
     rush: { first: 30, every: Math.max(18, 40 - c), size: Math.round((3 + Math.floor(c / 3)) * (isBoss ? 0.5 : 1)) },
-    boss: isBoss ? ENDLESS_BOSSES[(n / 5 - 1) % ENDLESS_BOSSES.length] : undefined,
+    boss: endlessBoss(n),
     bossScale: isBoss ? 1 + n * 0.04 : undefined,
     caffeineMul: undefined,
     note: tr('{infinity} 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스.', '{infinity} Endless Mode: enemies keep getting stronger every round. A boss every 5 rounds.'),

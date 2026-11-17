@@ -725,6 +725,141 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .title-grid .title-chip.on { box-shadow: 0 0 0 calc(0.3 * var(--u)) var(--ink); }
 .title-grid .title-chip.locked { opacity: 0.45; border-style: dashed; background: #fafafa; }
 
+/* ───── 유닛 등급 · 편성 · 장비 지원 (유닛 뽑기) ───── */
+.u-basic { --uc: #90a4ae; --ub: #fff; }
+.u-rare { --uc: #42a5f5; --ub: #e3f2fd; }
+.u-epic { --uc: #ab47bc; --ub: #f3e5f5; }
+.u-legend { --uc: #ffb300; --ub: #fff8e1; }
+.unit-btn.u-rare, .unit-btn.u-epic, .unit-btn.u-legend { border-color: var(--uc); background: linear-gradient(180deg, #fff 55%, var(--ub)); box-shadow: 0 calc(0.3 * var(--u)) 0 var(--ink), inset 0 0 0 calc(0.18 * var(--u)) var(--ink); }
+.unit-btn.u-legend { background: radial-gradient(circle at 50% 35%, #fffde7, #ffe082); }
+.rarity-chip { display: inline-block; background: var(--uc); color: #fff; border: calc(0.15 * var(--u)) solid var(--ink); border-radius: calc(0.6 * var(--u)); padding: 0 calc(0.6 * var(--u)); font-size: calc(1.4 * var(--u)); -webkit-text-stroke: calc(0.05 * var(--u)) var(--ink); white-space: nowrap; }
+.rarity-chip.mini { font-size: calc(1.15 * var(--u)); padding: 0 calc(0.35 * var(--u)); -webkit-text-stroke: 0; text-shadow: 0 0 calc(0.2 * var(--u)) var(--ink); }
+.card.u-rare, .card.u-epic, .card.u-legend { border-color: var(--uc); box-shadow: inset 0 0 0 calc(0.2 * var(--u)) var(--ub); }
+.card.u-legend { background: linear-gradient(135deg, #fff, #fff8e1); }
+.card-pic .rarity-chip { position: absolute; left: calc(0.2 * var(--u)); bottom: calc(0.2 * var(--u)); }
+.in-squad { margin-left: calc(0.4 * var(--u)); font-size: calc(1.4 * var(--u)); }
+.passion { display: inline-flex; gap: calc(0.2 * var(--u)); vertical-align: middle; }
+.passion i { width: calc(0.8 * var(--u)); height: calc(0.8 * var(--u)); border-radius: 50%; border: calc(0.12 * var(--u)) solid var(--ink); background: #fff; }
+.passion i.on { background: #ff7043; }
+
+/* 편성 */
+.squad { grid-column: 1 / -1; display: flex; flex-direction: column; gap: calc(0.8 * var(--u)); }
+.squad-head { display: flex; align-items: center; justify-content: space-between; gap: calc(1 * var(--u)); flex-wrap: wrap; font-size: calc(1.7 * var(--u)); }
+.presets { display: flex; gap: calc(0.8 * var(--u)); }
+.preset { display: flex; gap: calc(0.2 * var(--u)); }
+.preset .btn.small { font-size: calc(1.3 * var(--u)); padding: calc(0.3 * var(--u)) calc(0.7 * var(--u)); }
+.preset .save-preset { background: #e8f5e9; }
+.squad-slots { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: calc(0.6 * var(--u)); }
+.squad-slot { position: relative; display: flex; flex-direction: column; align-items: stretch; background: var(--ub, #fff); border: calc(0.25 * var(--u)) solid var(--uc, var(--ink)); border-radius: calc(1 * var(--u)); min-width: 0; }
+.squad-slot.empty { border: calc(0.22 * var(--u)) dashed #b0bec5; background: rgba(255,255,255,.5); aspect-ratio: 7 / 9; display: grid; place-items: center; }
+.squad-slot .q { font-size: calc(3 * var(--u)); color: #b0bec5; }
+.slot-key { position: absolute; left: calc(0.3 * var(--u)); top: 0; font-size: calc(1.1 * var(--u)); opacity: 0.5; z-index: 1; }
+.slot-main { display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: calc(0.3 * var(--u)) calc(0.2 * var(--u)) 0; min-width: 0; }
+.slot-main img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+.slot-main small { font-size: calc(1 * var(--u)); line-height: 1.1; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-move { display: flex; border-top: calc(0.15 * var(--u)) solid var(--ink); }
+.slot-move button { flex: 1; border: none; background: none; font-size: calc(1 * var(--u)); padding: calc(0.2 * var(--u)) 0; color: var(--ink); }
+.slot-move button:disabled { opacity: 0.2; }
+.squad-tip { margin: 0; font-size: calc(1.3 * var(--u)); }
+.squad-pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(9 * var(--u)), 1fr)); gap: calc(0.6 * var(--u)); }
+.squad-pick { position: relative; display: flex; flex-direction: column; align-items: center; background: var(--ub, #fff); border: calc(0.22 * var(--u)) solid var(--uc, var(--ink)); border-radius: calc(0.9 * var(--u)); padding: calc(0.3 * var(--u)); min-width: 0; }
+.squad-pick img { width: calc(6.5 * var(--u)); height: calc(6.5 * var(--u)); object-fit: contain; }
+.squad-pick small { font-size: calc(1.1 * var(--u)); width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-cost { font-size: calc(1.1 * var(--u)); opacity: 0.7; }
+.squad-pick.on { box-shadow: 0 0 0 calc(0.3 * var(--u)) var(--accent); }
+.squad-pick:disabled { filter: grayscale(0.6); opacity: 0.5; }
+.pick-on { position: absolute; right: calc(0.3 * var(--u)); top: calc(0.2 * var(--u)); min-width: calc(2 * var(--u)); border-radius: calc(1 * var(--u)); background: var(--accent); color: #fff; font-size: calc(1.2 * var(--u)); }
+
+/* 도감 등급 필터 · 실루엣 */
+.rarity-filter { grid-column: 1 / -1; display: flex; gap: calc(0.5 * var(--u)); }
+.rarity-filter .chapter-tab { border-radius: calc(1 * var(--u)); flex: 0 1 auto; padding: calc(0.3 * var(--u)) calc(1.4 * var(--u)); }
+.rarity-filter .chapter-tab.on { background: var(--uc, var(--accent)); }
+.dex-ally.u-rare, .dex-ally.u-epic, .dex-ally.u-legend { border-color: var(--uc); background: linear-gradient(180deg, #fff 60%, var(--ub)); }
+.dex-ally-head .rarity-chip { align-self: center; }
+.dex-ally.hidden .dex-cell { cursor: default; }
+.dex-ally.hidden .dex-cell span { font-size: calc(2.2 * var(--u)); opacity: 0.5; }
+
+/* 지도 버튼 뽑기권 배지 */
+.gacha-btn .badge { margin-left: calc(0.5 * var(--u)); font-size: calc(1.4 * var(--u)); background: #ffca28; border: calc(0.15 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); padding: 0 calc(0.5 * var(--u)); }
+
+/* 장비 지원 탭 */
+.gear-screen { background: linear-gradient(180deg, #e0f2f1, #f5f5f5); }
+.grant { display: flex; flex-direction: column; gap: calc(0.8 * var(--u)); background: #fff; border: calc(0.25 * var(--u)) solid var(--ink); border-radius: calc(1.2 * var(--u)); padding: calc(1.2 * var(--u)); min-width: 0;
+  background-image: repeating-linear-gradient(-45deg, transparent 0 calc(1.6 * var(--u)), rgba(255,193,7,.08) calc(1.6 * var(--u)) calc(3.2 * var(--u))); }
+.grant-head { display: flex; flex-direction: column; }
+.grant-head b { font-size: calc(2.4 * var(--u)); }
+.grant-head small { font-size: calc(1.4 * var(--u)); opacity: 0.75; }
+.gear-rates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gear-rates .rate { background: var(--ub); border-color: var(--uc); }
+.gear-rates .rate b { color: var(--uc); -webkit-text-stroke: calc(0.04 * var(--u)) var(--ink); }
+.gear-lineup { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(7.5 * var(--u)), 1fr)); gap: calc(0.5 * var(--u)); }
+.lineup-cell { display: flex; flex-direction: column; align-items: center; background: var(--ub); border: calc(0.2 * var(--u)) solid var(--uc); border-radius: calc(0.8 * var(--u)); padding: calc(0.2 * var(--u)); }
+.lineup-cell img { width: calc(6 * var(--u)); height: calc(6 * var(--u)); object-fit: contain; }
+.lineup-cell .q { font-size: calc(1.4 * var(--u)); opacity: 0.5; line-height: calc(1 * var(--u)); }
+.lineup-cell.unowned { border-style: dashed; }
+.grant-note { margin: 0; font-size: calc(1.3 * var(--u)); }
+.ticket-count { display: flex; align-items: center; justify-content: center; gap: calc(0.6 * var(--u)); font-size: calc(3.2 * var(--u)); }
+.btn-row.tight { display: flex; gap: calc(0.6 * var(--u)); justify-content: center; }
+.btn-row.tight .btn { flex: 1; font-size: calc(1.5 * var(--u)); }
+.gear-box .submit-10 { background: linear-gradient(90deg, #ce93d8, #ffb74d); }
+.spark-fill { background: linear-gradient(90deg, #ffb300, #ff7043); }
+.spark-btn { background: radial-gradient(circle, #fffde7, #ffd54f); animation: legend-glow 1s ease-in-out infinite alternate; }
+.spark-panel { max-width: calc(70 * var(--u)); }
+.spark-list { display: flex; gap: calc(1 * var(--u)); justify-content: center; flex-wrap: wrap; margin: calc(1 * var(--u)) 0; }
+.spark-pick { display: flex; flex-direction: column; align-items: center; width: calc(16 * var(--u)); background: var(--ub); border: calc(0.25 * var(--u)) solid var(--uc); border-radius: calc(1 * var(--u)); padding: calc(0.6 * var(--u)); }
+.spark-pick img { width: calc(11 * var(--u)); height: calc(11 * var(--u)); }
+.spark-pick small { font-size: calc(1.2 * var(--u)); opacity: 0.7; }
+
+/* 택배 상자 개봉 */
+.ship-panel { position: relative; width: min(calc(84 * var(--u)), calc(100% - 4 * var(--u))); padding: calc(1.2 * var(--u)) calc(2 * var(--u)); overflow-x: hidden; background: #fafafa; }
+.ship-head { display: flex; flex-direction: column; border-bottom: calc(0.2 * var(--u)) dashed var(--ink); padding-bottom: calc(0.6 * var(--u)); margin-bottom: calc(0.8 * var(--u)); text-align: left; }
+.ship-head b { font-size: calc(2.4 * var(--u)); }
+.ship-head small { font-size: calc(1.3 * var(--u)); opacity: 0.6; font-family: monospace; }
+.ship-single { display: flex; align-items: center; gap: calc(2 * var(--u)); text-align: left; }
+.crate-stage { position: relative; flex: 0 0 calc(26 * var(--u)); height: calc(24 * var(--u)); }
+.crate-box { position: absolute; left: 12%; right: 12%; bottom: 0; height: 52%; background: #d7b98e; border: calc(0.3 * var(--u)) solid var(--ink); border-radius: calc(0.5 * var(--u));
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(3.2 * var(--u)), rgba(93,64,55,.25) calc(3.2 * var(--u)) calc(3.4 * var(--u))); animation: crate-shake 0.8s ease-in-out both; z-index: 2; }
+.crate-lid { position: absolute; left: -6%; right: -6%; top: calc(-2.4 * var(--u)); height: calc(2.4 * var(--u)); background: #c8a574; border: calc(0.3 * var(--u)) solid var(--ink); border-radius: calc(0.4 * var(--u)); transform-origin: 10% 100%; animation: lid-pop 0.5s cubic-bezier(.3,1.4,.5,1) 0.8s forwards; }
+.crate-tape { position: absolute; left: 44%; width: 12%; top: 0; bottom: 0; background: #ffca28; border-left: calc(0.15 * var(--u)) solid var(--ink); border-right: calc(0.15 * var(--u)) solid var(--ink); }
+.crate-label { position: absolute; left: 8%; bottom: 14%; font-size: calc(1.2 * var(--u)); color: #c62828; border: calc(0.15 * var(--u)) solid #c62828; padding: 0 calc(0.3 * var(--u)); transform: rotate(-6deg); font-family: monospace; }
+.crate-unit { position: absolute; left: 50%; bottom: 20%; width: calc(17 * var(--u)); height: calc(17 * var(--u)); margin-left: calc(-8.5 * var(--u)); object-fit: contain; z-index: 3; animation: unit-rise 0.6s cubic-bezier(.2,1.4,.4,1) 1.05s both; }
+.crate-rays { position: absolute; left: 50%; bottom: 30%; width: calc(30 * var(--u)); height: calc(30 * var(--u)); margin: 0 0 calc(-15 * var(--u)) calc(-15 * var(--u)); border-radius: 50%; z-index: 1; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, var(--uc) 0 10deg, transparent 10deg 30deg); -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%); mask: radial-gradient(circle, #000 20%, transparent 70%);
+  animation: rays-in 0.4s ease-out 1s forwards, rays-spin 6s linear 1s infinite; }
+.ship-info { display: flex; flex-direction: column; gap: calc(0.4 * var(--u)); animation: letter-in 0.4s ease-out 1.4s both; min-width: 0; }
+.ship-info b { font-size: calc(2.8 * var(--u)); }
+.ship-info .muted { margin: 0; }
+.ship-info .rarity-chip { align-self: flex-start; font-size: calc(1.8 * var(--u)); }
+@keyframes crate-shake { 0%, 100% { rotate: 0deg; } 15% { rotate: -5deg; } 30% { rotate: 5deg; } 45% { rotate: -4deg; } 60% { rotate: 4deg; } 75% { rotate: -2deg; } }
+@keyframes lid-pop { to { transform: translate(-30%, -180%) rotate(-35deg); opacity: 0; } }
+@keyframes unit-rise { from { transform: translateY(40%) scale(0.3); opacity: 0; } to { transform: translateY(-12%) scale(1); opacity: 1; } }
+@keyframes rays-in { to { opacity: 0.7; } }
+@keyframes rays-spin { to { rotate: 360deg; } }
+.ship-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(0.8 * var(--u)); }
+.ship-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: calc(0.2 * var(--u)); background: var(--ub); border: calc(0.25 * var(--u)) solid var(--uc); border-radius: calc(0.8 * var(--u)); padding: calc(0.4 * var(--u)); min-width: 0; }
+.ship-card img { width: calc(8 * var(--u)); height: calc(8 * var(--u)); object-fit: contain; animation: unit-rise 0.4s ease-out calc(var(--d) + 0.2s) both; }
+.ship-card .rarity-chip.mini { animation: letter-in 0.3s ease-out calc(var(--d) + 0.3s) both; }
+.ship-cover {
+  position: absolute; inset: calc(-0.25 * var(--u)); z-index: 4; display: grid; place-items: center; font-size: calc(4 * var(--u));
+  background: #d7b98e; border: calc(0.25 * var(--u)) solid var(--ink); border-radius: calc(0.8 * var(--u));
+  background-image: linear-gradient(90deg, transparent 44%, #ffca28 44% 56%, transparent 56%);
+  animation: crate-shake 0.35s ease-in-out calc(var(--d) - 0.3s) both, cover-burst 0.25s ease-in var(--d) forwards;
+}
+@keyframes cover-burst { to { transform: scale(1.3); opacity: 0; visibility: hidden; } }
+.ship-card.u-epic { box-shadow: 0 0 calc(1.4 * var(--u)) #ce93d8; }
+.ship-card.u-legend { box-shadow: 0 0 calc(2.4 * var(--u)) #ffca28; background: radial-gradient(circle at 50% 35%, #fffde7, #ffe082); }
+.forced-tag { position: absolute; left: calc(-0.6 * var(--u)); top: calc(-0.8 * var(--u)); font-size: calc(1 * var(--u)); background: #ab47bc; color: #fff; border: calc(0.18 * var(--u)) solid var(--ink); border-radius: calc(0.6 * var(--u)); padding: 0 calc(0.4 * var(--u)); z-index: 3; }
+.ship-card .new-tag, .ship-card .dup-tag { animation: letter-in 0.3s ease-out calc(var(--d) + 0.35s) both; }
+.legend-flash { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: grid; place-items: center;
+  background: radial-gradient(circle, rgba(255,236,179,.95), rgba(255,179,0,.6) 60%, transparent 80%); animation: legend-flash 1.4s ease-out 0.9s both; }
+.legend-flash span { font-size: calc(5 * var(--u)); color: #fff; -webkit-text-stroke: calc(0.2 * var(--u)) #e65100; transform: rotate(-6deg); }
+@keyframes legend-flash { 0% { opacity: 0; transform: scale(0.6); } 25% { opacity: 1; transform: scale(1.05); } 70% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1); visibility: hidden; } }
+.best-legend .ship-head b { background: linear-gradient(90deg, #f9a825, #ff7043, #f9a825); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ship-panel.skip *, .ship-panel.skip *::before, .ship-panel.skip *::after { animation-delay: 0s !important; animation-duration: 0.01s !important; }
+.ship-panel .btn-row { margin-top: calc(0.8 * var(--u)); }
+
+.ship-panel.skip .crate-rays { animation: none !important; opacity: 0.7; }
+
 /* ═════════════════ 세로 화면 ═════════════════
  * 세로로 들면 <html>에 .portrait가 붙는다 (src/ui/orientation.ts).
  * 무대가 화면 전체를 채우고, --u는 화면 폭을 56칸으로 나눈 크기라 가로 화면과 글자 크기가 비슷하다.
@@ -890,6 +1025,20 @@ html[lang='en'] body { font-weight: 500; }
 .portrait .audio-row.lang-row { grid-template-columns: calc(10 * var(--u)) 1fr; }
 .lang-pick { display: flex; gap: calc(0.8 * var(--u)); }
 
+/* ── 편성 · 장비 지원 (세로) ── */
+.portrait .squad-slots { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.portrait .squad-head { flex-direction: column; align-items: stretch; }
+.portrait .presets { justify-content: space-between; }
+.portrait .squad-pool { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.portrait .rarity-filter { flex-wrap: wrap; }
+.portrait .gear-lineup { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.portrait .lineup-cell img { width: 100%; height: auto; aspect-ratio: 1; }
+.portrait .ship-panel { width: calc(100% - 3 * var(--u)); padding: calc(1.2 * var(--u)) calc(1.4 * var(--u)); }
+.portrait .ship-single { flex-direction: column; text-align: center; }
+.portrait .ship-info { align-items: center; }
+.portrait .ship-info .rarity-chip { align-self: center; }
+.portrait .ship-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(0.5 * var(--u)); }
+.portrait .ship-card img { width: 100%; height: auto; aspect-ratio: 1; }
 /* ── 대표 캐릭터 · 순위표 칭호 ── */
 .profile-btn { display: inline-flex; align-items: center; gap: calc(0.5 * var(--u)); }
 .avatar-mini { width: calc(2.8 * var(--u)); height: calc(2.8 * var(--u)); margin: calc(-0.6 * var(--u)) 0; object-fit: contain; }

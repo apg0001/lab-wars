@@ -1,9 +1,9 @@
 import { ENEMIES } from '../data/enemies';
-import { SIDE_STAGES, STAGES } from '../data/stages';
-import { UNITS } from '../data/units';
-import { RANGED_THRESHOLD, type CombatStats, type Look } from '../data/types';
+import { ENDLESS_BUG_BOSSES, ENDLESS_ENEMIES, SIDE_STAGES, STAGES } from '../data/stages';
+import { UNITS, UNIT_RARITIES, isGachaUnit, rarityLabel, rarityOf } from '../data/units';
+import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitRarity } from '../data/types';
 import { drawCharacter } from '../render/characters';
-import { isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
+import { isEndlessOpen, isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
 import { SKILLS } from '../data/upgrades';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
@@ -22,6 +22,8 @@ function seenEnemies(save: SaveData): Set<string> {
     for (const p of s.pool) seen.add(p.id);
     if (s.boss) seen.add(s.boss);
   }
+  // 무한 모드 버그 군단: 열린 판(최고 기록 + 1)까지 합류한 적
+  if (isEndlessOpen(save)) for (const e of [...ENDLESS_ENEMIES, ...ENDLESS_BUG_BOSSES]) if (e.from <= save.endless + 1) seen.add(e.id);
   return seen;
 }
 
@@ -35,8 +37,32 @@ function tags(st: CombatStats): string {
   if (st.heal) t.push(tr('회복', 'Heal'));
   if (st.buildingMul) t.push(tr(`건물 ×${st.buildingMul}`, `Building ×${st.buildingMul}`));
   if (st.knockback) t.push(tr(`넉백 ${Math.round(st.knockback.chance * 100)}%`, `Knockback ${Math.round(st.knockback.chance * 100)}%`));
+  if (st.burn) t.push(tr(`{fire} 화상 ${st.burn.dps}/초`, `{fire} Burn ${st.burn.dps}/s`));
+  if (st.slow) t.push(tr(`{snail} 둔화 ${Math.round((1 - st.slow.mul) * 100)}%`, `{snail} Slow ${Math.round((1 - st.slow.mul) * 100)}%`));
+  if (st.freeze) t.push(tr(`{snow} 빙결 ${Math.round(st.freeze.chance * 100)}%`, `{snow} Freeze ${Math.round(st.freeze.chance * 100)}%`));
+  if (st.pierce) t.push(tr('관통', 'Pierce'));
+  if (st.deathBurst) t.push(tr('사망 폭발', 'Death burst'));
+  if (st.shield) t.push(tr(`{guard} 보호막 ${st.shield.amount}`, `{guard} Shield ${st.shield.amount}`));
+  if (st.healZone) t.push(tr('회복 구역', 'Heal zone'));
+  if (st.caffeineGen) t.push(tr(`{coffee} +${st.caffeineGen}/초`, `{coffee} +${st.caffeineGen}/s`));
+  if (st.turret) t.push(tr('포탑 설치', 'Turrets'));
+  if (st.revive) t.push(tr('1회 부활', 'Revive once'));
+  if (st.fieldStrike) t.push(tr(`{bolt} 전장 타격 ${st.fieldStrike.dmg}`, `{bolt} Field strike ${st.fieldStrike.dmg}`));
+  if (st.chain) t.push(tr(`{bolt} 연쇄 ${st.chain.jumps}회`, `{bolt} Chain ×${st.chain.jumps}`));
+  if (st.armorShred) t.push(tr(`{shred} 방어 깎기 +${Math.round((st.armorShred.mul - 1) * 100)}%`, `{shred} Armor shred +${Math.round((st.armorShred.mul - 1) * 100)}%`));
+  if (st.knockup) t.push(tr(`띄우기 ${Math.round(st.knockup.chance * 100)}%`, `Knock-up ${Math.round(st.knockup.chance * 100)}%`));
+  if (st.lifesteal) t.push(tr(`{heart} 흡혈 ${Math.round(st.lifesteal * 100)}%`, `{heart} Lifesteal ${Math.round(st.lifesteal * 100)}%`));
+  if (st.airMul) t.push(tr(`대공 ×${st.airMul}`, `Anti-air ×${st.airMul}`));
+  if (st.stunField) t.push(tr(`{dizzy} 기절 펄스 ${st.stunField.dur}초`, `{dizzy} Stun pulse ${st.stunField.dur}s`));
+  if (st.split) t.push(tr(`분열 ×${st.split.count}`, `Splits ×${st.split.count}`));
+  if (st.grow) t.push(tr(`성장 ×${st.grow.max}`, `Grows ×${st.grow.max}`));
+  if (st.respawn) t.push(tr('재출현', 'Respawns'));
+  if (st.caffeineDrain) t.push(tr(`{coffee} −${st.caffeineDrain}/타`, `{coffee} −${st.caffeineDrain}/hit`));
   return t.join(' · ');
 }
+
+/** 동료 탭의 등급 필터 */
+let rarityFilter: UnitRarity | 'all' = 'all';
 
 export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => void, initial: Tab = 'ally'): () => void {
   let stopPreview: (() => void) | null = null;
@@ -46,13 +72,21 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
     stopPreview?.();
     const grid = h('div.dex-grid');
     if (tab === 'ally') {
+      grid.append(h('div.rarity-filter', {}, ...(['all', ...UNIT_RARITIES] as const).map((r) => h(`button.chapter-tab${r === 'all' ? '' : `.u-${r}`}${rarityFilter === r ? '.on' : ''}`, {
+        onclick: () => { rarityFilter = r; render('ally'); },
+      }, r === 'all' ? tr('전체', 'All') : rarityLabel(r)))));
       for (const u of UNITS) {
+        const r = rarityOf(u);
+        if (rarityFilter !== 'all' && rarityFilter !== r) continue;
         const owned = isUnitOwned(save, u);
-        grid.append(h('div.dex-ally', {},
-          h('div.dex-ally-head', {}, h('b', {}, u.names[0]), h('span.muted', {}, ` ${u.role}`), owned ? null : h('span.dex-lock', {}, u.unlock.subscribe ? tr('구독 필요', 'Subscription') : tr(`${u.unlock.stage} 클리어 시 합류`, `Joins after ${u.unlock.stage}`))),
+        // 아직 못 얻은 뽑기 장비는 실루엣과 '?'로만
+        const hidden = isGachaUnit(u) && !owned;
+        const lock = owned ? null : h('span.dex-lock', {}, hidden ? tr('{crate} 장비 지원에서 획득', '{crate} From Equipment Grant') : u.unlock.subscribe ? tr('구독 필요', 'Subscription') : tr(`${u.unlock.stage} 클리어 시 합류`, `Joins after ${u.unlock.stage}`));
+        grid.append(h(`div.dex-ally.u-${r}${hidden ? '.hidden' : ''}`, {},
+          h('div.dex-ally-head', {}, r !== 'basic' ? h('span.rarity-chip.mini', {}, rarityLabel(r)) : null, h('b', {}, hidden ? '???' : u.names[0]), hidden ? null : h('span.muted', {}, ` ${u.role}`), lock),
           h('div.dex-tiers', {}, ...[1, 2, 3].map((tier) => h('button.dex-cell', {
-            onclick: () => preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: u.desc, stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }),
-          }, h('img', { src: portrait(u.look, tier, u.id), alt: '' }), h('span', {}, u.names[tier - 1]!)))),
+            onclick: () => !hidden && preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: [u.desc, u.lore ? `"${u.lore}"` : ''].filter(Boolean).join(' '), stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }),
+          }, h('img', { src: portrait(u.look, tier, u.id, 1, undefined, hidden), alt: '' }), h('span', {}, hidden ? '?' : u.names[tier - 1]!)))),
         ));
       }
     } else if (tab === 'skill') {
@@ -72,7 +106,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       for (const e of list) {
         const known = seen.has(e.id);
         grid.append(h(`button.dex-cell.enemy${known ? '' : '.unknown'}${e.boss ? '.boss' : ''}`, {
-          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: bossDesc(e.boss), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
+          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: [e.desc, bossDesc(e.boss)].filter(Boolean).join(' '), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
         }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'), h('small.muted', {}, known ? e.role : tr('아직 만나지 않음', 'Not met yet'))));
       }
     }
@@ -117,7 +151,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       const attacking = cycle > 3;
       const swing = attacking ? Math.max(0, 1 - ((cycle - 3) % 0.75) / 0.25) : 0;
       const s = p.look.scale ?? 1;
-      const zoom = Math.min(3.2, 230 / ((p.look.kind === 'professor' ? 90 : 58) * s));
+      const zoom = Math.min(3.2, 230 / ((p.look.kind === 'professor' ? 90 : p.look.kind === 'gear' ? 74 : 58) * s));
       ctx.translate(240, 290);
       ctx.scale(zoom, zoom);
       const lift = p.stats.flying ? -40 : 0;

@@ -82,6 +82,14 @@ const P: Record<string, string> = {
   meeting: '<rect x="8" y="4" width="16" height="24" rx="1.5" fill="#a1887f"/><circle cx="20.5" cy="17" r="1.3" fill="#2b2430" stroke="none"/><path d="M12 8l4-3 4 3"/><rect x="5" y="9" width="22" height="7" rx="1.5" fill="#fff59d"/><path d="M8.5 12.5h4M15 12.5h2M19.5 12.5h4" stroke="#e53935" stroke-width="1.8"/>',
   envelope: '<rect x="3" y="7" width="26" height="18" rx="2" fill="#fff8e1"/><path d="M4 9l12 9 12-9"/><path d="M4 24l8.5-7.5M28 24l-8.5-7.5" stroke-width="1.6"/><circle cx="16" cy="17.5" r="3.6" fill="#e53935"/><path d="M14.6 17.5h2.8" stroke="#ffcdd2" stroke-width="1.4"/>',
   mail: '<rect x="4" y="8" width="24" height="17" rx="2" fill="#fff"/><path d="M5 10l11 8 11-8"/><circle cx="25" cy="8" r="4" fill="#ef5350" stroke-width="1.8"/>',
+  fire: '<path d="M16 28c-6 0-9-4-9-9 0-5 4-7 5-12 2 3 3 5 3 7 1-2 3-4 3-8 5 4 8 8 8 13 0 5-4 9-10 9z" fill="#ff7043"/><path d="M16 27c-3 0-4-2-4-4 0-3 3-4 4-7 2 3 4 4 4 7 0 2-2 4-4 4z" fill="#ffd54f" stroke-width="1.6"/>',
+  snail: '<path d="M4 25h20c3 0 4-2 4-4" fill="none"/><circle cx="14" cy="17" r="7.5" fill="#81d4fa"/><path d="M14 17m-3 0a3 3 0 1 1 3 3" stroke-width="1.8"/><path d="M24 21v-7M27 21v-6" stroke-width="1.8"/>',
+  guard: '<path d="M16 4l10 4v7c0 7-5 11-10 13-5-2-10-6-10-13V8z" fill="#4dd0e1"/><path d="M11 16l4 4 6-8" stroke-width="2.6"/>',
+  ticket: '<path d="M4 9h24v4a3 3 0 0 0 0 6v4H4v-4a3 3 0 0 0 0-6z" fill="#ffca28"/><path d="M20 10v12" stroke-dasharray="2 2.4" stroke-width="1.6"/><path d="M9 14h7M9 18h5" stroke-width="1.8"/>',
+  crate: '<path d="M4 11l12-5 12 5v13l-12 5-12-5z" fill="#bcaaa4"/><path d="M4 11l12 5 12-5M16 16v13" /><path d="M10 8.5l12 5v4" stroke-width="1.8"/>',
+  chip: '<rect x="8" y="8" width="16" height="16" rx="2" fill="#455a64"/><rect x="12" y="12" width="8" height="8" fill="#80d8ff" stroke-width="1.6"/><path d="M12 4v4M16 4v4M20 4v4M12 24v4M16 24v4M20 24v4M4 12h4M4 16h4M4 20h4M24 12h4M24 16h4M24 20h4" stroke-width="1.8"/>',
+  bolt: '<path d="M18 3L7 18h7l-2 11 11-15h-7z" fill="#ffeb3b"/>',
+  shred: '<path d="M16 4l10 4v7c0 7-5 11-10 13-5-2-10-6-10-13V8z" fill="#ef9a9a"/><path d="M15 5l-2 7 4 3-3 6 2 6" stroke-width="2.2"/>',
 };
 
 export type IconName = keyof typeof P;

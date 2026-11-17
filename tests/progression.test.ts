@@ -4,6 +4,7 @@ import { STAGE_BY_ID, STAGES, FINAL_STAGE, endlessStage } from '../src/data/stag
 import {
   applyOutcome, canSubscribe, evolve, evolveCost, isStageOpen, isSideOpen, isUnitOwned, levelCap, levelUp, levelUpCost,
   makeLoadout, newSave, normalizeSave, takeMigrationNotes, starsFor, subscribe, unitProgress, unitStats, upgradeFacility,
+  SAVE_VERSION, LOADOUT_MAX, loadPreset, moveSquad, savePreset, toggleSquad,
 } from '../src/sim/progression';
 
 describe('성장 시스템', () => {
@@ -116,7 +117,7 @@ describe('성장 시스템', () => {
     const mid = normalizeSave({ v: 1, stars: { '1-1': 2, '2-5': 2 } });
     expect(mid.stars['4-4']).toBe(2);
     expect(mid.stars['4-5'] ?? 0).toBe(0);
-    expect(takeMigrationNotes()).toHaveLength(2);
+    expect(takeMigrationNotes()).toHaveLength(4); // 캠페인 확장 2 + 편성·뽑기권 안내 2
     const fresh = normalizeSave({ v: 1, stars: {} });
     expect(Object.values(fresh.stars).every((v) => v === 0)).toBe(true);
   });
@@ -133,7 +134,7 @@ describe('성장 시스템', () => {
     expect(old.stars['2-1']).toBe(3);
     expect(isStageOpen(old, STAGE_BY_ID['2-3']!)).toBe(false);
     expect(old.seen).toEqual(['ch1-intro']);
-    expect(takeMigrationNotes()).toHaveLength(1);
+    expect(takeMigrationNotes()).toHaveLength(2); // + 편성·뽑기권 안내
     expect(STAGES).toHaveLength(70);
   });
 
@@ -146,7 +147,7 @@ describe('성장 시스템', () => {
     expect(s.stars['7-8']).toBe(0);
     expect(s.stars['7-10']).toBe(3);
     expect(STAGES.filter((x) => !s.stars[x.id])).toHaveLength(27);
-    expect(takeMigrationNotes()).toHaveLength(1);
+    expect(takeMigrationNotes()).toHaveLength(2); // + 편성·뽑기권 안내
     // 한 번 고친 저장(v4)은 다시 건드리지 않는다
     expect(normalizeSave({ ...s, v: 4 }).stars['1-4']).toBe(0);
     expect(normalizeSave({ v: 4, stars }).stars['1-4']).toBe(3);
@@ -190,5 +191,68 @@ describe('성장 시스템', () => {
     expect(isStageOpen(s, endlessStage(2))).toBe(true);
     expect(endlessStage(10).boss).toBeTruthy();
     expect(endlessStage(20).scale).toBeGreaterThan(endlessStage(10).scale);
+  });
+
+  it('저장 버전 5: 예전 저장은 가진 유닛 앞 9명으로 편성하고, 깬 보스·무한 기록만큼 뽑기권을 준다', () => {
+    expect(SAVE_VERSION).toBe(5);
+    takeMigrationNotes();
+    const stars: Record<string, number> = {};
+    for (const st of STAGES.filter((x) => x.order <= STAGE_BY_ID['6-10']!.order)) stars[st.id] = 2;
+    const s = normalizeSave({ v: 4, money: 0, stars, subs: ['claudy', 'codexy', 'jaeminai'], endless: 23, seen: STAGES.map((x) => `st-${x.id}`) });
+    expect(s.loadout).toHaveLength(LOADOUT_MAX);
+    expect(s.loadout).toEqual(['grunt', 'keyboard', 'coder', 'shield', 'chemist', 'allnighter', 'labchief', 'drone', 'gpu']);
+    expect(s.gear.tickets).toBe(6 + 2); // 보스 6개 + 무한 23판
+    expect(takeMigrationNotes()).toHaveLength(1);
+    expect(makeLoadout(s).deck.map((d) => d.def.id)).toEqual(s.loadout);
+    // 이미 옮긴 저장을 다시 읽으면 그대로 (뽑기권을 또 주지 않는다)
+    const again = normalizeSave(JSON.parse(JSON.stringify({ ...s, v: SAVE_VERSION })));
+    expect(again.loadout).toEqual(s.loadout);
+    expect(again.gear.tickets).toBe(s.gear.tickets);
+    expect(takeMigrationNotes()).toHaveLength(0);
+  });
+
+  it('편성 정리: 가지지 않은·모르는·중복 유닛은 빼고 9칸까지, 뽑기 기록도 정리한다', () => {
+    const s = normalizeSave({
+      v: 5, stars: { '1-1': 1, '1-3': 1 }, loadout: ['keyboard', 'keyboard', 'nope', 'gpu', 'iron', 'grunt'],
+      presets: [['grunt'], 'x', ['iron', 'coder']],
+      gear: { owned: { iron: 3, grunt: 2, nope: 1, scope: 99 }, tickets: -4, spark: 12.7 },
+    });
+    expect(s.gear.owned).toEqual({ iron: 3, scope: 6 });
+    expect(s.gear.tickets).toBe(0);
+    expect(s.gear.spark).toBe(12);
+    expect(s.loadout).toEqual(['keyboard', 'iron', 'grunt']);
+    expect(s.presets).toEqual([['grunt'], [], ['iron']]);
+  });
+
+  it('편성 바꾸기: 넣고 빼고, 9칸이 차면 더 못 넣고, 마지막 한 명은 못 빼며, 프리셋으로 저장·불러오기', () => {
+    const s = newSave();
+    for (const st of STAGES) s.stars[st.id] = 1;
+    s.loadout = ['grunt'];
+    expect(toggleSquad(s, 'grunt')).toBe(false);
+    for (const id of ['keyboard', 'coder', 'shield', 'chemist', 'allnighter', 'labchief', 'drone', 'gpu']) expect(toggleSquad(s, id)).toBe(true);
+    expect(toggleSquad(s, 'claudy')).toBe(false); // 구독 안 함
+    s.subs.push('claudy');
+    expect(toggleSquad(s, 'claudy')).toBe(false); // 9칸 가득
+    expect(toggleSquad(s, 'grunt')).toBe(true);
+    expect(toggleSquad(s, 'claudy')).toBe(true);
+    expect(s.loadout).toHaveLength(9);
+    expect(moveSquad(s, 'claudy', 1)).toBe(false);
+    expect(moveSquad(s, 'claudy', -1)).toBe(true);
+    expect(s.loadout.slice(-2)).toEqual(['claudy', 'gpu']);
+    expect(savePreset(s, 0)).toBe(true);
+    s.loadout = ['grunt'];
+    expect(loadPreset(s, 1)).toBe(false); // 빈 프리셋
+    expect(loadPreset(s, 0)).toBe(true);
+    expect(s.loadout).toHaveLength(9);
+  });
+
+  it('새로 합류한 동료는 편성에 빈칸이 있으면 자동으로 들어간다', () => {
+    const s = newSave();
+    applyOutcome(s, STAGE_BY_ID['1-3']!, true, 1, 0);
+    expect(s.loadout).toEqual(['grunt', 'keyboard']);
+    s.stars['1-10'] = 1;
+    s.money = 10_000;
+    subscribe(s, UNIT_BY_ID.claudy!);
+    expect(s.loadout).toContain('claudy');
   });
 });
