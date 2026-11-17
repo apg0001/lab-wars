@@ -46,7 +46,7 @@ describe('성장 시스템', () => {
     const b = unitStats(k, { level: 5, tier: 2 });
     expect(b.hp / a.hp).toBeCloseTo(1.5, 1);
     expect(k.names).toEqual(['학부 키보드 워리어', '석사 키보드 워리어', '박사 키보드 워리어']);
-    expect(evolveCost(k, 1)).toBe(800);
+    expect(evolveCost(k, 1)).toBe(900);
   });
 
   it('AI 조수는 해금 스테이지 클리어 후 구독해야 쓸 수 있다', () => {
@@ -62,7 +62,7 @@ describe('성장 시스템', () => {
     expect(subscribe(s, c)).toBe(false);
   });
 
-  it('별과 보상: 첫 클리어는 전액, 재클리어는 40%', () => {
+  it('별과 보상: 첫 클리어는 전액, 재클리어는 50%', () => {
     expect([starsFor(0.9), starsFor(0.5), starsFor(0.1)]).toEqual([3, 2, 1]);
     const s = newSave();
     const st = STAGE_BY_ID['1-1']!;
@@ -70,21 +70,21 @@ describe('성장 시스템', () => {
     expect(first.firstClear).toBe(true);
     expect(first.clearReward).toBe(Math.round(st.reward * 1.2));
     const again = applyOutcome(s, st, true, 0.5, 0);
-    expect(again.clearReward).toBe(Math.round(st.reward * 1.0 * 0.4));
+    expect(again.clearReward).toBe(Math.round(st.reward * 1.0 * 0.5));
     expect(s.stars['1-1']).toBe(3);
     const lose = applyOutcome(s, STAGE_BY_ID['1-2']!, false, 0, 25);
     expect(lose.clearReward).toBe(0);
     expect(s.money).toBe(first.clearReward + 10 + again.clearReward + 25);
   });
 
-  it('프린터 사거리 연장은 레벨당 20씩 늘고, 예전 저장 데이터는 0레벨로 시작한다', () => {
+  it('프린터 사거리 연장은 레벨당 25씩 늘고, 예전 저장 데이터는 0레벨로 시작한다', () => {
     const old = normalizeSave({ money: 1000, facilities: { remodel: 1, printer: 2 } });
     expect(old.facilities.printerRange).toBe(0);
     expect(makeLoadout(old).printerRange).toBe(300);
     old.money = 100_000;
     expect(upgradeFacility(old, 'printerRange')).toBe(true);
     expect(upgradeFacility(old, 'printerRange')).toBe(true);
-    expect(makeLoadout(old).printerRange).toBe(340);
+    expect(makeLoadout(old).printerRange).toBe(350);
   });
 
   it('머그컵 투척기 강화 비용을 한 번 환불하고 안내를 남긴다', () => {

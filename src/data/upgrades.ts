@@ -38,7 +38,7 @@ export const FACILITIES: FacilityDef[] = [
   { id: 'meditate', name: '명상 앱', icon: '🧘', desc: '멘탈 충전 +0.25/초 (스킬을 더 자주)', max: 8, baseCost: 110 },
   { id: 'planner', name: '일정 관리 앱', icon: '📅', desc: '동료 재소환 대기시간 −4%', max: 8, baseCost: 120 },
   { id: 'printer', name: '자동 프린터 포탑', icon: '🖨️', desc: '포탑 피해 +20%', max: 10, baseCost: 90 },
-  { id: 'printerRange', name: '프린터 사거리 연장', icon: '📏', desc: '포탑 사거리 +20 (기본 280)', max: 8, baseCost: 160 },
+  { id: 'printerRange', name: '프린터 사거리 연장', icon: '📏', desc: '포탑 사거리 +25 (기본 300, 최대 600)', max: 12, baseCost: 160 },
 ];
 
-export const facilityCost = (f: FacilityDef, level: number): number => Math.round(f.baseCost * 1.45 ** level);
+export const facilityCost = (f: FacilityDef, level: number): number => Math.round(f.baseCost * 1.5 ** level);

@@ -130,14 +130,19 @@ function poolAt(c: number, kind: StageKind): { id: string; weight: number }[] {
       const age = c - from;
       const base = WEIGHTS[id] ?? 1;
       const w = id === 'memo' ? Math.max(1.5, base - age * 0.25) : base;
-      return { id, weight: w * (mul[id] ?? 1) };
+      // 초반 학회(c<10)는 공중 질문 공세를 조금 덜어 대공 유닛이 적을 때의 벽을 낮춘다
+      const k = kind === 'conference' && id === 'plane' && c < 10 ? 1 : (mul[id] ?? 1);
+      return { id, weight: w * k };
     });
 }
+
+/** 적 능력치 배율: 곡선을 따라 오르고, 초반(1~2챕터)엔 조금 더 세게 해서 처음부터 긴장감을 준다 (3챕터부터 원래대로) */
+const enemyScale = (c: number): number => 1 + c * 0.1 + (c <= 6 ? c * 0.03 : Math.max(0, 0.18 - (c - 6) * 0.045));
 
 /** 곡선 위치 c에서의 기본 수치 (외전·무한 모드도 같이 쓴다) */
 export function numbersAt(c: number): Pick<StageDef, 'scale' | 'enemyBaseHp' | 'towerAtk' | 'spawnEvery' | 'rush'> {
   return {
-    scale: 1 + c * 0.1,
+    scale: enemyScale(c),
     enemyBaseHp: Math.round(700 + c * 180),
     towerAtk: Math.round(10 * (1 + c * 0.12)),
     spawnEvery: Math.max(1.75, 2.8 - c * 0.06),
@@ -162,7 +167,7 @@ function makeStage(chapter: number, index: number): StageDef {
     order,
     name,
     kind,
-    scale: 1 + c * 0.1,
+    scale: enemyScale(c),
     enemyBaseHp: Math.round((700 + c * 180) * (thesis ? 1.1 : 1)),
     towerAtk: Math.round(10 * (1 + c * 0.12) * (conference ? 1.08 : 1)),
     spawnEvery: Math.max(1.75, 2.8 - c * 0.06) * (isBoss ? 1.6 : vacation ? 1.3 : 1),
@@ -183,7 +188,7 @@ function makeStage(chapter: number, index: number): StageDef {
 /** 스테이지가 두 배 넘게 늘어난 만큼 한 판 보상을 줄인다. */
 export const REWARD_MUL = 0.45;
 /** 판 수가 늘어난 만큼 처치 연구비도 줄인다. */
-export const KILL_MUL = 0.4;
+export const KILL_MUL = 0.45;
 
 export const STAGES: StageDef[] = CHAPTERS.flatMap((c) => Array.from({ length: STAGES_PER_CHAPTER }, (_, i) => makeStage(c.id, i + 1)));
 
@@ -229,7 +234,7 @@ export function endlessStage(n: number): StageDef {
     order,
     name: isBoss ? `무한 ${n}판: 보스 러시` : `무한 ${n}판`,
     kind: 'endless',
-    scale: 1 + c * 0.1,
+    scale: enemyScale(c),
     enemyBaseHp: Math.round(700 + c * 180),
     towerAtk: Math.round(10 * (1 + c * 0.12)),
     spawnEvery: Math.max(1.4, 2.8 - c * 0.06) * (isBoss ? 1.5 : 1),
@@ -263,7 +268,7 @@ export interface SideChapter {
 export const SIDE_CHAPTERS: SideChapter[] = [
   {
     id: 1, name: '조교수 생존기', subtitle: '테뉴어라는 이름의 공포', heroChapter: 8, theme: 'tenure',
-    mods: { frenzy: { every: 38, dur: 9, mul: 1.35 } }, boss: 'tenure', from: 17,
+    mods: { frenzy: { every: 38, dur: 9, mul: 1.35 } }, boss: 'tenure', from: 19,
     pool: { meeting: 3, paperwork: 2.2, evalform: 2.4, grant: 1, ta: 1, notif: 1, revision: 0.8, memo: 2 },
     rule: '📋 평가 시즌: 주기적으로 적이 빨라지고 공격이 거세져요.',
   },
@@ -275,7 +280,7 @@ export const SIDE_CHAPTERS: SideChapter[] = [
   },
   {
     id: 3, name: '연구자의 고충', subtitle: '아무도 모르는 싸움', heroChapter: 6, theme: 'gloom',
-    mods: { drain: 2.4 }, boss: 'reviewer3', from: 19,
+    mods: { drain: 3 }, boss: 'reviewer3', from: 21,
     pool: { imposter: 2.6, scooped: 1.1, revision: 1.4, reviewer: 1.5, deadline: 1.5, notif: 1, meeting: 1.2 },
     rule: '🌧️ 멘탈 고갈: 멘탈이 계속 줄고, 적을 처치하면 회복돼요. 바닥나면 아군 공격력 −25%.',
   },
