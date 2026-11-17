@@ -1050,3 +1050,7 @@ html[lang='en'] body { font-weight: 500; }
 .rank-avatar { width: calc(3.4 * var(--u)); height: calc(3.4 * var(--u)); object-fit: contain; flex: none; }
 .rank-badge { display: block; font-size: calc(1.1 * var(--u)); color: #8e5bd0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .portrait .rank-avatar { grid-area: avatar; }
+
+/* ── 장비 지원: 열정 설명 ── */
+.grant { overflow-y: auto; touch-action: pan-y; }
+.passion-help { background: #fff3e0; border: calc(0.2 * var(--u)) dashed #ef6c00; border-radius: calc(0.8 * var(--u)); padding: calc(0.5 * var(--u)) calc(0.8 * var(--u)); line-height: 1.35; }
