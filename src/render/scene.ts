@@ -3,6 +3,7 @@ import { RANGED_THRESHOLD } from '../data/types';
 import { drawCharacter, INK } from './characters';
 import type { Juice } from './juice';
 import { drawDarkness, drawThemeBackdrop, type Light } from './spooky';
+import { drawRich, iconImg } from './doodle';
 
 /** 기준 화면 크기 (16:9). 더 넓은 화면에서는 세로를 고정하고 가로로 더 보여준다. */
 export const VIEW_W = 960;
@@ -186,9 +187,8 @@ function drawPrinterRange(ctx: Ctx, edge: number): void {
   ctx.lineTo(edge - 20, VIEW_H);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.font = '12px Jua, sans-serif';
-  ctx.fillStyle = 'rgba(30,136,229,.8)';
-  ctx.fillText('🖨️', edge - 8, GROUND_Y + 18);
+  const pi = iconImg('printer');
+  if (pi) ctx.drawImage(pi, edge - 10, GROUND_Y + 4, 18, 18);
   ctx.restore();
 }
 
@@ -511,19 +511,11 @@ function drawFx(ctx: Ctx, b: Battle, screenSpace: boolean): void {
           ctx.font = 'bold 30px Jua, sans-serif';
           ctx.textAlign = 'center';
           const y = 120 + bannerIdx++ * 40 - Math.min(k, 0.15) * 40;
-          ctx.lineWidth = 6;
-          ctx.strokeStyle = INK;
-          ctx.strokeText(e.text ?? '', viewW / 2, y);
-          ctx.fillStyle = '#fff';
-          ctx.fillText(e.text ?? '', viewW / 2, y);
+          drawRich(ctx, e.text ?? '', viewW / 2, y, 30, '#fff', 6);
         } else {
           ctx.font = 'bold 15px Jua, sans-serif';
           ctx.textAlign = 'center';
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = INK;
-          ctx.strokeText(e.text ?? '', e.x, e.y - k * 20);
-          ctx.fillStyle = e.color ?? '#fff';
-          ctx.fillText(e.text ?? '', e.x, e.y - k * 20);
+          drawRich(ctx, e.text ?? '', e.x, e.y - k * 20, 15, e.color ?? '#fff', 3);
         }
         break;
       case 'boom':

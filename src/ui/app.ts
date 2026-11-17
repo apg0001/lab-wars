@@ -21,13 +21,14 @@ import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
 import { mountGallery } from './gallery';
 import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscreen } from './fullscreen';
-import { h, fmt } from './dom';
+import { h, fmt, setRich } from './dom';
+import { iconEl } from '../render/doodle';
 import { portrait } from './icons';
 import { SCENES, type Scene } from '../story/script';
 import { STORY_ORDER, scenesOfStage, unlockedScenes } from '../story/unlock';
 import { playMarathon, playScenes } from '../story/player';
 
-const KIND_ICON: Partial<Record<StageKind, string>> = { vacation: '🏖️', conference: '🎤', thesis: '📝' };
+const KIND_ICON: Partial<Record<StageKind, string>> = { vacation: '{beach}', conference: '{mic}', thesis: '{paper}' };
 
 interface Settings {
   /** 전투 배속 1~3 */
@@ -57,7 +58,7 @@ export class App {
     // 전체 화면이 켜지거나 꺼지면 버튼 글자를 바꾼다
     onFullscreenChange(() => {
       const btn = this.root.querySelector('.fs-btn');
-      if (btn) btn.textContent = fsLabel();
+      if (btn) setRich(btn, fsLabel());
     });
     if (this.accountStore) {
       this.accountStore.onSync = (st) => {
@@ -126,8 +127,8 @@ export class App {
   }
 
   private syncChip(): HTMLElement {
-    const label = { synced: '☁️ 저장됨', pending: '⏳ 저장 중', offline: '📴 오프라인', error: '⚠️ 동기화 오류' };
-    return h('span.sync-chip', {}, this.sync ? label[this.sync] : '📱 이 기기');
+    const label = { synced: '{cloud} 저장됨', pending: '{hourglass} 저장 중', offline: '{offline} 오프라인', error: '{warn} 동기화 오류' };
+    return h('span.sync-chip', {}, this.sync ? label[this.sync] : '{phone} 이 기기');
   }
 
   private saveSettings(): void {
@@ -138,7 +139,7 @@ export class App {
 
   /** 소리 설정 버튼 (누르면 아이콘도 갱신) */
   private audioBtn(cls = ''): HTMLElement {
-    const btn = h(`button.icon-btn.audio-btn${cls}`, { title: '소리 설정', onclick: () => showAudioSettings(this.root.firstElementChild, () => { btn.textContent = audioIcon(); }) }, audioIcon());
+    const btn = h(`button.icon-btn.audio-btn${cls}`, { title: '소리 설정', onclick: () => showAudioSettings(this.root.firstElementChild, () => { setRich(btn, audioIcon()); }) }, audioIcon());
     return btn;
   }
 
@@ -157,8 +158,8 @@ export class App {
       ? h('div.title-actions', {},
         h('button.btn.primary.big', { onclick: () => this.showMap() }, `▶ ${p.name} 연구실로`),
         h('div.btn-row', {},
-          h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 프로필 변경'),
-          this.api && p.kind !== 'account' ? h('button.btn.small', { onclick: () => this.showLogin() }, '🔐 로그인 / 가입') : null,
+          h('button.btn.small', { onclick: () => this.showProfiles() }, '{user} 프로필 변경'),
+          this.api && p.kind !== 'account' ? h('button.btn.small', { onclick: () => this.showLogin() }, '{key} 로그인 / 가입') : null,
         ),
       )
       : this.newProfileForm();
@@ -174,7 +175,7 @@ export class App {
       body,
       notice,
       h('p.title-foot', {}, p
-        ? (p.kind === 'account' ? `🔐 ${p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
+        ? (p.kind === 'account' ? `{key} ${p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
         : '진행 상황은 이 기기에 저장됩니다'),
     ));
   }
@@ -189,10 +190,10 @@ export class App {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') void go();
     });
-    return h('div.title-actions', {}, input, h('button.btn.primary.big', { onclick: () => void go() }, '🎓 게스트로 시작'),
+    return h('div.title-actions', {}, input, h('button.btn.primary.big', { onclick: () => void go() }, '{cap} 게스트로 시작'),
       h('div.btn-row', {},
-        this.api ? h('button.btn.small', { onclick: () => this.showLogin() }, '🔐 로그인 / 가입') : null,
-        this.profiles.list().length ? h('button.btn.small', { onclick: () => this.showProfiles() }, '👤 기존 프로필') : null,
+        this.api ? h('button.btn.small', { onclick: () => this.showLogin() }, '{key} 로그인 / 가입') : null,
+        this.profiles.list().length ? h('button.btn.small', { onclick: () => this.showProfiles() }, '{user} 기존 프로필') : null,
       ));
   }
 
@@ -201,7 +202,7 @@ export class App {
     const overlay = h('div.overlay');
     const close = (): void => overlay.remove();
     const rows = list.map((p) => h('div.profile-row', {},
-      h('button.btn.profile-pick', { onclick: async () => { close(); await this.enter(p); } }, `${p.id === this.profile?.id ? '✅ ' : ''}${p.kind === 'account' ? '🔐 ' : '📱 '}${p.name}`),
+      h('button.btn.profile-pick', { onclick: async () => { close(); await this.enter(p); } }, `${p.id === this.profile?.id ? '{check} ' : ''}${p.kind === 'account' ? '{key} ' : '{phone} '}${p.name}`),
       p.kind === 'account' ? h('button.btn.small', { onclick: async () => {
         await this.api?.logout();
         await this.localStore.remove(p.id);
@@ -266,7 +267,7 @@ export class App {
       if (e.key === 'Enter') void submit('login');
     });
     overlay.append(h('div.panel.login', {},
-      h('h2', {}, '🔐 로그인'),
+      h('h2', {}, '{key} 로그인'),
       h('p.muted', {}, '로그인하면 진행 상황이 계정에 저장되어 다른 기기에서도 이어서 할 수 있어요.'),
       h('div.title-actions', {}, user, pass),
       msg,
@@ -284,9 +285,9 @@ export class App {
 
   private topBar(title: string, back?: () => void): HTMLElement {
     return h('div.topbar', {},
-      back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `👤 ${this.profile?.name ?? ''}`),
+      back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `{user} ${this.profile?.name ?? ''}`),
       h('h2.top-title', {}, title),
-      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `💰 ${fmt(this.save.money)}`), this.audioBtn()),
+      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `{coin} ${fmt(this.save.money)}`), this.audioBtn()),
     );
   }
 
@@ -299,14 +300,14 @@ export class App {
       return h(`button.chapter-tab${c.id === this.chapter ? '.on' : ''}`, {
         disabled: open ? undefined : 'true',
         onclick: () => { this.chapter = c.id; this.showMap(); },
-      }, open ? c.name : `🔒 ${c.name}`);
+      }, open ? c.name : `{lock} ${c.name}`);
     }), h(`button.chapter-tab.endless-tab${this.chapter === CHAPTERS.length + 1 ? '.on' : ''}`, {
       disabled: endlessOpen ? undefined : 'true',
       onclick: () => { this.chapter = CHAPTERS.length + 1; this.showMap(); },
-    }, endlessOpen ? '♾️ 무한' : '🔒 ♾️'), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
+    }, endlessOpen ? '{infinity} 무한' : '{lock} {infinity}'), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
       disabled: endlessOpen ? undefined : 'true',
       onclick: () => { this.chapter = SIDE_TAB; this.showMap(); },
-    }, endlessOpen ? '📕 외전' : '🔒 📕'));
+    }, endlessOpen ? '{redbook} 외전' : '{lock} {redbook}'));
     if (this.chapter === SIDE_TAB) return this.showSideMap(tabs);
     if (this.chapter > CHAPTERS.length) return this.showEndlessMap(tabs);
     const ch = CHAPTERS[this.chapter - 1]!;
@@ -327,10 +328,10 @@ export class App {
 
   private mapActions(): HTMLElement {
     return h('div.map-actions', {},
-      h('button.btn.lab-btn', { onclick: () => this.showLab() }, '🔬 연구실 강화'),
-      h('button.btn.dex-btn', { onclick: () => this.showGallery() }, '📖 도감'),
-      h('button.btn.story-btn', { onclick: () => this.showStory() }, '📜 스토리'),
-      h('button.btn.rank-btn', { onclick: () => this.showLeaderboard() }, '🏆 순위'),
+      h('button.btn.lab-btn', { onclick: () => this.showLab() }, '{flask} 연구실 강화'),
+      h('button.btn.dex-btn', { onclick: () => this.showGallery() }, '{book} 도감'),
+      h('button.btn.story-btn', { onclick: () => this.showStory() }, '{scroll} 스토리'),
+      h('button.btn.rank-btn', { onclick: () => this.showLeaderboard() }, '{trophy} 순위'),
     );
   }
 
@@ -348,7 +349,7 @@ export class App {
     this.swap(h('div.screen.map.side-map', {},
       this.topBar('스테이지'),
       tabs,
-      h('div.chapter-title', {}, h('b', {}, '📕 외전: 아무도 말해 주지 않은 이야기'), h('span.muted', {}, ' · 으스스한 특수 규칙')),
+      h('div.chapter-title', {}, h('b', {}, '{redbook} 외전: 아무도 말해 주지 않은 이야기'), h('span.muted', {}, ' · 으스스한 특수 규칙')),
       h('div.side-list', {}, ...rows),
       this.mapActions(),
     ));
@@ -363,9 +364,9 @@ export class App {
     },
     s.boss ? h('img', { src: portrait(ENEMY_BY_ID[s.boss]!.look, 1, s.boss, -1), alt: '' }) : null,
     KIND_ICON[s.kind] ? h('span.node-kind', {}, KIND_ICON[s.kind]!) : null,
-    h('span.node-id', {}, open ? s.id : '🔒'),
+    h('span.node-id', {}, open ? s.id : '{lock}'),
     h('span.node-name', {}, s.name),
-    h('span.node-stars', {}, open ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : ''),
+    h('span.node-stars', {}, open ? '{star}'.repeat(stars) + '{starOff}'.repeat(3 - stars) : ''),
     );
   }
 
@@ -376,14 +377,14 @@ export class App {
     this.swap(h('div.screen.map', {},
       this.topBar('스테이지'),
       tabs,
-      h('div.chapter-title', {}, h('b', {}, '♾️ 무한 모드: 교수가 되어도 일은 끝나지 않는다'), h('span.muted', {}, ` · 최고 기록 ${best}판`)),
+      h('div.chapter-title', {}, h('b', {}, '{infinity} 무한 모드: 교수가 되어도 일은 끝나지 않는다'), h('span.muted', {}, ` · 최고 기록 ${best}판`)),
       h('div.endless-box', {},
         h('div.endless-best', {}, h('span', {}, '최고 기록'), h('b', {}, `${best}판`)),
         h('div.endless-list', {}, ...recent.map((n) => {
           const st = endlessStage(n);
           const open = isStageOpen(this.save, st);
           return h(`button.btn${n === best + 1 ? '.primary.big' : ''}`, { disabled: open ? undefined : 'true', onclick: () => this.showStageInfo(st) },
-            `${n === best + 1 ? '⚔️ 도전: ' : '🔁 '}${st.name}${st.boss ? ` (${ENEMY_BY_ID[st.boss]!.name})` : ''}`);
+            `${n === best + 1 ? '도전: ' : '{retry} '}${st.name}${st.boss ? ` (${ENEMY_BY_ID[st.boss]!.name})` : ''}`);
         })),
         h('p.muted', {}, `다음 판 적 능력치 ×${next.scale.toFixed(1)} · 5판마다 보스 · 처음 넘는 판은 보상 전액`),
       ),
@@ -399,17 +400,17 @@ export class App {
     const deck = makeLoadout(this.save).deck;
     overlay.append(h('div.panel.stage-info', {},
       h('h2', {}, `${s.id} ${s.name}`),
-      s.boss ? h('p.boss-warn', {}, `⚠️ 보스: ${ENEMY_BY_ID[s.boss]!.name}`) : null,
+      s.boss ? h('p.boss-warn', {}, `{warn} 보스: ${ENEMY_BY_ID[s.boss]!.name}`) : null,
       s.note ? h('p.stage-note', {}, s.note) : null,
       h('p.muted', {}, '등장하는 적'),
       h('div.enemy-row', {}, ...enemyIds.map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name)))),
       s.kind === 'endless'
-        ? h('p', {}, s.index > this.save.endless ? `첫 돌파 보상 💰 ${fmt(s.reward)}` : `재도전 보상 💰 ${fmt(s.reward * 0.4)} + 처치 보상`)
-        : h('p', {}, first ? `첫 클리어 보상 💰 최대 ${fmt(s.reward * 1.2)}` : `재도전 보상 💰 최대 ${fmt(s.reward * 1.2 * REPLAY_MUL)} + 처치 보상`),
+        ? h('p', {}, s.index > this.save.endless ? `첫 돌파 보상 {coin} ${fmt(s.reward)}` : `재도전 보상 {coin} ${fmt(s.reward * 0.4)} + 처치 보상`)
+        : h('p', {}, first ? `첫 클리어 보상 {coin} 최대 ${fmt(s.reward * 1.2)}` : `재도전 보상 {coin} 최대 ${fmt(s.reward * 1.2 * REPLAY_MUL)} + 처치 보상`),
       h('p.muted', {}, `출전 유닛 ${deck.length}종`),
       h('div.btn-row', {},
         h('button.btn', { onclick: close }, '닫기'),
-        h('button.btn.primary', { onclick: () => { close(); this.startBattle(s); } }, '⚔️ 출전!'),
+        h('button.btn.primary', { onclick: () => { close(); this.startBattle(s); } }, '출전!'),
       ),
     ));
     this.root.firstElementChild?.append(overlay);
@@ -455,13 +456,13 @@ export class App {
     };
     const label = (id: string): string => {
       const sc = SCENES[id]!;
-      if (id.startsWith('side') && id.endsWith('-clear')) return '🎉 외전 클리어';
-      if (id.startsWith('side') && id.endsWith('-boss')) return `👻 ${STAGE_BY_ID[`S${id[4]}-5`]?.name ?? '보스'}`;
+      if (id.startsWith('side') && id.endsWith('-clear')) return '{party} 외전 클리어';
+      if (id.startsWith('side') && id.endsWith('-boss')) return `{ghost} ${STAGE_BY_ID[`S${id[4]}-5`]?.name ?? '보스'}`;
       if (id.startsWith('st-')) return `${id.slice(3)} ${STAGE_BY_ID[id.slice(3)]?.name ?? ''}`;
-      if (id.endsWith('-intro')) return `📖 ${sc.title ?? id}`;
-      if (id.endsWith('-boss')) return `👔 ${sc.title ?? id}`;
-      if (id === 'ending') return '🎓 엔딩';
-      return `🎉 ${groupOf(id)}장 클리어`;
+      if (id.endsWith('-intro')) return `{book} ${sc.title ?? id}`;
+      if (id.endsWith('-boss')) return `{tie} ${sc.title ?? id}`;
+      if (id === 'ending') return '{cap} 엔딩';
+      return `{party} ${groupOf(id)}장 클리어`;
     };
     const run = (start: number): void => {
       close();
@@ -482,10 +483,10 @@ export class App {
     };
     const groups = [
       ...CHAPTERS.map((c) => ({ key: String(c.id), name: `${c.id}장 · ${c.name}` })),
-      ...SIDE_CHAPTERS.map((c) => ({ key: `S${c.id}`, name: `📕 외전 ${c.id} · ${c.name}` })),
+      ...SIDE_CHAPTERS.map((c) => ({ key: `S${c.id}`, name: `{redbook} 외전 ${c.id} · ${c.name}` })),
     ].map((g) => ({ ...g, ids: open.filter((id) => groupOf(id) === g.key) })).filter((g) => g.ids.length);
     overlay.append(h('div.panel.story-list', {},
-      h('h2', {}, '📜 스토리 다시 보기'),
+      h('h2', {}, '{scroll} 스토리 다시 보기'),
       open.length
         ? h('div', {},
           h('p.muted', {}, `열린 장면 ${open.length} / ${STORY_ORDER.length} · 장면을 누르면 거기서부터 쭉 이어서 봐요`),
@@ -522,11 +523,11 @@ export class App {
         const out = applyOutcome(this.save, stage, e.win, e.baseHpRatio, e.killReward);
         this.persist();
         const lines = [
-          e.win ? `클리어 보상 💰 ${fmt(out.clearReward)}${out.firstClear ? ' (첫 클리어!)' : ''}` : '연구비는 처치한 만큼 받았어요.',
-          `처치 보상 💰 ${fmt(out.killReward)} · 처치 ${e.kills}`,
+          e.win ? `클리어 보상 {coin} ${fmt(out.clearReward)}${out.firstClear ? ' (첫 클리어!)' : ''}` : '연구비는 처치한 만큼 받았어요.',
+          `처치 보상 {coin} ${fmt(out.killReward)} · 처치 ${e.kills}`,
           ...this.unlockNews(before),
         ];
-        return { title: e.win ? '🎉 교수실 함락!' : '😵 연구실이 망가졌다…', lines, stars: out.stars };
+        return { title: e.win ? '{party} 교수실 함락!' : '{dizzy} 연구실이 망가졌다…', lines, stars: out.stars };
       },
       actions: (win) => {
         const next = stage.kind === 'endless' ? endlessStage(stage.index + 1) : stage.side ? STAGE_BY_ID[`S${stage.side}-${stage.index + 1}`] : STAGES[stage.order + 1];
@@ -534,11 +535,11 @@ export class App {
         const clearId = scenesOfStage(stage).after[0] ?? '';
         const clearScene = win && clearId && !this.save.seen.includes(clearId) ? SCENES[clearId] : undefined;
         if (clearScene?.id === 'ending') {
-          return [{ label: '🎓 엔딩 보기', primary: true, run: () => {
+          return [{ label: '{cap} 엔딩 보기', primary: true, run: () => {
             this.swap(h('div.screen.story-backdrop'));
             this.play([clearScene], () => {
               this.chapter = CHAPTERS.length + 1;
-              this.notice = '♾️ 무한 모드와 📕 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
+              this.notice = '{infinity} 무한 모드와 {redbook} 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
               this.showMap();
             }, 7);
           } }];
@@ -547,14 +548,14 @@ export class App {
         if (win) {
           return [
             ...(next ? [{ label: `다음: ${next.kind === 'endless' ? next.name : `${next.id} ${next.name}`}`, primary: true, run: wrap(() => { this.chapter = next.chapter; this.startBattle(next); }) }] : []),
-            { label: '🔬 연구실 강화', primary: !next, run: wrap(() => this.showLab()) },
-            { label: '🗺️ 지도로', run: wrap(() => this.showMap()) },
+            { label: '{flask} 연구실 강화', primary: !next, run: wrap(() => this.showLab()) },
+            { label: '{map} 지도로', run: wrap(() => this.showMap()) },
           ];
         }
         return [
-          { label: '🔬 연구실 강화', primary: true, run: () => this.showLab() },
-          { label: '🔁 다시 도전', run: () => this.startBattle(stage) },
-          { label: '🗺️ 지도로', run: () => this.showMap() },
+          { label: '{flask} 연구실 강화', primary: true, run: () => this.showLab() },
+          { label: '{retry} 다시 도전', run: () => this.startBattle(stage) },
+          { label: '{map} 지도로', run: () => this.showMap() },
         ];
       },
       onQuit: () => this.showMap(),
@@ -568,10 +569,10 @@ export class App {
     const body = h('div.rank-body', {}, h('p.muted', {}, '불러오는 중…'));
     const isAccount = this.profile?.kind === 'account';
     overlay.append(h('div.panel.rank-panel', {},
-      h('h2', {}, '🏆 연구실 순위'),
+      h('h2', {}, '{trophy} 연구실 순위'),
       h('p.muted.rank-sub', {}, '무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 아이디가 표시돼요.'),
       body,
-      isAccount || !this.api ? null : h('p.notice', {}, '🔐 로그인하면 내 기록도 순위에 올라가요.'),
+      isAccount || !this.api ? null : h('p.notice', {}, '{key} 로그인하면 내 기록도 순위에 올라가요.'),
       h('button.btn.primary', { onclick: close }, '닫기'),
     ));
     this.root.firstElementChild?.append(overlay);
@@ -582,11 +583,11 @@ export class App {
     // 내 최신 기록이 반영되도록 먼저 저장을 밀어 둔다
     if (isAccount) this.persist();
     const row = (r: RankRow, me = false): HTMLElement => h(`div.rank-row${me ? '.me' : ''}${r.rank <= 3 ? `.top${r.rank}` : ''}`, {},
-      h('span.rank-no', {}, r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1]! : String(r.rank)),
+      h('span.rank-no', {}, r.rank <= 3 ? ['{medal1}', '{medal2}', '{medal3}'][r.rank - 1]! : String(r.rank)),
       h('span.rank-name', {}, r.name),
       h('span.rank-title', {}, r.title),
-      h('span.rank-endless', {}, r.endless ? `♾️ ${r.endless}판` : '—'),
-      h('span.rank-stars', {}, `★ ${r.stars}`),
+      h('span.rank-endless', {}, r.endless ? `{infinity} ${r.endless}판` : '—'),
+      h('span.rank-stars', {}, `{star} ${r.stars}`),
     );
     this.api.leaderboard().then((lb) => {
       if (!lb.top.length) {
@@ -619,10 +620,10 @@ export class App {
     for (const key of after) {
       if (before.has(key)) continue;
       const [kind, id] = key.split(':') as [string, string];
-      if (kind === 'u') news.push(`🎉 새 동료 합류: ${UNITS.find((u) => u.id === id)!.names[0]}`);
-      if (kind === 's') news.push(`🤖 AI 조수 구독 가능: ${UNITS.find((u) => u.id === id)!.names[0]}`);
-      if (kind === 'k') news.push(`✨ 새 스킬: ${SKILLS.find((k) => k.id === id)!.name}`);
-      if (kind === 'c') news.push(`📖 새 챕터: ${CHAPTERS[Number(id) - 1]!.name}`);
+      if (kind === 'u') news.push(`{party} 새 동료 합류: ${UNITS.find((u) => u.id === id)!.names[0]}`);
+      if (kind === 's') news.push(`{robot} AI 조수 구독 가능: ${UNITS.find((u) => u.id === id)!.names[0]}`);
+      if (kind === 'k') news.push(`{sparkle} 새 스킬: ${SKILLS.find((k) => k.id === id)!.name}`);
+      if (kind === 'c') news.push(`{book} 새 챕터: ${CHAPTERS[Number(id) - 1]!.name}`);
     }
     return news;
   }
@@ -646,8 +647,8 @@ export class App {
     this.swap(h('div.screen.lab', {},
       this.topBar('연구실 강화', () => this.showMap()),
       h('div.lab-tabs', {},
-        h(`button.chapter-tab${tab === 'units' ? '.on' : ''}`, { onclick: () => this.showLab('units') }, '🧑‍🎓 동료'),
-        h(`button.chapter-tab${tab === 'facilities' ? '.on' : ''}`, { onclick: () => this.showLab('facilities') }, '🏗️ 시설'),
+        h(`button.chapter-tab${tab === 'units' ? '.on' : ''}`, { onclick: () => this.showLab('units') }, '{student} 동료'),
+        h(`button.chapter-tab${tab === 'facilities' ? '.on' : ''}`, { onclick: () => this.showLab('facilities') }, '{remodel} 시설'),
       ),
       grid,
     ));
@@ -670,20 +671,20 @@ export class App {
         action = h('button.btn.small.primary', {
           disabled: can && this.save.money >= u.unlock.subscribe ? undefined : 'true',
           onclick: () => { if (subscribe(this.save, u)) { this.persist(); refresh(); } },
-        }, can ? `구독 💰${fmt(u.unlock.subscribe)}` : `🔒 ${u.unlock.stage} 클리어`);
-      } else action = h('span.lock-note', {}, `🔒 ${u.unlock.stage} 클리어 시 합류`);
+        }, can ? `구독 {coin}${fmt(u.unlock.subscribe)}` : `{lock} ${u.unlock.stage} 클리어`);
+      } else action = h('span.lock-note', {}, `{lock} ${u.unlock.stage} 클리어 시 합류`);
     } else if (p.level >= levelCap(p.tier) && p.tier < 3) {
       action = h('button.btn.small.evolve', {
         disabled: canEvolve(this.save, u) ? undefined : 'true',
         onclick: () => { if (evolve(this.save, u)) { this.persist(); refresh(); } },
-      }, `✨ ${u.names[p.tier]}(으)로 진화 💰${fmt(evolveCost(u, p.tier))}`);
+      }, `{sparkle} ${u.names[p.tier]}(으)로 진화 {coin}${fmt(evolveCost(u, p.tier))}`);
     } else if (p.level >= 15) {
-      action = h('span.lock-note', {}, '🏆 최고 단계');
+      action = h('span.lock-note', {}, '{trophy} 최고 단계');
     } else {
       action = h('button.btn.small.primary', {
         disabled: canLevelUp(this.save, u) ? undefined : 'true',
         onclick: () => { if (levelUp(this.save, u)) { this.persist(); refresh(); } },
-      }, `레벨업 💰${fmt(levelUpCost(u, p.level))}`);
+      }, `레벨업 {coin}${fmt(levelUpCost(u, p.level))}`);
     }
     const ranged = u.range >= RANGED_THRESHOLD;
     return h(`div.card${owned ? '' : '.locked'}`, {},
@@ -692,7 +693,7 @@ export class App {
         h('b', {}, owned ? u.names[p.tier - 1]! : u.names[0]),
         h('span.muted', {}, ` ${u.role}${u.flying ? ' · 공중' : ''}${ranged ? ' · 대공' : ''}`),
         owned ? h('div.lv', {}, `Lv ${p.level}/${levelCap(p.tier)}`, h('div.lv-track', {}, h('div.lv-fill', { style: { width: `${(p.level / levelCap(p.tier)) * 100}%` } }))) : null,
-        h('div.stats', {}, `❤️${fmt(st.hp)} ⚔️${Math.round(st.atk)} ☕${u.cost}${u.count ? ` ×${u.count}` : ''}`),
+        h('div.stats', {}, `{heart}${fmt(st.hp)} {sword}${Math.round(st.atk)} {coffee}${u.cost}${u.count ? ` ×${u.count}` : ''}`),
         h('p.desc', {}, u.desc),
         action,
       ),
@@ -704,17 +705,17 @@ export class App {
       const lv = this.save.facilities[f.id];
       const cost = facilityCost(f, lv);
       return h('div.card', {},
-        h('div.card-pic.emoji', {}, f.icon),
+        h('div.card-pic.icon', {}, iconEl(f.icon)),
         h('div.card-body', {},
           h('b', {}, f.name),
           h('div.lv', {}, `Lv ${lv}/${f.max}`, h('div.lv-track', {}, h('div.lv-fill', { style: { width: `${(lv / f.max) * 100}%` } }))),
           h('p.desc', {}, f.desc),
           lv >= f.max
-            ? h('span.lock-note', {}, '🏆 최대 레벨')
+            ? h('span.lock-note', {}, '{trophy} 최대 레벨')
             : h('button.btn.small.primary', {
               disabled: this.save.money >= cost ? undefined : 'true',
               onclick: () => { if (upgradeFacility(this.save, f.id)) { this.persist(); this.showLab('facilities'); } },
-            }, `강화 💰${fmt(cost)}`),
+            }, `강화 {coin}${fmt(cost)}`),
         ),
       );
     });
@@ -722,5 +723,5 @@ export class App {
 }
 
 function fsLabel(): string {
-  return isFullscreen() ? '✕ 전체 화면 끄기' : '⛶ 전체 화면';
+  return isFullscreen() ? '{fullscreen} 전체 화면 끄기' : '{fullscreen} 전체 화면';
 }

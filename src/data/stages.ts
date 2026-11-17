@@ -116,9 +116,9 @@ const KIND_WEIGHT: Partial<Record<StageKind, Record<string, number>>> = {
 };
 
 const KIND_NOTE: Partial<Record<StageKind, string>> = {
-  vacation: '🏖️ 방학: 카페인 충전 +25%, 대신 방학 과제 러시가 크게 몰려와요. 보상 +30%',
-  conference: '🎤 학회: 심사위원·질문 공세(공중)가 많고 러시가 잦아요. 교수실 포탑 강화',
-  thesis: '📝 졸업논문: 수정 요청 폭탄이 쏟아지고 교수실이 단단해요. 보상 +30%',
+  vacation: '{beach} 방학: 카페인 충전 +25%, 대신 방학 과제 러시가 크게 몰려와요. 보상 +30%',
+  conference: '{mic} 학회: 심사위원·질문 공세(공중)가 많고 러시가 잦아요. 교수실 포탑 강화',
+  thesis: '{paper} 졸업논문: 수정 요청 폭탄이 쏟아지고 교수실이 단단해요. 보상 +30%',
 };
 
 function poolAt(c: number, kind: StageKind): { id: string; weight: number }[] {
@@ -243,7 +243,7 @@ export function endlessStage(n: number): StageDef {
     boss: isBoss ? ENDLESS_BOSSES[(n / 5 - 1) % ENDLESS_BOSSES.length] : undefined,
     bossScale: isBoss ? 1 + n * 0.04 : undefined,
     caffeineMul: undefined,
-    note: '♾️ 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스.',
+    note: '{infinity} 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스.',
     reward: Math.round(80 + c * 12),
   };
 }
@@ -270,19 +270,19 @@ export const SIDE_CHAPTERS: SideChapter[] = [
     id: 1, name: '조교수 생존기', subtitle: '테뉴어라는 이름의 공포', heroChapter: 8, theme: 'tenure',
     mods: { frenzy: { every: 38, dur: 9, mul: 1.35 } }, boss: 'tenure', from: 19,
     pool: { meeting: 3, paperwork: 2.2, evalform: 2.4, grant: 1, ta: 1, notif: 1, revision: 0.8, memo: 2 },
-    rule: '📋 평가 시즌: 주기적으로 적이 빨라지고 공격이 거세져요.',
+    rule: '{clipboard} 평가 시즌: 주기적으로 적이 빨라지고 공격이 거세져요.',
   },
   {
     id: 2, name: '대학원 괴담', subtitle: '새벽 3시의 연구실', heroChapter: 5, theme: 'haunted',
     mods: { dark: true }, boss: 'ghost13', from: 17,
     pool: { ghost: 3.2, printer3am: 1.6, memo: 2, deadline: 1.6, notif: 1, revision: 0.8, paperwork: 1 },
-    rule: '🕯️ 정전: 아군과 연구실 주변만 보여요. 유령은 깜빡이며 다가와요.',
+    rule: '{candle} 정전: 아군과 연구실 주변만 보여요. 유령은 깜빡이며 다가와요.',
   },
   {
     id: 3, name: '연구자의 고충', subtitle: '아무도 모르는 싸움', heroChapter: 6, theme: 'gloom',
     mods: { drain: 3 }, boss: 'reviewer3', from: 21,
     pool: { imposter: 2.6, scooped: 1.1, revision: 1.4, reviewer: 1.5, deadline: 1.5, notif: 1, meeting: 1.2 },
-    rule: '🌧️ 멘탈 고갈: 멘탈이 계속 줄고, 적을 처치하면 회복돼요. 바닥나면 아군 공격력 −25%.',
+    rule: '{rain} 멘탈 고갈: 멘탈이 계속 줄고, 적을 처치하면 회복돼요. 바닥나면 아군 공격력 −25%.',
   },
 ];
 

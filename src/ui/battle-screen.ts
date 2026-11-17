@@ -2,6 +2,7 @@ import type { StageDef } from '../data/stages';
 import { ENEMY_BY_ID } from '../data/enemies';
 import { Battle, WORLD_W } from '../sim/battle';
 import type { BattleLoadout } from '../sim/progression';
+import { iconEl, preloadIcons } from '../render/doodle';
 import { drawBattle, setViewAspect, VIEW_H, VIEW_W } from '../render/scene';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
@@ -44,6 +45,7 @@ export interface BattleScreenOptions {
 const SPEEDS = [1, 2, 3];
 
 export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => void {
+  preloadIcons();
   const battle = new Battle(opt.stage, opt.loadout, (Date.now() & 0xffff) + 1);
   const canvas = document.createElement('canvas');
   canvas.className = 'battle-canvas';
@@ -68,7 +70,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const enemyTxt = h('span.hp-txt');
   const timeTxt = h('span.time');
   const speedBtn = h('button.icon-btn', { title: '배속', onclick: () => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!) }, '');
-  const pauseBtn = h('button.icon-btn', { title: '일시정지', onclick: () => setPaused(true) }, '⏸');
+  const pauseBtn = h('button.icon-btn', { title: '일시정지', onclick: () => setPaused(true) }, '{pause}');
   const mini = h('div.minimap');
   const miniDots = h('div.mini-dots');
   const miniView = h('div.mini-view');
@@ -77,25 +79,28 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   bossBox.hidden = true;
 
   const top = h('div.hud-top', {},
-    h('div.hp-box', {}, h('span.hp-label', {}, '🏫 연구실'), h('div.hp-track', {}, allyBar), allyTxt),
+    h('div.hp-box', {}, h('span.hp-label', {}, iconEl('lab'), '연구실'), h('div.hp-track', {}, allyBar), allyTxt),
     h('div.hud-mid', {}, h('div.stage-tag', {}, `${opt.stage.id} ${opt.stage.name}`), timeTxt),
-    h('div.hp-box.right', {}, h('span.hp-label', {}, '교수실 👨‍🏫'), h('div.hp-track', {}, enemyBar), enemyTxt),
+    h('div.hp-box.right', {}, h('span.hp-label', {}, '교수실', iconEl('prof')), h('div.hp-track', {}, enemyBar), enemyTxt),
     h('div.hud-btns', {}, speedBtn, pauseBtn),
   );
 
   const cafFill = h('div.res-fill.caf');
-  const cafTxt = h('span.res-txt');
+  const cafNum = h('span');
+  const cafTxt = h('span.res-txt', {}, iconEl('coffee'), cafNum);
   const menFill = h('div.res-fill.men');
-  const menTxt = h('span.res-txt');
+  const menNum = h('span');
+  const menTxt = h('span.res-txt', {}, iconEl('brain'), menNum);
   const brewLv = h('span.brew-lv');
-  const brewCost = h('span.brew-cost');
-  const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, '☕', brewLv, brewCost, h('span.hotkey', {}, 'Q'));
+  const brewCostNum = h('span');
+  const brewCost = h('span.brew-cost', {}, iconEl('coffee'), brewCostNum);
+  const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, iconEl('coffeeMachine', 'brew-ico'), brewLv, brewCost, h('span.hotkey', {}, 'Q'));
 
   const unitBtns = opt.loadout.deck.map((d, i) => {
     const cd = h('div.cd-mask');
     const btn = h('button.unit-btn', { onclick: () => battle.summon(d.def.id), title: d.def.names[d.tier - 1] },
       h('img', { src: portrait(d.def.look, d.tier, d.def.id), alt: '', draggable: 'false' }),
-      h('span.cost', {}, `☕${d.def.cost}`),
+      h('span.cost', {}, iconEl('coffee'), String(d.def.cost)),
       h('span.hotkey', {}, UNIT_KEYS[i] ? UNIT_KEY_LABEL[UNIT_KEYS[i]!] ?? UNIT_KEYS[i]! : ''),
       cd,
     );
@@ -111,7 +116,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const skillBtns = opt.loadout.skills.map((s, i) => {
     const key = SKILL_KEYS[i] ?? '';
     const btn = h('button.skill-btn', { title: `${s.name} (${key.toUpperCase()}): ${s.desc}`, onclick: () => useSkill(s) },
-      h('span.skill-icon', {}, s.icon), h('span.cost', {}, `🧠${s.cost}`), h('span.hotkey', {}, key.toUpperCase()));
+      h('span.skill-icon', {}, iconEl(s.icon)), h('span.cost', {}, iconEl('brain'), String(s.cost)), h('span.hotkey', {}, key.toUpperCase()));
     return { btn, skill: s };
   });
 
@@ -125,7 +130,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     h(`div.skill-row${skillBtns.length > 2 ? '.grid' : ''}`, {}, ...skillBtns.map((s) => s.btn)),
   );
 
-  const aimHint = h('div.aim-hint', {}, '📚 폭격할 지점을 탭하세요');
+  const aimHint = h('div.aim-hint', {}, '{books} 폭격할 지점을 탭하세요');
   const overlay = h('div.overlay');
   overlay.hidden = true;
 
@@ -134,7 +139,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   function setSpeed(s: number): void {
     speed = s;
-    speedBtn.textContent = s === 3 ? '⏭3x' : s === 2 ? '⏩2x' : '▶1x';
+    speedBtn.textContent = `${s}x`;
     speedBtn.classList.toggle('fast', s > 1);
     opt.onSpeedChange?.(s);
   }
@@ -151,8 +156,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
         h('p.muted', {}, '전장 드래그: 시점 이동 · 1~0 - =: 소환 · Q: 커피머신 · W/E/R/T: 스킬'),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
-          h('button.btn', { onclick: () => showAudioSettings(screen) }, '🔊 소리 설정'),
-          isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? '✕ 전체 화면 끄기' : '⛶ 전체 화면'),
+          h('button.btn', { onclick: () => showAudioSettings(screen) }, '{sound} 소리 설정'),
+          isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? '{fullscreen} 전체 화면 끄기' : '{fullscreen} 전체 화면'),
           h('button.btn', { onclick: () => { cleanup(); opt.onQuit(); } }, '후퇴하기'),
         ),
       ));
@@ -272,13 +277,14 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const sec = Math.floor(battle.t);
     timeTxt.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
     cafFill.style.width = `${(battle.caffeine / battle.caffeineMax) * 100}%`;
-    cafTxt.textContent = `☕ ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`;
+    cafNum.textContent = ` ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`;
     const bc = battle.brewCost();
     brewLv.textContent = `Lv${battle.brewLevel}`;
-    brewCost.textContent = bc === null ? 'MAX' : `☕${bc}`;
+    brewCostNum.textContent = bc === null ? 'MAX' : String(bc);
+    brewCost.classList.toggle('max', bc === null);
     brewBtn.classList.toggle('off', !battle.canBrew());
     menFill.style.width = `${(battle.mental / L.mentalMax) * 100}%`;
-    menTxt.textContent = `🧠 ${Math.floor(battle.mental)}`;
+    menNum.textContent = ` ${Math.floor(battle.mental)}`;
     for (const u of unitBtns) {
       const cdLeft = battle.unitCd[u.entry.def.id] ?? 0;
       u.cd.style.height = `${Math.min(1, cdLeft / (u.entry.def.cooldown * battle.loadout.cooldownMul)) * 100}%`;
@@ -307,7 +313,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       overlay.hidden = false;
       overlay.replaceChildren(h(`div.panel.result.${win ? 'win' : 'lose'}`, {},
         h('h2', {}, res.title),
-        win ? h('div.stars', {}, ...[1, 2, 3].map((i) => h(`span.star${i <= res.stars ? '.on' : ''}`, {}, '★'))) : null,
+        win ? h('div.stars', {}, ...[1, 2, 3].map((i) => h(`span.star${i <= res.stars ? '.on' : ''}`, {}, i <= res.stars ? '{star}' : '{starOff}'))) : null,
         ...res.lines.map((l) => h('p', {}, l)),
         h('div.btn-col', {}, ...opt.actions(win).map((a) => h(`button.btn${a.primary ? '.primary' : ''}`, { onclick: () => { cleanup(); a.run(); } }, a.label))),
       ));

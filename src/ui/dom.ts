@@ -1,4 +1,9 @@
-/** 아주 작은 DOM 도우미: h('div.cls', {onclick}, children) */
+import { richNodes } from '../render/doodle';
+
+/**
+ * 아주 작은 DOM 도우미: h('div.cls', {onclick}, children)
+ * 글자 속 `{coin}` 같은 표시는 손그림 아이콘으로 바뀐다.
+ */
 export function h(
   tag: string,
   props: Partial<Record<string, unknown>> = {},
@@ -14,8 +19,17 @@ export function h(
     else if (k === 'html') el.innerHTML = String(v);
     else el.setAttribute(k, String(v));
   }
-  for (const c of children) if (c !== null && c !== undefined && c !== false) el.append(c);
+  for (const c of children) {
+    if (c === null || c === undefined || c === false) continue;
+    if (typeof c === 'string' && c.includes('{')) el.append(...richNodes(c));
+    else el.append(c);
+  }
   return el;
 }
 
 export const fmt = (n: number): string => Math.floor(n).toLocaleString('ko-KR');
+
+/** 글자(아이콘 표시 포함)로 내용을 바꾼다. textContent 대신 쓴다. */
+export function setRich(el: Element, text: string): void {
+  el.replaceChildren(...richNodes(text));
+}

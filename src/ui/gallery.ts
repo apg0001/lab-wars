@@ -7,6 +7,7 @@ import { isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from 
 import { SKILLS } from '../data/upgrades';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
+import { iconEl } from '../render/doodle';
 
 type Tab = 'ally' | 'skill' | 'enemy' | 'boss';
 
@@ -49,7 +50,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
         grid.append(h('div.dex-ally', {},
           h('div.dex-ally-head', {}, h('b', {}, u.names[0]), h('span.muted', {}, ` ${u.role}`), owned ? null : h('span.dex-lock', {}, u.unlock.subscribe ? '구독 필요' : `${u.unlock.stage} 클리어 시 합류`)),
           h('div.dex-tiers', {}, ...[1, 2, 3].map((tier) => h('button.dex-cell', {
-            onclick: () => preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: u.desc, stats: unitStats(u, { level: tier * 5, tier }), extra: `☕${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}` }),
+            onclick: () => preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: u.desc, stats: unitStats(u, { level: tier * 5, tier }), extra: `{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}` }),
           }, h('img', { src: portrait(u.look, tier, u.id), alt: '' }), h('span', {}, u.names[tier - 1]!)))),
         ));
       }
@@ -58,19 +59,19 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       SKILLS.forEach((sk, i) => {
         const open = isSkillOpen(save, sk);
         grid.append(h(`div.dex-ally.dex-skill${open ? '' : '.locked'}`, {},
-          h('div.dex-ally-head', {}, h('span.dex-skill-icon', {}, sk.icon), h('b', {}, sk.name), open ? null : h('span.dex-lock', {}, `${sk.unlockStage} 클리어 시 사용`)),
+          h('div.dex-ally-head', {}, h('span.dex-skill-icon', {}, iconEl(sk.icon)), h('b', {}, sk.name), open ? null : h('span.dex-lock', {}, `${sk.unlockStage} 클리어 시 사용`)),
           h('p.dex-skill-desc', {}, sk.desc),
-          h('div.stats', {}, `🧠 멘탈 ${sk.cost} · 단축키 ${SKILL_KEYS[i] ?? '-'}${sk.targeted ? ' · 전장을 탭해 위치 지정' : ''}`),
+          h('div.stats', {}, `{brain} 멘탈 ${sk.cost} · 단축키 ${SKILL_KEYS[i] ?? '-'}${sk.targeted ? ' · 전장을 탭해 위치 지정' : ''}`),
           h('p.muted.dex-skill-lore', {}, sk.lore),
         ));
       });
-      grid.append(h('p.muted.dex-skill-tip', {}, '스킬은 멘탈을 써요. 🏗️ 시설의 🧘 명상 앱으로 멘탈 충전을 늘리면 스킬을 더 자주 쓸 수 있어요.'));
+      grid.append(h('p.muted.dex-skill-tip', {}, '스킬은 멘탈을 써요. {remodel} 시설의 {meditate} 명상 앱으로 멘탈 충전을 늘리면 스킬을 더 자주 쓸 수 있어요.'));
     } else {
       const list = ENEMIES.filter((e) => (tab === 'boss') === !!e.boss);
       for (const e of list) {
         const known = seen.has(e.id);
         grid.append(h(`button.dex-cell.enemy${known ? '' : '.unknown'}${e.boss ? '.boss' : ''}`, {
-          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: bossDesc(e.boss), stats: e, extra: `처치 연구비 💰${e.reward}` }),
+          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: bossDesc(e.boss), stats: e, extra: `처치 연구비 {coin}${e.reward}` }),
         }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'), h('small.muted', {}, known ? e.role : '아직 만나지 않음')));
       }
     }
@@ -82,7 +83,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
         h('div.money', {}, `동료 ${owned}/${UNITS.length} · 적 ${[...seen].length}/${ENEMIES.length}`),
       ),
       h('div.lab-tabs', {},
-        ...(['ally', 'skill', 'enemy', 'boss'] as Tab[]).map((t) => h(`button.chapter-tab${t === tab ? '.on' : ''}`, { onclick: () => render(t) }, { ally: '🧑‍🎓 연구실 동료', skill: '✨ 스킬', enemy: '📄 잡무 군단', boss: '👨‍🏫 보스' }[t])),
+        ...(['ally', 'skill', 'enemy', 'boss'] as Tab[]).map((t) => h(`button.chapter-tab${t === tab ? '.on' : ''}`, { onclick: () => render(t) }, { ally: '{student} 연구실 동료', skill: '{sparkle} 스킬', enemy: '{paper} 잡무 군단', boss: '{prof} 보스' }[t])),
       ),
       grid,
     ));
@@ -135,7 +136,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       h('div.dex-info', {},
         h('h2', {}, p.name),
         h('p.muted', {}, `${p.role} · ${tags(p.stats)}`),
-        h('div.stats', {}, `❤️ ${fmt(p.stats.hp)}  ⚔️ ${Math.round(p.stats.atk)}  🎯 ${p.stats.range}  👟 ${p.stats.speed}  ⏱️ ${p.stats.interval}초`),
+        h('div.stats', {}, `{heart} ${fmt(p.stats.hp)}  {sword} ${Math.round(p.stats.atk)}  {target} ${p.stats.range}  {boot} ${p.stats.speed}  {clock} ${p.stats.interval}초`),
         h('p.muted', {}, p.extra),
         p.desc ? h('p', {}, p.desc) : null,
         h('button.btn', { onclick: close }, '닫기'),
