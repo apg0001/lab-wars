@@ -61,6 +61,29 @@ describe('전투 시뮬레이션', () => {
     expect(boss.kbT).toBe(0);
   });
 
+  it('교수실 HP가 75/50/25%를 처음 넘을 때마다 비상 소집: 앞에 몰린 아군을 밀어내고 지원군을 부른다', () => {
+    const b = fresh();
+    b.caffeine = 999;
+    b.summon('grunt');
+    const ally = b.fighters.find((f) => f.side === 'ally')!;
+    ally.x = ENEMY_FRONT - 40;
+    type Priv = { damageBase: (base: unknown, dmg: number, x: number) => void; queue: unknown[] };
+    const p = b as unknown as Priv;
+    const alarms = (): number => b.drainEvents().filter((e) => e.type === 'alarm').length;
+    b.drainEvents();
+    p.damageBase.call(b, b.enemy, b.enemy.maxHp * 0.2, ENEMY_FRONT);
+    expect(alarms()).toBe(0);
+    p.damageBase.call(b, b.enemy, b.enemy.maxHp * 0.1, ENEMY_FRONT); // 70%: 첫 소집
+    expect(alarms()).toBe(1);
+    expect(ally.kbT).toBeGreaterThan(0);
+    expect(ally.hp).toBeLessThan(ally.maxHp);
+    expect(p.queue.length).toBeGreaterThan(0);
+    p.damageBase.call(b, b.enemy, b.enemy.maxHp * 0.05, ENEMY_FRONT); // 65%: 다시 안 함
+    expect(alarms()).toBe(0);
+    p.damageBase.call(b, b.enemy, b.enemy.maxHp * 0.5, ENEMY_FRONT); // 15%: 50%·25% 두 번
+    expect(alarms()).toBe(2);
+  });
+
   it('적을 처치하면 세기에 비례해 카페인을 얻는다', () => {
     expect(killCaffeine('memo')).toBe(2);
     expect(killCaffeine('grant')).toBe(15);

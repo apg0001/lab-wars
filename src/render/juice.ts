@@ -106,6 +106,10 @@ export class Juice {
         break;
       case 'bossSpawn':
         break;
+      case 'alarm':
+        this.flash = Math.max(this.flash, 0.5);
+        this.stop(0.12);
+        break;
       case 'end':
         break;
       default:

@@ -19,6 +19,10 @@ const ENEMY_HP_MUL = 0.85;
 /** 처치 보상 배율 */
 const KILL_REWARD_MUL = 1.3;
 export const BREW_MAX = 6;
+/** 교수실 HP가 이 비율 아래로 처음 떨어질 때마다 비상 소집 */
+const ALARM_AT = [0.75, 0.5, 0.25];
+/** 비상 소집 충격파 범위 (교수실 앞에서) */
+export const ALARM_RADIUS = 300;
 /** 단계 n → n+1 비용 */
 export const BREW_COST = [30, 50, 75, 105, 140];
 
@@ -104,6 +108,7 @@ export type BattleEvent =
   | { type: 'skill'; id: SkillId }
   | { type: 'heal' }
   | { type: 'bossSpawn' }
+  | { type: 'alarm' }
   | { type: 'rush' }
   | { type: 'end'; result: 'win' | 'lose' };
 
@@ -646,10 +651,37 @@ export class Battle {
   }
 
   private damageBase(b: Base, dmg: number, x: number): void {
+    const before = b.hp / b.maxHp;
     b.hp = Math.max(0, b.hp - dmg);
+    if (b.side === 'enemy' && b.hp > 0) {
+      const now = b.hp / b.maxHp;
+      for (const th of ALARM_AT) if (before > th && now <= th) this.alarm();
+    }
     b.hitFlash = 0.1;
     this.emit({ type: 'baseHit', side: b.side, x, dmg });
     this.fx.push({ kind: 'dmg', x, y: GROUND_Y - 120 - this.rng() * 60, t: 0, life: 0.6, text: String(Math.round(dmg)), color: b.side === 'enemy' ? '#ffe082' : '#ff8a80' });
+  }
+
+  /**
+   * 교수실 비상 소집: 교수실 앞에 몰린 아군을 충격파로 밀어내고 지원군을 부른다.
+   * 물량으로 건물에 붙어 녹이는 전략을 끊는다.
+   */
+  private alarm(): void {
+    const x = ENEMY_FRONT;
+    const R = ALARM_RADIUS;
+    const dmg = this.stage.towerAtk * 2;
+    for (const o of this.alive('ally')) {
+      if (x - o.x > R) continue;
+      this.damageFighter(o, dmg + o.maxHp * 0.12, 'enemy');
+      if (!o.dead) this.knockback(o, 90);
+    }
+    const n = Math.max(2, Math.round(this.stage.rush.size * 0.5));
+    for (let i = 0; i < n; i++) this.queue.push({ at: this.t + 0.3 + i * 0.35, id: this.pickEnemy() });
+    this.queue.sort((a, b) => a.at - b.at);
+    this.fx.push({ kind: 'stomp', x, y: GROUND_Y, t: 0, life: 0.8, r: R });
+    this.emit({ type: 'stomp', x, r: R });
+    this.emit({ type: 'alarm' });
+    this.banner('🚨 교수님 비상 소집! 교수실 앞이 밀려나요');
   }
 
   private emit(e: BattleEvent): void {
