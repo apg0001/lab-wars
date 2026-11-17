@@ -18,6 +18,8 @@ import { gearTab, passionPips } from './unit-gacha';
 
 type GachaTab = 'gear' | 'draw' | 'closet';
 type LabTab = 'squad' | 'units' | 'facilities';
+/** 연구실 동료 탭 정렬 기준 */
+const LAB_SORT: SortKey[] = ['default', 'rarity', 'level', 'cost', 'atk', 'hp', 'name'];
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
 import { AccountApi, AccountSaveStore, API_URL, ApiError, displayName, progressScore, type RankRow, type SyncState } from '../save/remote';
@@ -25,7 +27,8 @@ import { showFeedbackForm, showFeedbackInbox, showNicknameForm } from './feedbac
 import { mountBattle } from './battle-screen';
 import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
-import { mountGallery } from './gallery';
+import { mountGallery, statTags } from './gallery';
+import { RARITY_RANK, loadPref, sortBar, sortByPref, type SortKey } from './sort';
 import { maybeShowUpdates, showPatchNotes } from './patch-notes';
 import { fullscreenButton } from './fullscreen';
 import { h, fmt, setRich } from './dom';
@@ -64,6 +67,8 @@ export class App {
   private settings: Settings = { speed: 1 };
   private chapter = 1;
   private cleanup: (() => void) | null = null;
+  /** 연구실 동료 탭 정렬·보기 (기기에 기억) */
+  private readonly labPref = loadPref('lab', LAB_SORT);
 
   private storeFor(p: Profile): SaveStore {
     return p.kind === 'account' && this.accountStore ? this.accountStore : this.localStore;
@@ -732,13 +737,15 @@ export class App {
 
   // ───────────────────── 연구실 강화 ─────────────────────
 
-  showLab(tab: LabTab = 'units'): void {
+  showLab(tab: LabTab = 'units', keepScroll = true): void {
     music.play('lobby');
-    const body = tab === 'units' ? this.unitCards() : tab === 'squad' ? [this.squadPanel()] : this.facilityCards();
-    // 같은 탭을 다시 그릴 때(레벨업·강화 후)는 보던 위치를 지킨다
-    const prev = this.root.querySelector<HTMLElement>(`.lab .card-grid[data-tab="${tab}"]`);
+    const body = tab === 'units'
+      ? [sortBar('lab', this.labPref, LAB_SORT, () => this.showLab('units', false)), ...this.unitCards()]
+      : tab === 'squad' ? [this.squadPanel()] : this.facilityCards();
+    // 같은 탭을 다시 그릴 때(레벨업·강화 후)는 보던 위치를 지킨다. 정렬·보기를 바꾸면 맨 위로
+    const prev = keepScroll ? this.root.querySelector<HTMLElement>(`.lab .card-grid[data-tab="${tab}"]`) : null;
     const keep = prev ? prev.scrollTop : 0;
-    const grid = h('div.card-grid', { 'data-tab': tab }, ...body);
+    const grid = h(`div.card-grid${tab === 'units' && this.labPref.compact ? '.compact' : ''}`, { 'data-tab': tab }, ...body);
     this.swap(h('div.screen.lab', {},
       this.topBar(tr('연구실 강화', 'Upgrade Lab'), () => this.showMap()),
       h('div.lab-tabs', {},
@@ -806,14 +813,27 @@ export class App {
   }
 
   private unitCards(): HTMLElement[] {
+    const s = this.save;
     // 기본 동료는 모두, 뽑기 장비는 가진 것만 보여 준다 (나머지는 도감에서 실루엣으로)
-    return UNITS.filter((u) => !isGachaUnit(u) || isUnitOwned(this.save, u)).map((u) => this.unitCard(u));
+    const list = UNITS.filter((u) => !isGachaUnit(u) || isUnitOwned(s, u));
+    return sortByPref(list, this.labPref, (u, key) => {
+      const owned = isUnitOwned(s, u);
+      const p = unitProgress(s, u.id);
+      // 레벨은 같으면 진화 단계가 높은 쪽이 위. 아직 없는 동료는 맨 뒤
+      if (key === 'level') return owned ? p.level * 10 + p.tier : null;
+      if (key === 'rarity') return RARITY_RANK[rarityOf(u)];
+      if (key === 'cost') return u.cost;
+      if (key === 'name') return owned ? u.names[p.tier - 1]! : u.names[0];
+      return unitStats(u, p)[key];
+    }).map((u) => this.unitCard(u));
   }
 
   private unitCard(u: UnitDef): HTMLElement {
     const owned = isUnitOwned(this.save, u);
     const p = unitProgress(this.save, u.id);
     const st = unitStats(u, p);
+    // 간단히 보기: 작은 카드에 그림·이름·레벨·버튼만 (버튼 글자도 짧게)
+    const mini = this.labPref.compact;
     const refresh = (): void => this.showLab('units');
     let action: HTMLElement;
     if (!owned) {
@@ -822,35 +842,39 @@ export class App {
         action = h('button.btn.small.primary', {
           disabled: can && this.save.money >= u.unlock.subscribe ? undefined : 'true',
           onclick: () => { if (subscribe(this.save, u)) { this.persist(); refresh(); } },
-        }, can ? tr(`구독 {coin}${fmt(u.unlock.subscribe)}`, `Subscribe {coin}${fmt(u.unlock.subscribe)}`) : tr(`{lock} ${u.unlock.stage} 클리어`, `{lock} Clear ${u.unlock.stage}`));
-      } else action = h('span.lock-note', {}, tr(`{lock} ${u.unlock.stage} 클리어 시 합류`, `{lock} Joins after ${u.unlock.stage}`));
+        }, can ? (mini ? `{coin}${fmt(u.unlock.subscribe)}` : tr(`구독 {coin}${fmt(u.unlock.subscribe)}`, `Subscribe {coin}${fmt(u.unlock.subscribe)}`)) : (mini ? `{lock} ${u.unlock.stage}` : tr(`{lock} ${u.unlock.stage} 클리어`, `{lock} Clear ${u.unlock.stage}`)));
+      } else action = h('span.lock-note', {}, mini ? `{lock} ${u.unlock.stage}` : tr(`{lock} ${u.unlock.stage} 클리어 시 합류`, `{lock} Joins after ${u.unlock.stage}`));
     } else if (p.level >= unitLevelCap(this.save, u) && p.tier < 3) {
       action = h('button.btn.small.evolve', {
         disabled: canEvolve(this.save, u) ? undefined : 'true',
         onclick: () => { if (evolve(this.save, u)) { this.persist(); refresh(); } },
-      }, tr(`{sparkle} ${u.names[p.tier]}(으)로 진화 {coin}${fmt(evolveCost(u, p.tier))}`, `{sparkle} Evolve to ${u.names[p.tier]} {coin}${fmt(evolveCost(u, p.tier))}`));
+      }, mini ? `{sparkle}{coin}${fmt(evolveCost(u, p.tier))}` : tr(`{sparkle} ${u.names[p.tier]}(으)로 진화 {coin}${fmt(evolveCost(u, p.tier))}`, `{sparkle} Evolve to ${u.names[p.tier]} {coin}${fmt(evolveCost(u, p.tier))}`));
     } else if (p.tier >= 3 && p.level >= unitLevelCap(this.save, u)) {
       action = h('span.lock-note', {}, isGachaUnit(u) && passionOf(this.save, u.id) < MAX_PASSION
-        ? tr('{fire} 중복으로 열정을 올리면 레벨 상한 +1', '{fire} Dupes raise Passion: level cap +1')
-        : tr('{trophy} 최고 단계', '{trophy} Max tier'));
+        ? (mini ? '{fire}' : tr('{fire} 중복으로 열정을 올리면 레벨 상한 +1', '{fire} Dupes raise Passion: level cap +1'))
+        : (mini ? '{trophy}' : tr('{trophy} 최고 단계', '{trophy} Max tier')));
     } else {
       action = h('button.btn.small.primary', {
         disabled: canLevelUp(this.save, u) ? undefined : 'true',
         onclick: () => { if (levelUp(this.save, u)) { this.persist(); refresh(); } },
-      }, tr(`레벨업 {coin}${fmt(levelUpCost(u, p.level))}`, `Level up {coin}${fmt(levelUpCost(u, p.level))}`));
+      }, mini ? `{coin}${fmt(levelUpCost(u, p.level))}` : tr(`레벨업 {coin}${fmt(levelUpCost(u, p.level))}`, `Level up {coin}${fmt(levelUpCost(u, p.level))}`));
     }
     const ranged = u.range >= RANGED_THRESHOLD;
     const cap = unitLevelCap(this.save, u);
     const r = rarityOf(u);
-    return h(`div.card.u-${r}${owned ? '' : '.locked'}`, {},
+    const lv = owned ? h('div.lv', {}, `Lv ${p.level}/${cap}`, h('div.lv-track', {}, h('div.lv-fill', { style: { width: `${(p.level / cap) * 100}%` } })), isGachaUnit(u) && !mini ? passionPips(passionOf(this.save, u.id)) : null) : null;
+    return h(`div.card.u-${r}${owned ? '' : '.locked'}${mini ? '.mini' : ''}`, {},
       h('div.card-pic', {}, h('img', { src: portrait(u.look, owned ? p.tier : 1, u.id), alt: '' }), owned ? h('span.tier', {}, ['Ⅰ', 'Ⅱ', 'Ⅲ'][p.tier - 1]!) : null,
         r !== 'basic' ? h('span.rarity-chip.mini', {}, rarityLabel(r)) : null),
       h('div.card-body', {},
         h('b', {}, owned ? u.names[p.tier - 1]! : u.names[0], owned && this.save.loadout.includes(u.id) ? h('span.in-squad', { title: tr('편성 중', 'In squad') }, '{swords}') : null),
-        h('span.muted', {}, ` ${u.role}${u.flying ? tr(' · 공중', ' · Air') : ''}${ranged ? tr(' · 대공', ' · Anti-air') : ''}`),
-        owned ? h('div.lv', {}, `Lv ${p.level}/${cap}`, h('div.lv-track', {}, h('div.lv-fill', { style: { width: `${(p.level / cap) * 100}%` } })), isGachaUnit(u) ? passionPips(passionOf(this.save, u.id)) : null) : null,
-        h('div.stats', {}, `{heart}${fmt(st.hp)} {sword}${Math.round(st.atk)} {coffee}${u.cost}${u.count ? ` ×${u.count}` : ''}`),
-        h('p.desc', {}, u.desc),
+        mini ? null : h('span.muted', {}, ` ${u.role}${u.flying ? tr(' · 공중', ' · Air') : ''}${ranged ? tr(' · 대공', ' · Anti-air') : ''}`),
+        lv,
+        mini ? null : h('div.stats', {}, `{heart}${fmt(st.hp)} {sword}${Math.round(st.atk)} {coffee}${u.cost}${u.count ? ` ×${u.count}` : ''}`),
+        // 자세히 보기: 사거리·이동·공격 간격·재소환과 능력 요약
+        mini ? null : h('div.stats.more', {}, `{target}${st.range} {boot}${st.speed} {clock}${st.interval}${tr('초', 's')} {hourglass}${u.cooldown}${tr('초', 's')}`),
+        mini ? null : h('p.muted.ability', {}, statTags(st)),
+        mini ? null : h('p.desc', {}, u.desc),
         action,
       ),
     );
