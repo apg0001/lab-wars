@@ -944,7 +944,7 @@ html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 .portrait .hud-btns { grid-area: btns; justify-self: end; }
 .portrait .hud-btns .icon-btn { font-size: calc(1.8 * var(--u)); min-width: calc(5.4 * var(--u)); padding: calc(0.4 * var(--u)) calc(0.8 * var(--u)); }
 .portrait .battle-field {
-  position: relative; inset: auto; order: 2; flex: none; height: min(calc(100cqw * 0.72), 44cqh);
+  position: relative; inset: auto; order: 2; flex: none; height: min(calc(100cqw * 0.84), 48cqh);
   margin-top: calc(0.8 * var(--u)); border-block: calc(0.25 * var(--u)) solid var(--ink); overflow: hidden;
 }
 .portrait .battle-field .boss-bar { top: calc(0.6 * var(--u)); left: 18%; right: 18%; }
@@ -965,7 +965,7 @@ html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 .portrait .skill-btn .cost, .portrait .skill-row.grid .skill-btn .cost { font-size: calc(1.6 * var(--u)); }
 .portrait .unit-row {
   /* 칸 수와 크기(--cols, --cell)는 battle-screen.ts가 남은 공간에 맞춰 정한다 */
-  order: 3; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), min(var(--cell, calc(12 * var(--u))), calc(13 * var(--u))));
+  order: 3; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), min(var(--cell, calc(12 * var(--u))), calc(18 * var(--u))));
   justify-content: center; align-content: end; gap: calc(1.1 * var(--u)); overflow: hidden auto; touch-action: pan-y; padding: calc(0.4 * var(--u)) calc(0.2 * var(--u)) calc(0.8 * var(--u));
 }
 .portrait .unit-btn { min-width: 0; max-width: none; width: 100%; aspect-ratio: 1; }
@@ -1185,3 +1185,6 @@ html[lang='en'] body { font-weight: 500; }
 /* ── 선물 도착 알림 ── */
 .gift-toast { z-index: 30; top: calc(2 * var(--u)); background: #fff3e0; border-color: #ef6c00; animation: gift-pop 0.35s ease-out; pointer-events: auto; cursor: pointer; }
 @keyframes gift-pop { from { transform: translate(-50%, calc(-2 * var(--u))); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+
+/* 세로 배치를 쓰는 가로 태블릿(.wide): 전장을 더 크게, 아래 버튼은 한 줄 */
+.portrait.wide .battle-field { height: 52cqh; }
