@@ -19,13 +19,15 @@ import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscre
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { SCENES, type Scene } from '../story/script';
-import { scenesOfStage, unlockedScenes } from '../story/unlock';
-import { playScenes } from '../story/player';
+import { STORY_ORDER, scenesOfStage, unlockedScenes } from '../story/unlock';
+import { playMarathon, playScenes } from '../story/player';
 
 const KIND_ICON: Partial<Record<StageKind, string>> = { vacation: '🏖️', conference: '🎤', thesis: '📝' };
 
 interface Settings {
   speed2x: boolean;
+  /** 스토리 몰아보기: 다음에 볼 장면 id */
+  storyAt?: string;
 }
 
 export class App {
@@ -399,19 +401,53 @@ export class App {
     playScenes(this.root, scenes, { heroName: this.profile?.name ?? '나', chapter, skippable }, then);
   }
 
-  /** 지금까지 본 장면 다시 보기 */
+  /** 스토리 다시 보기: 장면을 골라 거기서부터 몰아보기, 또는 보던 곳부터 이어서 보기 */
   private showStory(): void {
     const overlay = h('div.overlay');
     const close = (): void => overlay.remove();
-    const seen = unlockedScenes(this.save);
-    const chapterOf = (id: string): number => Number(/^ch(\d)/.exec(id)?.[1] ?? this.chapter);
+    const open = unlockedScenes(this.save);
+    const at = this.settings.storyAt ? open.indexOf(this.settings.storyAt) : -1;
+    const chapterOf = (id: string): number => (id === 'ending' ? 7 : Number(/^(?:ch|st-)(\d)/.exec(id)?.[1] ?? 1));
+    const label = (id: string): string => {
+      const sc = SCENES[id]!;
+      if (id.startsWith('st-')) return `${id.slice(3)} ${STAGE_BY_ID[id.slice(3)]?.name ?? ''}`;
+      if (id.endsWith('-intro')) return `📖 ${sc.title ?? id}`;
+      if (id.endsWith('-boss')) return `👔 ${sc.title ?? id}`;
+      if (id === 'ending') return '🎓 엔딩';
+      return `🎉 ${chapterOf(id)}장 클리어`;
+    };
+    const run = (start: number): void => {
+      close();
+      this.swap(h('div.screen.story-backdrop'));
+      playMarathon(this.root, open.map((id) => SCENES[id]!), start, {
+        heroName: this.profile?.name ?? '나',
+        chapterOf: (sc) => chapterOf(sc.id),
+        locked: (sc) => !!sc.noSkip && !this.save.seen.includes(sc.id),
+        onSeen: (sc, i) => {
+          if (!this.save.seen.includes(sc.id)) { this.save.seen.push(sc.id); this.persist(); }
+          const nextId = open[i + 1];
+          if (nextId) this.settings.storyAt = nextId;
+          else delete this.settings.storyAt;
+          this.saveSettings();
+        },
+        onEnd: () => { this.showMap(); this.showStory(); },
+      });
+    };
+    const groups = CHAPTERS.map((c) => ({ c, ids: open.filter((id) => chapterOf(id) === c.id) })).filter((g) => g.ids.length);
     overlay.append(h('div.panel.story-list', {},
       h('h2', {}, '📜 스토리 다시 보기'),
-      seen.length
-        ? h('div.story-grid', {}, ...seen.map((id) => {
-          const sc = SCENES[id]!;
-          return h('button.btn.small', { onclick: () => { close(); this.play([sc], () => this.showMap(), id === 'ending' ? 7 : chapterOf(id)); } }, sc.title ?? (id.endsWith('clear') ? `${chapterOf(id)}장 클리어` : id));
-        }))
+      open.length
+        ? h('div', {},
+          h('p.muted', {}, `열린 장면 ${open.length} / ${STORY_ORDER.length} · 장면을 누르면 거기서부터 쭉 이어서 봐요`),
+          h('div.story-top', {},
+            ...(at > 0 ? [h('button.btn.primary', { onclick: () => run(at) }, `⏩ 이어서 보기 (${label(open[at]!)})`)] : []),
+            h('button.btn', { onclick: () => run(0) }, '▶ 처음부터 몰아보기'),
+          ),
+          h('div.story-grid', {}, ...groups.flatMap((g) => [
+            h('div.story-ch', {}, `${g.c.id}장 · ${g.c.name}`),
+            ...g.ids.map((id) => h(`button.btn.small${open.indexOf(id) === at ? '.here' : ''}`, { onclick: () => run(open.indexOf(id)) }, label(id))),
+          ])),
+        )
         : h('p.muted', {}, '아직 본 장면이 없어요. 스테이지에 들어가면 이야기가 시작돼요.'),
       h('button.btn', { onclick: close }, '닫기'),
     ));

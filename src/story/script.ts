@@ -2,6 +2,7 @@
  * 스토리 대본. 장면마다 배경, 처음 서 있는 인물, 대사와 연출(등장·퇴장·점프·흔들림·감정 표현)을 적는다.
  * {name}은 플레이어 이름으로 바뀐다.
  */
+import { STAGE_SCENES } from './stage-scenes';
 
 export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny';
 
@@ -60,16 +61,6 @@ const S: Scene[] = [
     ],
   },
   {
-    id: 'ev-vacation', title: '방학', bg: 'sunny',
-    cast: [{ id: 'hero', x: 0.35 }],
-    lines: [
-      { who: 'hero', text: '드디어 방학이다! 바다, 여행, 늦잠!', emote: '♪', do: [{ a: 'jump', id: 'hero' }] },
-      { who: 'senior', text: '방학이라 과제 마감이 몰려 있어. 낮엔 실험, 밤엔 보고서.', do: [{ a: 'enter', id: 'senior', from: 'right', to: 0.68 }] },
-      { who: 'hero', text: '…방학의 정의가 뭐였더라.', emote: '…' },
-      { text: '🏖️ 방학 스테이지: 카페인은 넉넉하지만 방학 과제가 한꺼번에 몰려온다.' },
-    ],
-  },
-  {
     id: 'ch1-boss', title: '전공 교수님 면담', bg: 'office',
     cast: [{ id: 'hero', x: 0.28 }, { id: 'prof1', x: 0.7, face: -1 }],
     lines: [
@@ -99,16 +90,6 @@ const S: Scene[] = [
       { who: 'hero', text: '제 자리가 생겼어요! 모니터도 두 개!', emote: '♪', do: [{ a: 'jump', id: 'hero' }] },
       { who: 'senior', text: '그 모니터, 하나는 실험 로그 전용이야. 꺼지면 안 돼.', do: [{ a: 'enter', id: 'senior', from: 'right', to: 0.66 }] },
       { who: 'claudy', text: '제가 24시간 지켜볼게요. 저는 잠을 안 자거든요.', do: [{ a: 'enter', id: 'claudy', from: 'right', to: 0.85 }] },
-    ],
-  },
-  {
-    id: 'ev-conference', title: '학회', bg: 'conference', sign: '춘계 학술대회',
-    cast: [{ id: 'hero', x: 0.25 }, { id: 'senior', x: 0.45 }],
-    lines: [
-      { who: 'senior', text: '학회 왔으면 발표 듣고, 네트워킹하고, 짐도 나르고.' },
-      { who: 'hero', text: '저 포스터 통이랑 기념품 박스 전부요?', emote: '💦' },
-      { who: 'reviewer2', text: '…질문 있습니다. 아주 많이.', do: [{ a: 'enter', id: 'reviewer2', from: 'right', to: 0.78 }, { a: 'shake' }] },
-      { text: '🎤 학회 스테이지: 심사위원과 질문 공세(공중)가 많고, 러시가 잦다.' },
     ],
   },
   {
@@ -201,16 +182,6 @@ const S: Scene[] = [
       { who: 'senior', text: '나 이번에 졸업해. 이제 네가 랩장이야.', do: [{ a: 'jump', id: 'senior' }] },
       { who: 'hero', text: '네?! 선배 없으면 서류는 누가 막아요?', emote: '!' },
       { who: 'senior', text: '네가. 힘내.', do: [{ a: 'exit', id: 'senior', to: 'right' }] },
-    ],
-  },
-  {
-    id: 'ev-thesis', title: '졸업논문', bg: 'night',
-    cast: [{ id: 'hero', x: 0.4 }, { id: 'claudy', x: 0.68, face: -1 }],
-    lines: [
-      { who: 'hero', text: '졸업논문… 서론만 3주째 쓰고 있어.', emote: '…' },
-      { who: 'claudy', text: '제가 문장을 다듬어 드릴게요. 대신 결론은 직접 쓰셔야 해요.' },
-      { who: 'hero', text: '수정 요청 메일이 또 왔다…!', emote: '💦', do: [{ a: 'shake' }] },
-      { text: '📝 졸업논문 스테이지: 수정 요청 폭탄이 쏟아지고 교수실이 단단하다.' },
     ],
   },
   {
@@ -307,5 +278,5 @@ const S: Scene[] = [
   },
 ];
 
-export const SCENES: Record<string, Scene> = Object.fromEntries(S.map((s) => [s.id, s]));
-export const SCENE_ORDER = S.map((s) => s.id);
+/** 모든 장면 (챕터 장면 + 스테이지별 장면). 순서는 story/unlock.ts의 STORY_ORDER */
+export const SCENES: Record<string, Scene> = Object.fromEntries([...S, ...STAGE_SCENES].map((s) => [s.id, s]));

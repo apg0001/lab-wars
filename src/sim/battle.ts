@@ -206,7 +206,7 @@ export class Battle {
     if (!this.canSummon(unitId)) return false;
     const entry = this.loadout.deck.find((d) => d.def.id === unitId)!;
     this.caffeine -= entry.def.cost;
-    this.unitCd[unitId] = entry.def.cooldown;
+    this.unitCd[unitId] = entry.def.cooldown * this.loadout.cooldownMul;
     const count = entry.def.count ?? 1;
     for (let i = 0; i < count; i++) {
       const f = this.addFighter('ally', entry.def.id, entry.def.names[entry.tier - 1]!, entry.def.look, entry.tier, entry.stats, ALLY_FRONT - 20 - i * 14, 0);

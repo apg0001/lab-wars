@@ -51,12 +51,14 @@ export interface RankRow {
 }
 
 const TITLES = ['학부생', '학연생', '학석사', '석사', '석박', '박사', '포닥'];
-const CAMPAIGN_ID = /^([1-7])-([1-6])$/;
+const CAMPAIGN_ID = /^([1-7])-([1-9]|10)$/;
+const PER_CHAPTER = 10;
+const CAMPAIGN_SIZE = 7 * PER_CHAPTER;
 
 /** 저장 데이터에서 순위 점수를 뽑는다. 이상한 값은 걸러낸다. */
 export function rankStats(raw: unknown): { endless: number; stars: number; cleared: number; title: string } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as { v?: unknown; stars?: unknown; endless?: unknown };
-  const legacy = typeof r.v !== 'number' || r.v < 2;
+  const legacy = typeof r.v !== 'number' || r.v < 3;
   let stars = 0;
   let cleared = 0;
   let top = 0;
@@ -67,11 +69,11 @@ export function rankStats(raw: unknown): { endless: number; stars: number; clear
       if (!m || n === 0) continue;
       stars += n;
       cleared++;
-      top = Math.max(top, (Number(m[1]) - 1) * 6 + Number(m[2]));
+      top = Math.max(top, (Number(m[1]) - 1) * PER_CHAPTER + Number(m[2]));
     }
   }
   const endless = typeof r.endless === 'number' && Number.isFinite(r.endless) ? Math.min(100_000, Math.max(0, Math.floor(r.endless))) : 0;
-  const title = cleared >= 42 ? '교수' : TITLES[Math.min(6, Math.floor(top / 6))]!;
+  const title = cleared >= CAMPAIGN_SIZE ? '교수' : TITLES[Math.min(6, Math.floor(top / PER_CHAPTER))]!;
   return { endless, stars, cleared, title };
 }
 

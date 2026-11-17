@@ -247,13 +247,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       if (e.type === 'end') music.stop(0.4);
     }
     const k = canvas.width / viewW;
-    const sh = juice.offset();
-    ctx.setTransform(k, 0, 0, k, sh.x * k, sh.y * k);
-    // 흔들릴 때 가장자리가 비지 않도록 바깥을 먼저 칠한다
-    if (sh.x || sh.y) {
-      ctx.fillStyle = '#1d1a22';
-      ctx.fillRect(-20, -20, viewW + 40, VIEW_H + 40);
-    }
+    ctx.setTransform(k, 0, 0, k, 0, 0);
     drawBattle(ctx, battle, camX, now / 1000, juice);
     if (armed) {
       ctx.fillStyle = 'rgba(30,136,229,.12)';
@@ -282,7 +276,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     menTxt.textContent = `🧠 ${Math.floor(battle.mental)}`;
     for (const u of unitBtns) {
       const cdLeft = battle.unitCd[u.entry.def.id] ?? 0;
-      u.cd.style.height = `${(cdLeft / u.entry.def.cooldown) * 100}%`;
+      u.cd.style.height = `${Math.min(1, cdLeft / (u.entry.def.cooldown * battle.loadout.cooldownMul)) * 100}%`;
       u.btn.classList.toggle('off', battle.caffeine < u.entry.def.cost);
     }
     for (const s of skillBtns) {

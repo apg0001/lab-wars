@@ -71,6 +71,10 @@ export interface CutsceneOptions {
   /** 건너뛰기 허용 (처음 보는 엔딩은 false) */
   skippable: boolean;
   onDone: () => void;
+  /** 몰아보기: '그만 보기' 버튼을 띄우고 누르면 호출 */
+  onStop?: () => void;
+  /** 몰아보기 진행 표시 (예: 3 / 40) */
+  progress?: string;
 }
 
 /** host 위에 컷신을 띄운다. 끝나면 onDone. */
@@ -85,7 +89,9 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   const box = h('div.cut-box', {}, nameTag, text, next);
   const title = scene.title ? h('div.cut-title', {}, scene.title) : null;
   const skip = opt.skippable ? h('button.btn.small.cut-skip', { onclick: (e: Event) => { e.stopPropagation(); finish(); } }, '건너뛰기 ⏭') : null;
-  root.append(canvas, box, ...(title ? [title] : []), ...(skip ? [skip] : []));
+  const stop = opt.onStop ? h('button.btn.small.cut-stop', { onclick: (e: Event) => { e.stopPropagation(); finish(true); } }, '그만 보기 ✕') : null;
+  const prog = opt.progress ? h('div.cut-progress', {}, opt.progress) : null;
+  root.append(canvas, box, ...[title, skip, stop, prog].filter((x): x is HTMLElement => !!x));
   host.append(root);
   if (scene.music) music.play(scene.music);
 
@@ -104,7 +110,6 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   let lineIdx = -1;
   let shown = 0;
   let typing = false;
-  let shakeT = 0;
   let flashT = 0;
   let banner = '';
   let bannerT = 0;
@@ -148,7 +153,7 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
         if (a) a.face = act.dir;
         break;
       }
-      case 'shake': shakeT = 0.45; thud(); break;
+      case 'shake': thud(); break; // 화면 흔들림은 끄고 쿵 소리만
       case 'flash': flashT = 0.6; chime(); break;
       case 'becomeProf': {
         heroIsProf = true;
@@ -198,13 +203,13 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
     showLine(lineIdx + 1);
   }
 
-  function finish(): void {
+  function finish(stopAll = false): void {
     if (done) return;
     done = true;
     cancelAnimationFrame(raf);
     root.classList.add('out');
     window.removeEventListener('keydown', onKey);
-    window.setTimeout(() => { root.remove(); opt.onDone(); }, 250);
+    window.setTimeout(() => { root.remove(); (stopAll && opt.onStop ? opt.onStop : opt.onDone)(); }, 250);
   }
 
   // ── 소리: 대사 블립, 쿵, 반짝 ──
@@ -261,7 +266,6 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
       const sp = actors.get(speaker);
       if (sp) for (const a of actors.values()) if (a !== sp && Math.abs(a.tx - a.x) < 0.002 && !a.leaving) a.face = sp.x > a.x ? 1 : -1;
     }
-    shakeT = Math.max(0, shakeT - dt);
     flashT = Math.max(0, flashT - dt);
     bannerT = Math.max(0, bannerT - dt);
     draw(now / 1000);
@@ -270,8 +274,7 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
 
   function draw(t: number): void {
     const k = canvas.width / viewW;
-    const sh = shakeT > 0 ? shakeT * 18 : 0;
-    ctx.setTransform(k, 0, 0, k, (Math.random() - 0.5) * sh * k, (Math.random() - 0.5) * sh * k * 0.6);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
     drawBg(ctx, bg, viewW, t, scene.sign);
     const list = [...actors.values()].filter((a) => a.alpha > 0).sort((p, q) => p.x - q.x);
     for (const a of list) {
@@ -351,6 +354,34 @@ export function playScenes(host: Element, scenes: Scene[], opt: Omit<CutsceneOpt
   const [first, ...rest] = scenes;
   if (!first) return onDone();
   playCutscene(host, first, { ...opt, onDone: () => playScenes(host, rest, opt, onDone) });
+}
+
+export interface MarathonOptions {
+  heroName: string;
+  /** 장면별 챕터 (주인공 외형) */
+  chapterOf: (sc: Scene) => number;
+  /** 처음 보는 건너뛰기 금지 장면인가 */
+  locked: (sc: Scene) => boolean;
+  /** 한 장면을 다 봤을 때 (이어보기 위치 저장) */
+  onSeen: (sc: Scene, index: number) => void;
+  onEnd: () => void;
+}
+
+/** 몰아보기: start번째 장면부터 끝까지 차례로 보여준다. 장면마다 건너뛰기, 언제든 그만 보기. */
+export function playMarathon(host: Element, scenes: Scene[], start: number, opt: MarathonOptions): void {
+  const step = (i: number): void => {
+    const sc = scenes[i];
+    if (!sc) return opt.onEnd();
+    playCutscene(host, sc, {
+      heroName: opt.heroName,
+      chapter: opt.chapterOf(sc),
+      skippable: !opt.locked(sc),
+      progress: `${i + 1} / ${scenes.length}`,
+      onStop: opt.onEnd,
+      onDone: () => { opt.onSeen(sc, i); step(i + 1); },
+    });
+  };
+  step(Math.max(0, Math.min(start, scenes.length - 1)));
 }
 
 // ─────────────── 배경 ───────────────
