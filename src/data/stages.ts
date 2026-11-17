@@ -38,6 +38,8 @@ export interface StageDef {
   /** 스테이지 특징 한 줄 설명 */
   note?: string;
   reward: number;
+  /** 시간 제한(초). 넘기면 패배 (없으면 무제한) */
+  timeLimit?: number;
   /** 외전 번호 (1~3). 외전 스테이지는 STAGES에 들어가지 않는다 */
   side?: number;
   /** 전장 배경 테마 (외전) */
@@ -195,8 +197,12 @@ function makeStage(chapter: number, index: number): StageDef {
     killMul: KILL_MUL,
     note: KIND_NOTE[kind],
     reward: Math.round((60 + c * 30 + (isBoss ? 80 : 0)) * REWARD_MUL * (vacation || thesis ? 1.3 : 1)),
+    timeLimit: isBoss ? TIME_LIMIT.boss : TIME_LIMIT.normal,
   };
 }
+
+/** 시간 제한(초): 일반 5분, 보스 6분, 무한 모드 8분 */
+export const TIME_LIMIT = { normal: 300, boss: 360, endless: 480 };
 
 /** 스테이지가 두 배 넘게 늘어난 만큼 한 판 보상을 줄인다. */
 export const REWARD_MUL = 0.45;
@@ -258,6 +264,7 @@ export function endlessStage(n: number): StageDef {
     caffeineMul: undefined,
     note: '{infinity} 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스.',
     reward: Math.round(80 + c * 12),
+    timeLimit: TIME_LIMIT.endless,
   };
 }
 
@@ -326,6 +333,7 @@ function makeSideStage(sc: SideChapter, index: number): StageDef {
     killMul: KILL_MUL,
     note: sc.rule,
     reward: Math.round((60 + c * 30 + (isBoss ? 120 : 0)) * REWARD_MUL * 1.25),
+    timeLimit: isBoss ? TIME_LIMIT.boss : TIME_LIMIT.normal,
     side: sc.id,
     theme: sc.theme,
     mods: sc.mods,

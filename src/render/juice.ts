@@ -30,6 +30,8 @@ export class Juice {
   hitStop = 0;
   /** 화면 전체 번쩍임 0~1 */
   flash = 0;
+  /** 보스 호통 붉은 번쩍임 0~1 */
+  rage = 0;
   private time = 0;
 
   private add(p: Omit<Particle, 't' | 'rot' | 'vr' | 'g'> & Partial<Pick<Particle, 'rot' | 'vr' | 'g'>>): void {
@@ -110,6 +112,12 @@ export class Juice {
         this.flash = Math.max(this.flash, 0.5);
         this.stop(0.12);
         break;
+      case 'rage':
+        this.flash = Math.max(this.flash, 0.6);
+        this.rage = 1;
+        this.stop(0.15);
+        for (let i = 0; i < 3; i++) this.add({ kind: 'ring', x: e.x, y: GROUND_Y - 60, vx: 0, vy: 0, life: 0.45 + i * 0.15, size: 260 + i * 160, color: '#ff5252' });
+        break;
       case 'end':
         break;
       default:
@@ -120,6 +128,7 @@ export class Juice {
   update(dt: number): void {
     this.time += dt;
     this.flash = Math.max(0, this.flash - dt * 3);
+    this.rage = Math.max(0, this.rage - dt * 1.2);
     for (const p of this.ps) {
       p.t += dt;
       p.vy += p.g * dt;

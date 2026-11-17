@@ -546,11 +546,13 @@ export class App {
         const out = applyOutcome(this.save, stage, e.win, e.baseHpRatio, e.killReward);
         this.persist();
         const lines = [
+          ...(e.timeout ? ['{clock} 시간 초과! 제한 시간 안에 교수실을 함락하지 못했어요.'] : []),
           e.win ? `클리어 보상 {coin} ${fmt(out.clearReward)}${out.firstClear ? ' (첫 클리어!)' : ''}` : '연구비는 처치한 만큼 받았어요.',
           `처치 보상 {coin} ${fmt(out.killReward)} · 처치 ${e.kills}`,
           ...this.unlockNews(before),
         ];
-        return { title: e.win ? '{party} 교수실 함락!' : '{dizzy} 연구실이 망가졌다…', lines, stars: out.stars };
+        const title = e.win ? '{party} 교수실 함락!' : e.timeout ? '{clock} 야근 확정… 시간 초과' : '{dizzy} 연구실이 망가졌다…';
+        return { title, lines, stars: out.stars };
       },
       actions: (win) => {
         const next = stage.kind === 'endless' ? endlessStage(stage.index + 1) : stage.side ? STAGE_BY_ID[`S${stage.side}-${stage.index + 1}`] : STAGES[stage.order + 1];

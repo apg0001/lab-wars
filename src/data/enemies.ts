@@ -79,7 +79,7 @@ export const ENEMIES: EnemyDef[] = [
     look: { kind: 'professor', color: '#311b92', accent: '#ffd54f', scale: 2.1 } },
   { id: 'president', name: '총장님', role: '최종 보스', reward: 600,
     hp: 9500, atk: 80, range: 36, speed: 16, interval: 1.6,
-    boss: { summon: { id: 'meeting', every: 10, count: 3 }, stomp: { dmg: 55, radius: 140, every: 7 } },
+    boss: { summon: { id: 'meeting', every: 10, count: 3 }, stomp: { dmg: 55, radius: 140, every: 7 }, rage: { at: [0.75, 0.5, 0.25], stun: 1.3, push: 80 } },
     look: { kind: 'professor', color: '#212121', accent: '#ffd54f', scale: 2.3 } },
   // 외전 보스
   { id: 'tenure', name: '테뉴어 심사위원회', role: '외전 보스', reward: 450,

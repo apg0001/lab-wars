@@ -10,9 +10,9 @@ import {
 
 /**
  * 밸런스 검증용 자동 플레이어. 사람 수준으로 플레이하도록 판단 주기를 0.4초로 두고,
- * 폭격 스킬은 조준 오차를 둔다.
+ * 폭격 스킬은 조준 오차를 둔다. 기본 판 길이 상한은 스테이지 시간 제한.
  */
-export function playBot(battle: Battle, limit = 300, seed = 4242): void {
+export function playBot(battle: Battle, limit = battle.stage.timeLimit ?? 300, seed = 4242): void {
   const rng = makeRng(seed);
   let think = 0;
   while (!battle.result && battle.t < limit) {
@@ -118,7 +118,7 @@ export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: 
 
 export function playOnce(save: SaveData, stage: StageDef, seed: number): { win: boolean; stars: number; seconds: number } {
   const battle = new Battle(stage, makeLoadout(save), seed);
-  playBot(battle, 300, seed * 31 + 7);
+  playBot(battle, undefined, seed * 31 + 7);
   const win = battle.result === 'win';
   const out = applyOutcome(save, stage, win, battle.ally.hp / battle.ally.maxHp, battle.killReward);
   return { win, stars: out.stars, seconds: battle.t };
