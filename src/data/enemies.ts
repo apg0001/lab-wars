@@ -288,6 +288,12 @@ export const ENEMIES: EnemyDef[] = [
     hp: 9800, atk: 80, range: 36, speed: 16, interval: 1.6,
     boss: { summon: { id: 'powerstrip', every: 10, count: 2 }, stomp: { dmg: 60, radius: 135, every: 7 }, say: ['전력 사용량 초과!', 'Power limit exceeded!'], blipFaster: { at: [0.66, 0.33], every: [14, 10] } },
     look: { kind: 'sidefoe', variant: 'mainbreaker', color: '#546e7a', accent: '#ffd600', scale: 2.2 } },
+  // 무한 모드 화이트보드 전초기지 (15판부터 1개, 30판부터 2개). 능력치는 판마다 src/data/stages.ts endlessOutposts가 정한다
+  { id: 'whiteboard', name: '화이트보드 전초기지', role: '무한 모드 구조물', reward: 50,
+    desc: '교수실 앞에 버티고 선 바퀴 달린 화이트보드. 보드마커를 포물선으로 던져 땅에 작은 범위 피해를 준다. 부수기 전에는 동료가 지나갈 수 없다. 넉백·기절·빙결·띄우기는 통하지 않지만 화상과 둔화는 먹힌다. 적은 그냥 통과한다.',
+    en: { name: 'Whiteboard Outpost', role: 'Endless structure', desc: 'A whiteboard on wheels planted in front of the Prof\'s Office. Lobs board markers in an arc for small splash damage on the ground. Labmates can\'t get past it until it\'s torn down. Immune to knockback, stun, freeze and knock-up, but burn and slow still work. Enemies walk right through it.' },
+    hp: 1000, atk: 16, range: 240, speed: 0, interval: 2, splash: 40,
+    look: { kind: 'whiteboard', color: '#fafafa', accent: '#1e88e5', scale: 1.6 } },
   // 무한 모드 버그 보스 (30·40판부터 보스 순환에 합류)
   { id: 'kernelpanic', name: '커널 패닉', role: '무한 모드 보스', reward: 500,
     desc: '세그폴트를 쏟아내고, 9초마다 주변 아군을 멈춰 세운다. 로그에는 알아볼 수 없는 16진수만 남는다.',

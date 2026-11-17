@@ -111,12 +111,16 @@ export interface Fighter {
   skillCd: number;
   /** 생성형 복제(외전 5)로 적 편에 생긴 아군 유닛 복제본 */
   copy: boolean;
+  /** 무한 모드 화이트보드 전초기지 (제자리 구조물: 넉백·기절·빙결·띄우기 면역) */
+  outpost?: boolean;
 }
 
 export type ProjectileKind =
   | 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt' | 'wave' | 'coolant'
   // 장비 22종·버그 군단
-  | 'beam' | 'pulse' | 'spark' | 'dot' | 'solder' | 'photon' | 'qubit';
+  | 'beam' | 'pulse' | 'spark' | 'dot' | 'solder' | 'photon' | 'qubit'
+  // 무한 모드 화이트보드 전초기지의 보드마커
+  | 'marker';
 
 export interface Projectile {
   kind: ProjectileKind;
@@ -143,6 +147,8 @@ export interface Projectile {
   antiAir?: boolean;
   /** 쏜 유닛 (흡혈·연쇄·대공 배율·카페인 흡수용) */
   src?: Fighter;
+  /** 교수님 레이저 출력 단계 (무한 모드, 0~3: 굵기·색 연출용) */
+  power?: number;
 }
 
 export type FxKind = 'dmg' | 'text' | 'boom' | 'heal' | 'stomp' | 'spawn' | 'poof' | 'zap' | 'arc';
@@ -313,6 +319,12 @@ export class Battle {
   private lastDraftT = 0;
   /** 아직 살아 있는 러시 적 uid (다 쓰러뜨리면 러시를 버텨 낸 것) */
   private rushUids = new Set<number>();
+  /** 무한 모드 교수님 레이저 출력 단계 (0~3, 전투 1·2·3분에 오른다) */
+  laserTier = 0;
+  /** 화이트보드 전초기지를 세웠는지 */
+  private outpostsPlaced = false;
+  /** 철거 연출을 마친 전초기지 uid */
+  private outpostsDown = new Set<number>();
 
   constructor(readonly stage: StageDef, readonly loadout: BattleLoadout, seed = 1, opts: BattleOptions = {}) {
     this.rng = makeRng(seed);
@@ -515,6 +527,7 @@ export class Battle {
       if (!f.dead) this.tickStatus(f, dt);
       if (!f.dead) this.tickFighter(f, dt);
     }
+    this.tickEndless();
     this.tickTower(this.ally, dt);
     this.tickTower(this.enemy, dt);
     this.tickProjectiles(dt);
@@ -938,7 +951,7 @@ export class Battle {
       f.slowMul = f.slowT > 0 ? Math.min(f.slowMul, e.slow.mul) : e.slow.mul;
       f.slowT = Math.max(f.slowT, e.slow.dur);
     }
-    if (e.freeze && this.rng() < e.freeze.chance) {
+    if (e.freeze && !f.outpost && this.rng() < e.freeze.chance) {
       const d = e.freeze.dur * (f.isBoss ? 0.4 : 1);
       f.stunT = Math.max(f.stunT, d);
       f.frozenT = Math.max(f.frozenT, d);
@@ -950,7 +963,7 @@ export class Battle {
       f.shredT = Math.max(f.shredT, e.armorShred.dur);
     }
     // 띄우기: 보스는 면역 (확률도 굴리지 않는다)
-    if (e.knockup && !f.isBoss && this.rng() < e.knockup.chance) {
+    if (e.knockup && !f.isBoss && !f.outpost && this.rng() < e.knockup.chance) {
       f.stunT = Math.max(f.stunT, e.knockup.dur);
       if (f.airT <= 0) f.airDur = e.knockup.dur;
       f.airT = Math.max(f.airT, e.knockup.dur);
@@ -1101,6 +1114,7 @@ export class Battle {
   }
 
   private tickFighter(f: Fighter, dt: number): void {
+    if (f.outpost) return this.tickOutpost(f, dt);
     const s = f.stats;
     const stunned = f.stunT > 0;
     // 기절 중에는 공격 대기도 흐르지 않는다
@@ -1242,9 +1256,103 @@ export class Battle {
     this.emit({ type: 'shoot', kind: ally ? 'paper' : 'laser', x: x0, side: b.side, tower: true });
     this.projectiles.push({
       kind: ally ? 'paper' : 'laser', side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
-      t: 0, dur: 0.1 + bestD / 900, dmg: ally ? this.loadout.printerAtk * this.cardMods.printerAtk : this.stage.towerAtk,
+      t: 0, dur: 0.1 + bestD / 900, dmg: ally ? this.loadout.printerAtk * this.cardMods.printerAtk : this.towerDmg(),
       splash: 0, buildingMul: 1, targetUid: best.uid, hitsBase: false, arc: 0,
+      power: ally ? undefined : this.laserTier,
     });
+  }
+
+  // ───────────── 무한 모드: 화이트보드 전초기지·교수님 레이저 강화 ─────────────
+
+  /** 교수님 레이저 한 발 피해: 무한 모드는 전투 1분마다 +towerRamp배 (전투 시간 기준, 결정적) */
+  towerDmg(): number {
+    return this.stage.towerAtk * (1 + (this.stage.towerRamp ?? 0) * (this.t / 60));
+  }
+
+  /** 살아 있는 화이트보드 전초기지 */
+  outposts(): Fighter[] {
+    return this.fighters.filter((f) => f.outpost && !f.dead);
+  }
+
+  /** 무한 모드 규칙: 전초기지 세우기·철거 연출, 레이저 출력 단계 */
+  private tickEndless(): void {
+    if (!this.outpostsPlaced) {
+      this.outpostsPlaced = true;
+      for (const o of this.stage.outposts ?? []) this.placeOutpost(o);
+    }
+    for (const f of this.fighters) {
+      if (!f.outpost) continue;
+      // 제자리 구조물: 기절·빙결·띄우기·넉백이 남지 않는다
+      f.stunT = f.frozenT = f.airT = f.kbT = f.kbV = 0;
+      if (f.dead && !this.outpostsDown.has(f.uid)) {
+        this.outpostsDown.add(f.uid);
+        this.outpostDown(f);
+      }
+    }
+    if (this.stage.towerRamp) {
+      const tier = Math.min(3, Math.floor(this.t / 60));
+      if (tier > this.laserTier) {
+        this.laserTier = tier;
+        this.banner(tr('{anger} 교수님 레이저 출력 상승!', '{anger} Laser power rising!'));
+      }
+    }
+  }
+
+  private placeOutpost(o: NonNullable<StageDef['outposts']>[number]): void {
+    const def = ENEMY_BY_ID.whiteboard!;
+    const stats: CombatStats = { hp: o.hp, atk: o.atk, range: o.range, speed: 0, interval: o.interval, splash: o.splash };
+    const f = this.addFighter('enemy', def.id, def.name, def.look, 1, stats, ENEMY_FRONT - o.dist, o.reward);
+    f.outpost = true;
+    f.depth = 4;
+    f.cd = o.interval * 0.5;
+  }
+
+  /** 전초기지: 제자리에서 가장 가까운 지상 아군 발밑에 보드마커를 포물선으로 던진다 (작은 범위 피해) */
+  private tickOutpost(f: Fighter, dt: number): void {
+    const s = f.stats;
+    f.hitFlash = Math.max(0, f.hitFlash - dt);
+    f.swing = Math.max(0, f.swing - dt * 3);
+    // 둔화·에어컨은 던지는 속도를 늦춘다
+    f.cd -= dt * this.atkRateMul(f);
+    let target: Fighter | null = null;
+    let bestD = Infinity;
+    for (const o of this.fighters) {
+      if (o.dead || o.side !== 'ally' || o.stats.flying) continue;
+      const d = f.x - o.x;
+      if (d < -12 || d > s.range + bodyR(o)) continue;
+      if (d < bestD) {
+        bestD = d;
+        target = o;
+      }
+    }
+    f.attacking = !!target;
+    if (!target || f.cd > 0) return;
+    f.cd = s.interval;
+    f.swing = 1;
+    const dist = Math.abs(target.x - f.x);
+    const y0 = this.fy(f) - 80;
+    this.emit({ type: 'shoot', kind: 'marker', x: f.x, side: 'enemy', tower: false });
+    // 땅을 노린다: 던진 순간의 발밑으로 떨어지므로 그새 움직이면 피할 수 있다
+    this.projectiles.push({
+      kind: 'marker', side: 'enemy', x0: f.x - 8, y0, x1: target.x, y1: this.fy(target) - 4,
+      t: 0, dur: 0.35 + dist / 500, dmg: s.atk * f.auraMul * this.cardMods.enemyAtk, splash: s.splash ?? 0, buildingMul: 0,
+      targetUid: null, hitsBase: false, arc: 50 + dist * 0.3, src: f,
+    });
+  }
+
+  /** 철거: 배너, 흩어지는 보드마커와 파편 (보상은 일반 처치처럼 damageFighter가 준다) */
+  private outpostDown(f: Fighter): void {
+    const y = this.fy(f) - 50;
+    for (let i = 0; i < 7; i++) {
+      const dx = (i - 3) * 26 + (i % 2 ? 9 : -9);
+      this.projectiles.push({
+        kind: 'marker', side: 'enemy', x0: f.x, y0: y, x1: f.x + dx, y1: GROUND_Y + (i % 3) * 5,
+        t: 0, dur: 0.45 + i * 0.04, dmg: 0, splash: 0, buildingMul: 0, targetUid: null, hitsBase: false, arc: 40 + (i % 3) * 22,
+      });
+    }
+    this.fx.push({ kind: 'boom', x: f.x, y, t: 0, life: 0.6, r: 70, color: '#90caf9' });
+    this.emit({ type: 'boom', x: f.x, y, r: 70, side: 'enemy', big: true });
+    this.banner(tr('{megaphone} 화이트보드 철거!', '{megaphone} Whiteboard down!'));
   }
 
   private tickProjectiles(dt: number): void {
@@ -1455,7 +1563,7 @@ export class Battle {
 
   /** 뒤(자기 진영 쪽)로 밀어내고 잠깐 경직시킨다. 보스는 면역. */
   private knockback(f: Fighter, dist: number): void {
-    if (f.isBoss) return;
+    if (f.isBoss || f.outpost) return;
     f.kbT = 0.4;
     f.kbV = (f.side === 'ally' ? -1 : 1) * dist * 6;
     f.swing = 0;

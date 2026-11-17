@@ -74,6 +74,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   // 오로라 범위: 유닛보다 먼저 바닥에 그린다
   for (const f of drawList) if (f.stats.aura && !f.dead) drawAura(ctx, b, f, time);
   for (const f of drawList) drawFighter(ctx, b, f, time, sprites);
+  for (const f of drawList) if (f.outpost && !f.dead) drawOutpostHp(ctx, b, f);
   drawList.length = 0;
   sprites.endFrame();
   for (const p of b.projectiles) drawProjectile(ctx, p, time);
@@ -632,6 +633,10 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
     case 'laser': {
       ctx.restore();
       ctx.save();
+      if (p.power) {
+        drawLaserPower(ctx, p, x, y, p.power, time);
+        break;
+      }
       ctx.strokeStyle = 'rgba(255,23,68,.85)';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -640,6 +645,9 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.stroke();
       break;
     }
+    case 'marker':
+      drawMarker(ctx, p, k);
+      break;
     case 'wave': {
       // 오실로스코프 파형 빔: 쏜 자리부터 지금 위치까지 사인파
       ctx.restore();
@@ -790,6 +798,74 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.arc(0, 0, 4, 0, Math.PI * 2);
       ctx.fill();
   }
+  ctx.restore();
+}
+
+/** 무한 모드 교수님 레이저 출력 단계 1~3: 노랑 → 주황 → 빨강, 점점 굵어지고 바깥 빛이 번진다 */
+const LASER_TIERS = [
+  { core: '#fffde7', glow: 'rgba(255,214,0,.75)', w: 4.5 },
+  { core: '#fff3e0', glow: 'rgba(255,145,0,.8)', w: 6.5 },
+  { core: '#ffebee', glow: 'rgba(255,23,68,.85)', w: 9 },
+];
+
+function drawLaserPower(ctx: Ctx, p: Projectile, x: number, y: number, power: number, time: number): void {
+  const tier = LASER_TIERS[Math.min(LASER_TIERS.length, power) - 1]!;
+  const w = tier.w * (1 + Math.sin(time * 40) * 0.12);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(p.x0 - 75, p.y0 + 14);
+  ctx.lineTo(x, y);
+  ctx.strokeStyle = tier.glow;
+  ctx.lineWidth = w * 2;
+  ctx.globalAlpha = 0.45;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = w;
+  ctx.stroke();
+  ctx.strokeStyle = tier.core;
+  ctx.lineWidth = Math.max(1.5, w * 0.35);
+  ctx.stroke();
+  // 맞는 자리 불꽃
+  ctx.fillStyle = tier.glow;
+  ctx.beginPath();
+  ctx.arc(x, y, w * 0.9, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** 화이트보드 전초기지의 보드마커: 뚜껑 달린 마커가 빙글빙글 날아간다 */
+const MARKER_COLORS = ['#212121', '#e53935', '#1e88e5', '#43a047'];
+
+function drawMarker(ctx: Ctx, p: Projectile, k: number): void {
+  ctx.rotate(k * 9 + p.x0 * 0.1);
+  const c = MARKER_COLORS[Math.floor(Math.abs(p.x1)) % MARKER_COLORS.length]!;
+  ctx.lineWidth = 1.5;
+  ctx.fillStyle = '#fafafa';
+  ctx.beginPath();
+  ctx.roundRect(-8, -2.5, 12, 5, 1.5);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.roundRect(3, -3, 6, 6, 1.5);
+  ctx.fill();
+  ctx.stroke();
+}
+
+/** 화이트보드 전초기지 체력바: 늘 보이고 일반 유닛보다 넓다 (작은 체력바 위에 덮어 그린다) */
+function drawOutpostHp(ctx: Ctx, b: Battle, f: Fighter): void {
+  const s = f.look.scale ?? 1;
+  const w = 64;
+  const top = b.fy(f) - 62 * s - 2;
+  ctx.save();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgba(0,0,0,.5)';
+  ctx.beginPath();
+  ctx.roundRect(f.x - w / 2, top, w, 7, 3);
+  ctx.fill();
+  ctx.fillStyle = '#ef5350';
+  ctx.fillRect(f.x - w / 2 + 1, top + 1, (w - 2) * Math.max(0, f.hp / f.maxHp), 5);
+  ctx.stroke();
   ctx.restore();
 }
 

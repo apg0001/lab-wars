@@ -24,6 +24,8 @@ export type LookKind =
   | 'professor'
   | 'ghost'
   | 'printer'
+  /** 무한 모드 화이트보드 전초기지 (바퀴 달린 화이트보드) */
+  | 'whiteboard'
   /** 뽑기 장비 (ICT·전자공학 장비). 어떤 장비인지는 look.variant */
   | 'gear'
   /** 무한 모드 전용 버그·장애 군단. 어떤 버그인지는 look.variant */
