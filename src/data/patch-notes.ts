@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.19.1',
+    date: '2026-11-18',
+    title: '숨 고르기',
+    items: [
+      '{envelope} 학회 경품 추첨이 열리기 전에 잠깐 슬로우모션과 함께 화면이 어두워져요. 그동안 키 입력은 쉬어요',
+      '{check} 소환하던 숫자키로 카드를 실수로 고르지 않게, 카드가 다 뒤집히고 잠깐 뒤부터 1·2·3으로 고를 수 있어요 (클릭·탭은 바로)',
+      '{sparkle} 렙장처럼 주변을 강하게 하는 유닛의 오로라 범위가 발밑에 보여요. 조교의 범위는 빨갛게 보여요',
+    ],
+    en: {
+      title: 'Catch Your Breath',
+      items: [
+        '{envelope} Before the Conference Raffle opens, the battle slows down and the screen dims for a moment. Keys rest during it',
+        '{check} So summon keys don\'t pick a card by accident, 1·2·3 work a moment after all cards flip (clicks and taps work right away)',
+        '{sparkle} Aura units like the Lab Chief now show their range at their feet. The TA\'s range shows in red',
+      ],
+    },
+  },
+  {
     version: '0.19.0',
     date: '2026-11-18',
     title: '외전 4·5·6·7',
