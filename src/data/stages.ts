@@ -1,5 +1,7 @@
 import { localizeAll, tr } from '../i18n';
 import type { CourseMods } from '../sim/course-rules';
+import { ICE_COURSES, type CourseDef } from './major';
+import { COURSE_CONTENT } from './courses';
 
 export interface Chapter {
   id: number;
@@ -56,6 +58,8 @@ export interface StageDef {
   theme?: Theme;
   /** 특수 규칙 (외전) */
   mods?: StageMods;
+  /** 전공 모드 과목 id (src/data/major.ts) */
+  course?: string;
   /** 영어 (src/i18n) */
   en?: StageEn;
 }
@@ -476,5 +480,46 @@ export const SIDE_STAGES: StageDef[] = localizeAll(SIDE_CHAPTERS.flatMap((sc) =>
 // 외전 스테이지가 한국어 규칙(note)을 복사해 간 뒤에 등록한다
 localizeAll(SIDE_CHAPTERS);
 
-/** 캠페인과 외전 스테이지 id → 정의 */
-export const STAGE_BY_ID: Record<string, StageDef> = Object.fromEntries([...STAGES, ...SIDE_STAGES].map((s) => [s.id, s]));
+/**
+ * 전공 모드 과목 스테이지: 학기마다 한 단계씩 어려워진다 (1학년 1학기 ≈ 1장 끝, 4학년 2학기 ≈ 7장 끝).
+ * 과목마다 기말 보스(담당 교수님)가 나오는 한 판이다.
+ */
+export const courseStageId = (courseId: string): string => `M-${courseId}`;
+
+function makeCourseStage(co: CourseDef, i: number): StageDef | null {
+  const ct = COURSE_CONTENT[co.id];
+  if (!ct) return null;
+  const term = (co.year - 1) * 2 + (co.sem - 1);
+  const c = 5 + term * 2;
+  const n = numbersAt(c);
+  return {
+    ...n,
+    id: courseStageId(co.id),
+    chapter: 10,
+    index: i + 1,
+    order: 2000 + i,
+    name: co.name,
+    kind: 'boss',
+    // 규칙이 판을 흔드는 만큼 일반 스테이지보다 조금 순하게
+    scale: n.scale / 1.08,
+    spawnEvery: n.spawnEvery * 1.15,
+    rush: { ...n.rush, size: Math.max(2, Math.round(n.rush.size * 0.7)) },
+    pool: [...Object.entries(ct.pool).map(([id, weight]) => ({ id, weight })), { id: `ce-${co.id}`, weight: ct.foe.weight }],
+    boss: `boss-${co.id}`,
+    killMul: KILL_MUL,
+    note: ct.rule,
+    reward: Math.round((60 + c * 30 + 80) * REWARD_MUL * 1.2),
+    timeLimit: TIME_LIMIT.boss,
+    mods: { course: ct.mods },
+    course: co.id,
+    en: { name: co.en.name, note: ct.en.rule },
+  };
+}
+
+export const COURSE_STAGES: StageDef[] = localizeAll(ICE_COURSES.map(makeCourseStage).filter((st): st is StageDef => !!st));
+export const COURSE_STAGE_BY_COURSE: Record<string, StageDef> = Object.fromEntries(COURSE_STAGES.map((st) => [st.course!, st]));
+// 과목 스테이지가 한국어 규칙(note)을 복사해 간 뒤에 과목 내용을 현지화 등록한다
+localizeAll(Object.values(COURSE_CONTENT));
+
+/** 캠페인·외전·전공 스테이지 id → 정의 */
+export const STAGE_BY_ID: Record<string, StageDef> = Object.fromEntries([...STAGES, ...SIDE_STAGES, ...COURSE_STAGES].map((s) => [s.id, s]));

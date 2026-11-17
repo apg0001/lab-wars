@@ -97,6 +97,9 @@ export interface RankRow {
   avatar?: string;
   avatarTier?: number;
   fit?: { hat?: string; color?: string };
+  /** 전공 모드 평점 (들은 과목이 없으면 null)과 이수 학점 (예전 서버면 없음) */
+  gpa?: number | null;
+  credits?: number;
   /** 서버가 표시해 주는 내 줄 */
   mine?: boolean;
 }
@@ -269,7 +272,9 @@ export function progressScore(s: SaveData): number {
     // 뽑기에 연구비를 써도 모은 꾸미기가 다른 기기 저장에 밀려 사라지지 않게
     + (s.cosmetics?.owned.length ?? 0)
     // 뽑은 장비(중복 포함)와 남은 뽑기권도 진행으로 친다
-    + Object.values(s.gear?.owned ?? {}).reduce((a, n) => a + n * 3, 0) + (s.gear?.tickets ?? 0);
+    + Object.values(s.gear?.owned ?? {}).reduce((a, n) => a + n * 3, 0) + (s.gear?.tickets ?? 0)
+    // 전공 학점: 들은 과목 수와 학점이 높을수록
+    + Object.values(s.grades ?? {}).reduce((a, g) => a + 4 + (g === 'F' ? 0 : 9 - ['A+', 'A0', 'B+', 'B0', 'C+', 'C0', 'D+', 'D0'].indexOf(g)), 0);
   return (stars + s.endless * 2) * 1e6 + growth * 1e3 + Math.min(999, Math.floor(s.money / 100));
 }
 

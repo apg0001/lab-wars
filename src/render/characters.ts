@@ -1,4 +1,5 @@
 import type { Look } from '../data/types';
+import type { ProfVariant } from '../data/major';
 import { COSMETIC_BY_ID, type Outfit } from '../data/cosmetics';
 import { tr } from '../i18n';
 import { drawSideFoe } from './side-looks';
@@ -596,9 +597,770 @@ function notif(ctx: Ctx, look: Look, pose: Pose): void {
   label(ctx, '99+', 7, -15.5);
 }
 
-/** 전공 모드 교수님 (가상 인물): look.variant마다 머리·소품이 다르다 */
+type LecHair = 'bowl' | 'bob' | 'buzz' | 'curly' | 'side' | 'flat' | 'bald' | 'long' | 'bun' | 'messy' | 'pony' | 'quiff' | 'cloud' | 'pixie' | 'wavy' | 'slick';
+type LecWear = 'hoodie' | 'cardigan' | 'suit' | 'blazer' | 'vest' | 'turtle' | 'coat';
+interface LecSpec {
+  hair: LecHair;
+  /** 머리색 */
+  hc: string;
+  wear: LecWear;
+  specs?: 'round' | 'square' | 'shades';
+  beard?: 'full' | 'mus' | 'stubble' | 'goatee';
+  /** 속눈썹 */
+  lash?: boolean;
+  tie?: string;
+}
+
+/** 교수님 16명의 생김새: 머리·옷·안경·수염. 옷 색은 look.color */
+const LEC: Record<ProfVariant, LecSpec> = {
+  hanbit: { hair: 'bowl', hc: '#212121', wear: 'hoodie' },
+  jeonggyu: { hair: 'bob', hc: '#6d4c41', wear: 'cardigan', specs: 'square', lash: true },
+  baepo: { hair: 'buzz', hc: '#ffe082', wear: 'hoodie', beard: 'stubble' },
+  gomin: { hair: 'curly', hc: '#8d6e63', wear: 'cardigan', lash: true },
+  parksort: { hair: 'side', hc: '#263238', wear: 'suit', specs: 'square', tie: '#c62828' },
+  leebin: { hair: 'flat', hc: '#9e9e9e', wear: 'turtle', specs: 'round' },
+  bangeq: { hair: 'bald', hc: '#f5f5f5', wear: 'vest', beard: 'full', specs: 'round' },
+  jocond: { hair: 'long', hc: '#1c1c1c', wear: 'blazer', lash: true },
+  sangsok: { hair: 'bun', hc: '#bdbdbd', wear: 'blazer', specs: 'round', lash: true },
+  shinsig: { hair: 'messy', hc: '#795548', wear: 'coat' },
+  woopri: { hair: 'pony', hc: '#a1662f', wear: 'vest', lash: true },
+  jeonrate: { hair: 'quiff', hc: '#37474f', wear: 'turtle' },
+  noise: { hair: 'cloud', hc: '#eeeeee', wear: 'cardigan', beard: 'mus' },
+  yangq: { hair: 'pixie', hc: '#c0562b', wear: 'coat', specs: 'square', lash: true },
+  baekprop: { hair: 'wavy', hc: '#5d4037', wear: 'hoodie', beard: 'goatee' },
+  seoboan: { hair: 'slick', hc: '#212121', wear: 'suit', specs: 'shades', tie: '#00e676' },
+};
+
+/** 앞머리 덮개: 뒤쪽은 back까지, 이마 쪽은 front에서 fringe 높이로 */
+function lecCap(ctx: Ctx, hy: number, hc: string, back: number, front: number, fringe: number): void {
+  ctx.beginPath();
+  ctx.moveTo(-14.6, back);
+  ctx.quadraticCurveTo(-16.5, hy - 19, 1, hy - 17.5);
+  ctx.quadraticCurveTo(15.5, hy - 16, 14.6, front);
+  ctx.quadraticCurveTo(6, fringe - 1, -4, fringe);
+  ctx.quadraticCurveTo(-10, fringe + 2, -11, back);
+  ctx.closePath();
+  ctx.fillStyle = hc;
+  ctx.fill();
+  ctx.stroke();
+}
+
+function lecBlobs(ctx: Ctx, pts: number[][], hc: string): void {
+  line(ctx, 2);
+  for (const [x, y, r] of pts) blob(ctx, x, y, r, r, hc);
+  line(ctx);
+}
+
+/** 머리 뒤에 깔리는 머리카락 (머리보다 먼저) */
+function lecHairBack(ctx: Ctx, s: LecSpec, hy: number, accent: string): void {
+  const hc = s.hc;
+  switch (s.hair) {
+    case 'bob': rrect(ctx, -17, hy - 13, 31, 27, 9, hc); break;
+    case 'long': rrect(ctx, -17.5, hy - 12, 29, 37, 10, hc); break;
+    case 'wavy': rrect(ctx, -17, hy - 10, 21, 25, 8, hc); break;
+    case 'bun':
+      blob(ctx, -7, hy - 15, 7.5, 7, hc);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-15, hy - 21);
+      ctx.lineTo(-1, hy - 12);
+      ctx.stroke();
+      line(ctx);
+      break;
+    case 'pony':
+      ctx.beginPath();
+      ctx.moveTo(-10, hy - 11);
+      ctx.quadraticCurveTo(-31, hy - 8, -25, hy + 17);
+      ctx.quadraticCurveTo(-18, hy + 3, -12, hy - 1);
+      ctx.closePath();
+      ctx.fillStyle = hc;
+      ctx.fill();
+      ctx.stroke();
+      blob(ctx, -13, hy - 7, 2.8, 2.8, accent);
+      break;
+    case 'curly':
+      lecBlobs(ctx, [[-15, hy + 15, 5], [-15, hy + 7, 6.5], [-17, hy - 3, 6.5], [-13, hy - 12, 6.5], [-5, hy - 17, 6.5], [5, hy - 17, 6], [12, hy - 11, 5.5]], hc);
+      break;
+    case 'cloud':
+      lecBlobs(ctx, [[-16, hy + 6, 6.5], [-17, hy - 5, 8], [-10, hy - 15, 8], [1, hy - 18, 7.5], [11, hy - 14, 6]], hc);
+      break;
+    case 'messy':
+      ctx.beginPath();
+      ctx.moveTo(-14, hy - 4);
+      for (const [x, y] of [[-19, hy - 12], [-12, hy - 15], [-13, hy - 23], [-5, hy - 18], [-1, hy - 25], [4, hy - 18], [10, hy - 23], [10, hy - 15], [17, hy - 15], [13, hy - 6]]) ctx.lineTo(x, y);
+      ctx.closePath();
+      ctx.fillStyle = s.hc;
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'quiff':
+      ctx.beginPath();
+      ctx.ellipse(6, hy - 17, 11, 6.5, -0.35, 0, Math.PI * 2);
+      ctx.fillStyle = hc;
+      ctx.fill();
+      ctx.stroke();
+      break;
+    default: break;
+  }
+}
+
+/** 머리 위에 덮는 머리카락 (머리 다음) */
+function lecHairFront(ctx: Ctx, s: LecSpec, hy: number): void {
+  const hc = s.hc;
+  switch (s.hair) {
+    case 'bowl':
+      lecCap(ctx, hy, hc, hy + 4, hy - 4, hy - 5);
+      // 삐침 머리 한 가닥
+      ctx.beginPath();
+      ctx.moveTo(0, hy - 17);
+      ctx.quadraticCurveTo(1, hy - 25, 6, hy - 23);
+      ctx.stroke();
+      break;
+    case 'bob': lecCap(ctx, hy, hc, hy + 6, hy - 2, hy - 6); break;
+    case 'buzz':
+      line(ctx, 1.8);
+      lecCap(ctx, hy, hc, hy - 2, hy - 9, hy - 10);
+      line(ctx);
+      break;
+    case 'curly':
+      lecBlobs(ctx, [[-6, hy - 12, 5], [1, hy - 13, 5], [8, hy - 10, 4.5]], hc);
+      break;
+    case 'side':
+      lecCap(ctx, hy, hc, hy + 2, hy - 6, hy - 10);
+      line(ctx, 1.4);
+      ctx.beginPath();
+      ctx.moveTo(-5, hy - 17);
+      ctx.quadraticCurveTo(4, hy - 15, 11, hy - 9);
+      ctx.stroke();
+      line(ctx);
+      break;
+    case 'flat':
+      ctx.beginPath();
+      ctx.ellipse(-11, hy - 3, 4, 8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = hc;
+      ctx.fill();
+      rrect(ctx, -14, hy - 20, 27, 11, 2, hc);
+      break;
+    case 'bald':
+      line(ctx, 1.6);
+      blob(ctx, -12.5, hy + 1, 4.5, 8, hc);
+      blob(ctx, 12.5, hy - 1, 2.6, 5, hc);
+      line(ctx);
+      ctx.strokeStyle = 'rgba(255,255,255,.8)';
+      ctx.beginPath();
+      ctx.arc(0, hy - 2, 11, -2.3, -1.7);
+      ctx.stroke();
+      line(ctx);
+      break;
+    case 'long': lecCap(ctx, hy, hc, hy + 8, hy - 3, hy - 9); break;
+    case 'bun': lecCap(ctx, hy, hc, hy + 2, hy - 6, hy - 9); break;
+    case 'messy': lecCap(ctx, hy, hc, hy + 2, hy - 6, hy - 8); break;
+    case 'pony': lecCap(ctx, hy, hc, hy + 2, hy - 5, hy - 8); break;
+    case 'quiff': lecCap(ctx, hy, hc, hy + 1, hy - 8, hy - 11); break;
+    case 'pixie':
+      lecCap(ctx, hy, hc, hy + 3, hy - 5, hy - 7);
+      ctx.beginPath();
+      ctx.moveTo(1, hy - 8);
+      ctx.lineTo(5, hy - 2);
+      ctx.lineTo(7, hy - 8);
+      ctx.lineTo(12, hy - 3);
+      ctx.lineTo(14, hy - 7);
+      ctx.fillStyle = hc;
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'wavy': lecCap(ctx, hy, hc, hy + 8, hy - 5, hy - 8); break;
+    case 'slick':
+      lecCap(ctx, hy, hc, hy + 1, hy - 9, hy - 12);
+      ctx.strokeStyle = 'rgba(255,255,255,.45)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(8, hy - 13);
+      ctx.quadraticCurveTo(-2, hy - 17, -10, hy - 10);
+      ctx.moveTo(10, hy - 10);
+      ctx.quadraticCurveTo(0, hy - 13, -9, hy - 5);
+      ctx.stroke();
+      line(ctx);
+      break;
+    default: break;
+  }
+}
+
+/** 옷: 몸통 + 깃·넥타이·단추 */
+function lecWear(ctx: Ctx, s: LecSpec, c: string, accent: string): void {
+  const v = (fill: string, depth = -34): void => {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(-6, -48);
+    ctx.lineTo(0, depth);
+    ctx.lineTo(6, -48);
+    ctx.closePath();
+    ctx.fill();
+  };
+  switch (s.wear) {
+    case 'hoodie':
+      blob(ctx, -5, -47, 11, 6, c);
+      rrect(ctx, -15, -48, 30, 38, 9, c);
+      ctx.strokeStyle = '#fafafa';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-2, -46);
+      ctx.lineTo(-2, -37);
+      ctx.moveTo(4, -46);
+      ctx.lineTo(4, -38);
+      ctx.stroke();
+      line(ctx, 1.5);
+      ctx.beginPath();
+      ctx.roundRect(-8, -25, 18, 9, 3);
+      ctx.stroke();
+      break;
+    case 'cardigan':
+      rrect(ctx, -15, -48, 30, 38, 8, c);
+      v('#fafafa');
+      line(ctx, 1.5);
+      ctx.beginPath();
+      ctx.moveTo(0, -34);
+      ctx.lineTo(0, -10);
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      for (const y of [-29, -22, -15]) {
+        ctx.beginPath();
+        ctx.arc(2.5, y, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case 'suit':
+    case 'blazer':
+      rrect(ctx, -15, -48, 30, 38, 8, c);
+      v(s.wear === 'suit' ? '#fafafa' : accent, -31);
+      if (s.tie) {
+        ctx.fillStyle = s.tie;
+        ctx.beginPath();
+        ctx.moveTo(-1.5, -46);
+        ctx.lineTo(1.5, -46);
+        ctx.lineTo(2.5, -34);
+        ctx.lineTo(0, -31);
+        ctx.lineTo(-2.5, -34);
+        ctx.closePath();
+        ctx.fill();
+      }
+      line(ctx, 1.5);
+      ctx.beginPath();
+      ctx.moveTo(-9, -47);
+      ctx.lineTo(-1, -30);
+      ctx.moveTo(9, -47);
+      ctx.lineTo(1, -30);
+      ctx.stroke();
+      if (s.wear === 'blazer') blob(ctx, -8, -38, 2, 2, '#ffd54f');
+      break;
+    case 'vest':
+      rrect(ctx, -15, -48, 30, 38, 8, '#fafafa');
+      ctx.beginPath();
+      ctx.moveTo(-14.5, -45);
+      ctx.lineTo(0, -27);
+      ctx.lineTo(14.5, -45);
+      ctx.lineTo(14.5, -13);
+      ctx.lineTo(-14.5, -13);
+      ctx.closePath();
+      ctx.fillStyle = c;
+      ctx.fill();
+      ctx.stroke();
+      // 마름모 무늬
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (const x of [-8, 8]) {
+        ctx.moveTo(x, -27);
+        ctx.lineTo(x + 3.5, -22);
+        ctx.lineTo(x, -17);
+        ctx.lineTo(x - 3.5, -22);
+        ctx.closePath();
+      }
+      ctx.stroke();
+      line(ctx);
+      if (s.beard) {
+        // 나비넥타이
+        ctx.fillStyle = '#c62828';
+        ctx.beginPath();
+        ctx.moveTo(0, -44);
+        ctx.lineTo(-5, -47);
+        ctx.lineTo(-5, -41);
+        ctx.closePath();
+        ctx.moveTo(0, -44);
+        ctx.lineTo(5, -47);
+        ctx.lineTo(5, -41);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    case 'turtle':
+      rrect(ctx, -15, -48, 30, 38, 8, c);
+      ctx.strokeStyle = 'rgba(0,0,0,.15)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (const x of [-8, -3, 2, 7]) {
+        ctx.moveTo(x, -40);
+        ctx.lineTo(x, -14);
+      }
+      ctx.stroke();
+      line(ctx);
+      rrect(ctx, -8, -51, 16, 6, 3, c);
+      break;
+    case 'coat':
+      rrect(ctx, -16, -48, 32, 40, 7, '#fafafa');
+      v(c, -32);
+      line(ctx, 1.5);
+      ctx.beginPath();
+      ctx.moveTo(-7, -47);
+      ctx.lineTo(0, -31);
+      ctx.lineTo(7, -47);
+      ctx.moveTo(0, -31);
+      ctx.lineTo(0, -9);
+      ctx.stroke();
+      // 가슴 주머니와 펜
+      ctx.fillStyle = accent;
+      ctx.fillRect(-11, -40, 2, 6);
+      ctx.strokeRect(-13, -36, 7, 6);
+      break;
+  }
+  line(ctx);
+}
+
+/** 얼굴: 눈·입·수염·안경 (오른쪽을 본다) */
+function lecFace(ctx: Ctx, s: LecSpec, hy: number, accent: string): void {
+  if (s.beard === 'full') {
+    line(ctx, 1.6);
+    ctx.beginPath();
+    ctx.moveTo(-12, hy + 2);
+    ctx.quadraticCurveTo(-9, hy + 20, 4, hy + 19);
+    ctx.quadraticCurveTo(14, hy + 17, 14, hy + 3);
+    ctx.quadraticCurveTo(4, hy + 9, -12, hy + 2);
+    ctx.fillStyle = s.hc;
+    ctx.fill();
+    ctx.stroke();
+  } else if (s.beard === 'stubble') {
+    ctx.fillStyle = 'rgba(80,60,50,.22)';
+    ctx.beginPath();
+    ctx.ellipse(4, hy + 9, 9.5, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (s.beard === 'goatee') {
+    line(ctx, 1.4);
+    blob(ctx, 6, hy + 12, 3.2, 3.5, s.hc);
+  }
+  if (s.specs !== 'shades') eyes(ctx, 3, hy, 4.5, false, 1.8);
+  if (s.lash) {
+    line(ctx, 1.2);
+    ctx.beginPath();
+    for (const ex of [-1.5, 7.5]) {
+      ctx.moveTo(ex + 1.4, hy - 1.6);
+      ctx.lineTo(ex + 3.2, hy - 3.4);
+    }
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,120,120,.4)';
+  ctx.beginPath();
+  ctx.arc(11, hy + 5, 2.3, 0, Math.PI * 2);
+  ctx.fill();
+  line(ctx, 1.6);
+  ctx.beginPath();
+  if (s.specs === 'shades') {
+    ctx.moveTo(3, hy + 7);
+    ctx.lineTo(8, hy + 6.5);
+  } else {
+    ctx.arc(5, hy + 4.5, 3.2, 0.25 * Math.PI, 0.8 * Math.PI);
+  }
+  ctx.stroke();
+  if (s.beard === 'mus') {
+    line(ctx, 1.2);
+    blob(ctx, 5, hy + 5, 5.5, 2.2, s.hc);
+  }
+  if (s.specs === 'round') glasses(ctx, 3, hy);
+  else if (s.specs === 'square') {
+    line(ctx, 1.6);
+    ctx.beginPath();
+    ctx.rect(-6, hy - 3.2, 8, 6.4);
+    ctx.rect(4, hy - 3.2, 8, 6.4);
+    ctx.moveTo(2, hy);
+    ctx.lineTo(4, hy);
+    ctx.stroke();
+  } else if (s.specs === 'shades') {
+    line(ctx, 1.6);
+    rrect(ctx, -6, hy - 3, 8, 5.5, 2, '#212121');
+    rrect(ctx, 4, hy - 3, 8, 5.5, 2, '#212121');
+    ctx.beginPath();
+    ctx.moveTo(2, hy - 1);
+    ctx.lineTo(4, hy - 1);
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(6, hy - 1.5);
+    ctx.lineTo(8, hy - 1.5);
+    ctx.stroke();
+  }
+  line(ctx);
+}
+
+/** 손에 든 소품: 손(0,0) 위쪽으로 그린다. 강의 주제와 연결된다 */
+function lecProp(ctx: Ctx, v: ProfVariant, look: Look, pose: Pose): void {
+  const ac = look.accent ?? '#fff';
+  const t = pose.time;
+  ctx.font = 'bold 5px Jua, sans-serif';
+  switch (v) {
+    case 'hanbit': // Hello가 뜬 노트북
+      rrect(ctx, -9, -17, 21, 14, 2, '#37474f');
+      ctx.fillStyle = ac;
+      label(ctx, 'Hello', -6, -8.5);
+      rrect(ctx, -11, -3.5, 25, 4, 1.5, '#cfd8dc');
+      break;
+    case 'jeonggyu': { // 표가 그려진 클립보드
+      rrect(ctx, -8, -23, 18, 23, 2, '#a1887f');
+      line(ctx, 1.4);
+      rrect(ctx, -6, -19, 14, 16, 1, '#fff');
+      ctx.fillStyle = '#ef5350';
+      ctx.fillRect(1.5, -11, 6.5, 4);
+      ctx.strokeStyle = '#90a4ae';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const x of [-1.5, 1.5]) { ctx.moveTo(x, -19); ctx.lineTo(x, -3); }
+      for (const y of [-15, -11, -7]) { ctx.moveTo(-6, y); ctx.lineTo(8, y); }
+      ctx.stroke();
+      line(ctx, 1.4);
+      rrect(ctx, -2, -25, 6, 4, 1, '#9e9e9e');
+      break;
+    }
+    case 'baepo': { // 배포 로켓
+      ctx.rotate(0.35);
+      const fl = 4 + Math.abs(Math.sin(t * 14)) * 3;
+      ctx.fillStyle = '#ffb300';
+      ctx.beginPath();
+      ctx.moveTo(-3, 3);
+      ctx.lineTo(0, 4 + fl);
+      ctx.lineTo(3, 3);
+      ctx.closePath();
+      ctx.fill();
+      line(ctx, 1.8);
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(sx * 3, -6);
+        ctx.lineTo(sx * 8, 3);
+        ctx.lineTo(sx * 3, 2);
+        ctx.closePath();
+        ctx.fillStyle = ac;
+        ctx.fill();
+        ctx.stroke();
+      }
+      blob(ctx, 0, -7, 4.5, 11, '#eceff1');
+      ctx.fillStyle = '#e53935';
+      ctx.beginPath();
+      ctx.ellipse(0, -15, 3, 3, 0, Math.PI, Math.PI * 2);
+      ctx.lineTo(0, -18);
+      ctx.fill();
+      blob(ctx, 0, -8, 2, 2, '#4fc3f7');
+      break;
+    }
+    case 'gomin': { // 팀플 포스트잇 보드
+      rrect(ctx, -10, -23, 23, 20, 2, '#d7a86e');
+      line(ctx, 1);
+      const cs = [ac, '#f48fb1', '#81d4fa', '#a5d6a7'];
+      for (let i = 0; i < 4; i++) {
+        const x = -8 + (i % 2) * 10;
+        const y = -21 + Math.floor(i / 2) * 9;
+        rrect(ctx, x, y, 8, 7, 0.5, cs[i]);
+        ctx.beginPath();
+        ctx.moveTo(x + 1.5, y + 3);
+        ctx.lineTo(x + 6, y + 3);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'parksort': { // 오름차순 막대그래프
+      rrect(ctx, -9, -23, 21, 21, 2, '#fff');
+      line(ctx, 1.2);
+      for (let i = 0; i < 4; i++) rrect(ctx, -6 + i * 4.5, -6 - (4 + i * 3.5), 3.5, 4 + i * 3.5, 0.5, i % 2 ? look.color : ac);
+      ctx.beginPath();
+      ctx.moveTo(-7, -20);
+      ctx.lineTo(-7, -5);
+      ctx.lineTo(11, -5);
+      ctx.stroke();
+      break;
+    }
+    case 'leebin': { // 0101 머그컵
+      ctx.strokeStyle = 'rgba(176,190,197,.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (const x of [-2, 3]) {
+        ctx.moveTo(x, -17);
+        ctx.quadraticCurveTo(x + 3 * Math.sin(t * 5 + x), -21, x, -25);
+      }
+      ctx.stroke();
+      line(ctx);
+      ctx.beginPath();
+      ctx.arc(-6, -8, 4, Math.PI / 2, Math.PI * 1.5);
+      ctx.stroke();
+      rrect(ctx, -6, -15, 14, 15, 2.5, '#fafafa');
+      ctx.fillStyle = '#2e7d32';
+      ctx.font = 'bold 4.5px Jua, sans-serif';
+      label(ctx, '0101', -4.5, -6);
+      break;
+    }
+    case 'bangeq': // 수식 칠판
+      rrect(ctx, -11, -24, 25, 18, 2, '#8d6e63');
+      line(ctx, 1.2);
+      rrect(ctx, -9, -22, 21, 14, 1, '#2e7d32');
+      ctx.fillStyle = ac;
+      label(ctx, 'x²+1', -6, -13);
+      ctx.fillRect(-6, -11, 14, 0.8);
+      break;
+    case 'jocond': { // 큰 주사위 (공격 중엔 굴러간다)
+      const n = pose.swing > 0.05 ? 1 + (Math.floor(t * 8) % 6) : 5;
+      ctx.rotate(pose.swing * 1.2);
+      rrect(ctx, -8, -19, 18, 18, 4, '#fff');
+      const P: Record<number, number[][]> = {
+        1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
+        4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
+        6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
+      };
+      ctx.fillStyle = '#ad1457';
+      for (const [dx, dy] of P[n]) {
+        ctx.beginPath();
+        ctx.arc(1 + dx * 4.5, -10 + dy * 4.5, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'sangsok': // 상속 UML 카드
+      rrect(ctx, -10, -25, 23, 23, 2, '#ede7f6');
+      line(ctx, 1.2);
+      rrect(ctx, -3, -22, 9, 5, 1, ac);
+      rrect(ctx, -8, -9, 8, 5, 1, '#fff');
+      rrect(ctx, 3, -9, 8, 5, 1, '#fff');
+      ctx.beginPath();
+      ctx.moveTo(-4, -9);
+      ctx.lineTo(-4, -12);
+      ctx.lineTo(7, -12);
+      ctx.lineTo(7, -9);
+      ctx.moveTo(1.5, -12);
+      ctx.lineTo(1.5, -14);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1.5, -17);
+      ctx.lineTo(-0.8, -14);
+      ctx.lineTo(3.8, -14);
+      ctx.closePath();
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'shinsig': // 사인파 오실로스코프 팻말
+    case 'yangq': { // 계단 모양 양자화 그래프 팻말
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 5);
+      ctx.lineTo(0, -10);
+      ctx.stroke();
+      ctx.strokeStyle = '#a1887f';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      line(ctx);
+      const sig = v === 'shinsig';
+      rrect(ctx, -11, -27, 24, 17, 3, sig ? '#263238' : '#f1f8e9');
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      if (sig) {
+        ctx.strokeStyle = ac;
+        for (let i = 0; i <= 20; i++) {
+          const y = -18.5 + Math.sin(i * 0.62 - t * 5) * 4.5;
+          if (i) ctx.lineTo(-9 + i, y); else ctx.moveTo(-9, y);
+        }
+      } else {
+        ctx.strokeStyle = '#c5e1a5';
+        ctx.moveTo(-9, -12);
+        ctx.lineTo(11, -25);
+        ctx.stroke();
+        ctx.strokeStyle = ac;
+        ctx.beginPath();
+        ctx.moveTo(-9, -12);
+        for (let i = 0; i < 4; i++) {
+          ctx.lineTo(-9 + (i + 1) * 5, -12 - i * 3.5);
+          ctx.lineTo(-9 + (i + 1) * 5, -12 - (i + 1) * 3.5);
+        }
+      }
+      ctx.stroke();
+      line(ctx);
+      break;
+    }
+    case 'woopri': // 대기 번호표
+      rrect(ctx, -7, -23, 16, 21, 1.5, '#fff');
+      ctx.fillStyle = '#ef6c00';
+      ctx.fillRect(-6, -22, 14, 2.5);
+      ctx.fillStyle = ac;
+      ctx.font = 'bold 4px Jua, sans-serif';
+      label(ctx, '번호', -3.5, -15.5, 'NO.');
+      ctx.font = 'bold 7px Jua, sans-serif';
+      label(ctx, '042', -5, -6.5);
+      break;
+    case 'jeonrate': { // 안테나 공유기
+      line(ctx, 2);
+      ctx.beginPath();
+      ctx.moveTo(-7, -8);
+      ctx.lineTo(-10, -22);
+      ctx.moveTo(8, -8);
+      ctx.lineTo(11, -22);
+      ctx.stroke();
+      blob(ctx, -10, -22, 1.6, 1.6, ac);
+      blob(ctx, 11, -22, 1.6, 1.6, ac);
+      ctx.strokeStyle = ac;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (const r of [4, 7.5]) {
+        ctx.moveTo(0.5 + r * Math.cos(1.25 * Math.PI), -12 + r * Math.sin(1.25 * Math.PI));
+        ctx.arc(0.5, -12, r, 1.25 * Math.PI, 1.75 * Math.PI);
+      }
+      ctx.stroke();
+      line(ctx);
+      rrect(ctx, -12, -9, 25, 9, 2.5, '#eceff1');
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = Math.sin(t * 9 + i * 1.7) > 0 ? '#00e676' : '#1b5e20';
+        ctx.beginPath();
+        ctx.arc(-7 + i * 4, -4.5, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'noise': { // 잡음 섞인 라디오
+      line(ctx, 1.8);
+      ctx.beginPath();
+      ctx.moveTo(6, -14);
+      ctx.lineTo(13, -27);
+      ctx.stroke();
+      blob(ctx, 13, -27, 1.5, 1.5, '#9e9e9e');
+      line(ctx);
+      rrect(ctx, -11, -15, 23, 15, 3, '#bcaaa4');
+      line(ctx, 1.4);
+      blob(ctx, -4, -7.5, 4.5, 4.5, '#5d4037');
+      blob(ctx, 6, -7.5, 2.5, 2.5, ac);
+      ctx.strokeStyle = '#78909c';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (const y of [-20, -24]) {
+        ctx.moveTo(-12, y);
+        for (let i = 1; i <= 6; i++) ctx.lineTo(-12 + i * 2.5, y + Math.sin(t * 31 + i * 2.3 + y) * 2);
+      }
+      ctx.stroke();
+      line(ctx);
+      break;
+    }
+    case 'baekprop': { // 신경망 모형 + 거꾸로 가는 빨간 화살표
+      const L = [[[-8, -16], [-8, -8]], [[1, -20], [1, -12], [1, -4]], [[10, -12]]];
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      for (let k = 0; k < 2; k++) {
+        for (const [ax, ay] of L[k]) for (const [bx, by] of L[k + 1]) { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+      }
+      ctx.moveTo(0, 0);
+      ctx.lineTo(1, -4);
+      ctx.stroke();
+      line(ctx, 1.3);
+      const fills = ['#90caf9', ac, look.color];
+      L.forEach((layer, k) => { for (const [x, y] of layer) blob(ctx, x, y, 2.6, 2.6, fills[k]); });
+      ctx.strokeStyle = '#d32f2f';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(10, -18);
+      ctx.quadraticCurveTo(1, -30, -8, -22);
+      ctx.moveTo(-8, -22);
+      ctx.lineTo(-5, -25);
+      ctx.moveTo(-8, -22);
+      ctx.lineTo(-4, -21);
+      ctx.stroke();
+      line(ctx);
+      break;
+    }
+    case 'seoboan': // 자물쇠
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(-4.5, -10);
+      ctx.lineTo(-4.5, -15);
+      ctx.arc(1, -15, 5.5, Math.PI, Math.PI * 2);
+      ctx.lineTo(6.5, -10);
+      ctx.stroke();
+      ctx.strokeStyle = '#b0bec5';
+      ctx.lineWidth = 2.6;
+      ctx.stroke();
+      line(ctx);
+      rrect(ctx, -7, -12, 16, 13, 2.5, '#fbc02d');
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.arc(1, -7, 1.8, 0, Math.PI * 2);
+      ctx.fillRect(0.3, -7, 1.4, 4);
+      ctx.fill();
+      ctx.fillStyle = ac;
+      ctx.beginPath();
+      ctx.arc(6, -9, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+  }
+  line(ctx);
+}
+
+/** 팔 하나: 소매(옷 색) + 손 */
+function lecArm(ctx: Ctx, x0: number, y0: number, x1: number, y1: number, sleeve: string): void {
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 7.5;
+  ctx.stroke();
+  ctx.strokeStyle = sleeve;
+  ctx.lineWidth = 4.5;
+  ctx.stroke();
+  line(ctx);
+}
+
+/** 전공 모드 교수님 (가상 인물): look.variant마다 머리·옷·소품이 다르다. 오른쪽을 보고 서 있다 */
 function lecturer(ctx: Ctx, look: Look, pose: Pose): void {
-  professor(ctx, look, pose, '');
+  const v = (look.variant as ProfVariant | undefined) ?? 'hanbit';
+  const s = LEC[v] ?? LEC.hanbit;
+  const ac = look.accent ?? '#ffd54f';
+  const sleeve = s.wear === 'coat' || s.wear === 'vest' ? '#fafafa' : look.color;
+  line(ctx);
+  legs(ctx, pose, 10, 12, '#263238');
+  line(ctx);
+  ctx.save();
+  // 숨쉬듯 살짝 들썩인다
+  ctx.translate(0, pose.moving ? -Math.abs(Math.sin(pose.walk * 2)) : Math.sin(pose.time * 2.2) * 0.8);
+  // 뒷팔 (방정식 교수님은 분필)
+  const k = pose.moving ? Math.sin(pose.walk * 2) * 3 : 0;
+  lecArm(ctx, -9, -42, -13 - k, -27, sleeve);
+  if (v === 'bangeq') {
+    line(ctx, 1.4);
+    rrect(ctx, -15 - k, -32, 2.5, 7, 1, '#fff');
+    line(ctx);
+  }
+  blob(ctx, -13 - k, -27, 3.3, 3.3, SKIN);
+  lecWear(ctx, s, look.color, ac);
+  const hy = -62;
+  lecHairBack(ctx, s, hy, ac);
+  blob(ctx, 0, hy, 14, 15, SKIN);
+  lecHairFront(ctx, s, hy);
+  lecFace(ctx, s, hy, ac);
+  // 앞팔 + 소품 (공격 시 앞으로 치켜든다)
+  const a = 1.15 - pose.swing * 1.5;
+  const hx = 9 + Math.cos(a) * 15;
+  const hh = -42 + Math.sin(a) * 15;
+  lecArm(ctx, 9, -42, hx, hh, sleeve);
+  ctx.save();
+  ctx.translate(hx, hh);
+  ctx.rotate(-pose.swing * 0.4);
+  lecProp(ctx, v, look, pose);
+  ctx.restore();
+  blob(ctx, hx, hh, 3.5, 3.5, SKIN);
+  ctx.restore();
 }
 
 function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
