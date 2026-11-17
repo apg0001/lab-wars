@@ -47,8 +47,9 @@ function botThink(b: Battle, rng: () => number): void {
   // 가장 비싼 유닛을 우선 소환하되, 카페인이 넘칠 때만 고급 유닛을 기다린다.
   // 공중 적이 쌓이면 대공 가능한 유닛(원거리)을 먼저 뽑는다.
   const air = enemies.filter((e) => e.stats.flying).length;
-  const antiAir = (d: { def: { range: number } }) => d.def.range >= RANGED_THRESHOLD;
-  const deck = [...b.loadout.deck].sort((x, y) => (air >= 2 ? Number(antiAir(y)) - Number(antiAir(x)) : 0) || y.def.cost - x.def.cost);
+  // 대공 점수: 원거리면 1, 대공 배율(위성 안테나 등)이 있으면 그만큼 더
+  const antiAir = (d: { def: { range: number; airMul?: number } }) => (d.def.range >= RANGED_THRESHOLD ? (d.def.airMul ?? 1) : 0);
+  const deck = [...b.loadout.deck].sort((x, y) => (air >= 2 ? antiAir(y) - antiAir(x) : 0) || y.def.cost - x.def.cost);
   // 적이 연구실 코앞이면 급한 대로 아무거나, 아니면 좋은 유닛을 위해 카페인을 모은다.
   const emergency = nearest - ALLY_FRONT < 260;
   for (const d of deck) {
@@ -96,7 +97,7 @@ export function botShop(save: SaveData): void {
 
 /**
  * 봇의 편성 9칸: 가장 싼 유닛(급할 때 막을 물량) 하나와 대공 가능한 유닛 하나를 남기고,
- * 나머지는 비싼(= 센) 유닛부터 채운다. 순서는 도감 순서.
+ * 나머지는 비싼(= 센) 유닛부터 채운다. 싸움에 약한 경제 유닛(카페인 생산만 하는 장비)은 하나까지만. 순서는 도감 순서.
  */
 export function botSquad(save: SaveData): string[] {
   const owned = ownedUnits(save);
@@ -107,10 +108,18 @@ export function botSquad(save: SaveData): string[] {
   const byCost = [...owned].sort((a, b) => b.cost - a.cost);
   const aa = byCost.find((u) => u.range >= RANGED_THRESHOLD);
   if (aa) pick.add(aa.id);
+  const economy = (u: { caffeineGen?: number; aura?: unknown }) => !!u.caffeineGen && !u.aura;
+  let eco = [...pick].filter((id) => economy(owned.find((u) => u.id === id)!)).length;
   for (const u of byCost) {
     if (pick.size >= LOADOUT_MAX) break;
+    if (pick.has(u.id)) continue;
+    if (economy(u)) {
+      if (eco >= 1) continue;
+      eco++;
+    }
     pick.add(u.id);
   }
+  for (const u of byCost) if (pick.size < LOADOUT_MAX) pick.add(u.id);
   return owned.filter((u) => pick.has(u.id)).map((u) => u.id);
 }
 

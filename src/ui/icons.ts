@@ -19,7 +19,7 @@ export function portrait(look: Look, tier = 1, defId = '', facing: 1 | -1 = 1, o
   const s = look.scale ?? 1;
   // 캐릭터 키에 맞춰 축소해서 칸에 맞춘다 (모자를 쓰면 위로 조금 더 자리를 둔다)
   const hat = fitKey !== '' && !fitKey.startsWith('/');
-  const charH = ((look.kind === 'professor' ? 90 : 58) + (hat ? 10 : 0)) * s;
+  const charH = ((look.kind === 'professor' ? 90 : look.kind === 'gear' ? 74 : 58) + (hat ? 10 : 0)) * s;
   const fit = Math.min(1.7, (size - 16) / charH);
   ctx.translate(size / 2, size - 10);
   ctx.scale(fit, fit);
