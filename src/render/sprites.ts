@@ -12,6 +12,8 @@ import { drawCharacter, outfitKey, type Pose } from './characters';
 
 /** 자세를 다시 그리는 횟수 (초당) */
 export const ANIM_FPS = 24;
+/** 한 프레임에 다시 그리는 스프라이트 수 상한. 넘친 전투원은 한 프레임 전 그림을 쓰고 다음 프레임에 그린다 */
+const REDRAW_BUDGET = 16;
 /** 그림 둘레 여백 (캐릭터 단위) */
 const PAD = 6;
 
@@ -110,6 +112,7 @@ export class SpriteCache {
   private readonly map = new Map<number, Sprite>();
   private readonly free: Sprite[] = [];
   private frame = 0;
+  private budget = REDRAW_BUDGET;
 
   /**
    * 전투원을 현재 변환(발 아래 가운데가 원점) 위치에 찍는다.
@@ -120,7 +123,7 @@ export class SpriteCache {
     // 0.25 단위로 끊어 창 크기가 조금 바뀔 때마다 캔버스를 다시 만들지 않게
     const pr = Math.max(0.5, Math.ceil(pixelRatio * 4) / 4);
     const bucket = Math.floor(time * ANIM_FPS + st.phase);
-    const key = `${bucket}|${st.flash ? 1 : 0}|${st.facing}|${pr}|${lookKey(st.look, st.defId, st.tier)}|${st.look.color}`;
+    const key = `${bucket}|${st.facing}|${pr}|${lookKey(st.look, st.defId, st.tier)}|${st.look.color}`;
     let sp = this.map.get(uid);
     if (!sp) {
       sp = this.free.pop() ?? newSprite();
@@ -128,7 +131,9 @@ export class SpriteCache {
       this.map.set(uid, sp);
     }
     sp.used = this.frame;
-    if (sp.key !== key) {
+    // 처음 그리는 전투원은 늘 그리고, 자세만 바뀐 전투원은 이번 프레임 몫이 남았을 때만 다시 그린다
+    if (sp.key !== key && (sp.key === '' || this.budget > 0)) {
+      if (sp.key !== '') this.budget--;
       sp.key = key;
       sp.bounds = bounds;
       render(sp, st, (bucket - st.phase) / ANIM_FPS, pr);
@@ -136,6 +141,17 @@ export class SpriteCache {
     const bx = sp.bounds;
     const l = st.facing === 1 ? bx.l : -bx.r;
     ctx.drawImage(sp.canvas, l, bx.t, bx.r - bx.l, bx.b - bx.t);
+    if (st.flash) {
+      // 맞은 순간: 같은 그림을 밝게 더해 찍는다. 스프라이트를 다시 그리지 않아서
+      // 충격파처럼 수십 명이 한꺼번에 맞아도 그 프레임이 튀지 않는다.
+      const a = ctx.globalAlpha;
+      const op = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = a * 0.55;
+      ctx.drawImage(sp.canvas, l, bx.t, bx.r - bx.l, bx.b - bx.t);
+      ctx.globalAlpha = a;
+      ctx.globalCompositeOperation = op;
+    }
   }
 
   /** 프레임 끝: 이번 프레임에 쓰지 않은 전투원(죽어 사라짐·화면 밖)의 캔버스를 돌려 쓴다 */
@@ -147,6 +163,7 @@ export class SpriteCache {
       }
     }
     this.frame++;
+    this.budget = REDRAW_BUDGET;
   }
 }
 
@@ -171,12 +188,4 @@ function render(sp: Sprite, st: SpriteState, time: number, pr: number): void {
   const left = st.facing === 1 ? l : -r;
   g.setTransform(pr, 0, 0, pr, -left * pr, -t * pr);
   drawCharacter(g, st.look, { walk: st.walk, swing: st.swing, tier: st.tier, time, moving: st.moving }, 0, 0, st.facing, st.defId);
-  if (st.flash) {
-    // 맞은 순간: 그림 위에만 흰빛을 덧칠한다 (ctx.filter보다 훨씬 싸다)
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = 'rgba(255,255,255,.55)';
-    g.fillRect(0, 0, w, h);
-    g.globalCompositeOperation = 'source-over';
-  }
 }
