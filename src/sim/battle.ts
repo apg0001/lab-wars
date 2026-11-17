@@ -5,8 +5,8 @@ import type { SkillId } from '../data/upgrades';
 import type { BattleLoadout } from './progression';
 
 export const WORLD_W = 1800;
-export const GROUND_Y = 440;
-export const AIR_Y = 300;
+export const GROUND_Y = 400;
+export const AIR_Y = 265;
 export const BASE_W = 150;
 /** 각 건물의 전면(유닛이 공격하는 지점) */
 export const ALLY_FRONT = 30 + BASE_W;
@@ -147,6 +147,11 @@ export class Battle {
   brewLevel = 1;
   hasteT = 0;
   freezeT = 0;
+  /** 외전 평가 시즌 남은 시간 */
+  frenzyT = 0;
+  private nextFrenzy = Infinity;
+  /** 외전 멘탈 붕괴 상태 */
+  broken = false;
   result: BattleResult = null;
   killReward = 0;
   kills = 0;
@@ -165,6 +170,8 @@ export class Battle {
     this.enemy = { side: 'enemy', hp: stage.enemyBaseHp, maxHp: stage.enemyBaseHp, towerCd: 0, hitFlash: 0 };
     this.nextRush = stage.rush.first;
     this.spawnTimer = stage.spawnEvery * 0.6;
+    if (stage.mods?.frenzy) this.nextFrenzy = stage.mods.frenzy.every;
+    if (stage.mods?.drain) this.mental = loadout.mentalMax * 0.6;
   }
 
   // ───────────── 플레이어 조작 ─────────────
@@ -276,7 +283,21 @@ export class Battle {
     this.t += dt;
     const L = this.loadout;
     this.caffeine = Math.min(this.caffeineMax, this.caffeine + this.caffeineRegen * dt);
-    this.mental = Math.min(L.mentalMax, this.mental + L.mentalRegen * dt);
+    const drain = this.stage.mods?.drain ?? 0;
+    this.mental = Math.max(0, Math.min(L.mentalMax, this.mental + (L.mentalRegen - drain) * dt));
+    if (drain) {
+      const broken = this.mental <= 0.5;
+      if (broken && !this.broken) this.banner('😵 멘탈 붕괴! 아군 공격력 −25%');
+      this.broken = broken;
+    }
+    const fz = this.stage.mods?.frenzy;
+    if (fz && this.t >= this.nextFrenzy) {
+      this.frenzyT = fz.dur;
+      this.nextFrenzy += fz.every;
+      this.banner('📋 평가 시즌! 적이 거세져요');
+      this.emit({ type: 'rush' });
+    }
+    this.frenzyT = Math.max(0, this.frenzyT - dt);
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
     this.hasteT = Math.max(0, this.hasteT - dt);
     this.freezeT = Math.max(0, this.freezeT - dt);
@@ -390,14 +411,18 @@ export class Battle {
     }
   }
 
+  private enemyFrenzy(): number {
+    return this.frenzyT > 0 ? this.stage.mods!.frenzy!.mul : 1;
+  }
+
   private speedMul(f: Fighter): number {
     if (f.side === 'ally') return this.hasteT > 0 ? 1.2 : 1;
-    return this.freezeT > 0 ? 0.5 : 1;
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
   }
 
   private atkRateMul(f: Fighter): number {
     if (f.side === 'ally') return this.hasteT > 0 ? 1.6 : 1;
-    return this.freezeT > 0 ? 0.5 : 1;
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
   }
 
   private canHit(attacker: CombatStats, target: Fighter): boolean {
@@ -472,7 +497,7 @@ export class Battle {
     if (f.cd > 0) return;
     f.cd = s.interval;
     f.swing = 1;
-    const atk = s.atk * f.auraMul;
+    const atk = s.atk * f.auraMul * (f.side === 'ally' && this.broken ? 0.75 : 1);
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
@@ -602,6 +627,8 @@ export class Battle {
         this.killReward += f.reward;
         // 적 세기(기본 처치 보상)에 비례해 카페인을 얻는다
         const caf = killCaffeine(f.defId);
+        // 멘탈 고갈 외전: 처치하면 멘탈이 조금 돌아온다
+        if (this.stage.mods?.drain) this.mental = Math.min(this.loadout.mentalMax, this.mental + 3 + caf * 0.5);
         this.caffeine = Math.min(this.caffeineMax, this.caffeine + caf);
         this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${f.reward}💰 +${caf}☕`, color: '#ffd54f' });
       }

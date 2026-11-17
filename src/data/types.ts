@@ -21,7 +21,9 @@ export type LookKind =
   | 'binder'
   | 'revision'
   | 'notif'
-  | 'professor';
+  | 'professor'
+  | 'ghost'
+  | 'printer';
 
 export interface Look {
   kind: LookKind;

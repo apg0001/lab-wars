@@ -92,10 +92,10 @@ export interface StageRun {
 /**
  * 캠페인 전체를 봇으로 진행한다. 지면 직전 스테이지를 한 번 다시 돌아 연구비를 모은 뒤 재도전한다.
  */
-export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7): { runs: StageRun[]; stuckAt: string | null } {
+export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: StageDef[] = STAGES): { runs: StageRun[]; stuckAt: string | null } {
   const runs: StageRun[] = [];
   let s = seed;
-  for (const stage of STAGES) {
+  for (const [i, stage] of stages.entries()) {
     let attempts = 0;
     for (;;) {
       attempts++;
@@ -106,7 +106,7 @@ export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7): { runs:
         break;
       }
       if (attempts >= maxAttempts) return { runs, stuckAt: stage.id };
-      const prev = STAGES[stage.order - 1];
+      const prev = i > 0 ? stages[i - 1] : undefined;
       if (prev) {
         botShop(save);
         playOnce(save, prev, s++);

@@ -55,21 +55,61 @@ const CAMPAIGN_ID = /^([1-7])-([1-9]|10)$/;
 const PER_CHAPTER = 10;
 const CAMPAIGN_SIZE = 7 * PER_CHAPTER;
 
-/** 저장 데이터에서 순위 점수를 뽑는다. 이상한 값은 걸러낸다. */
+const starOf = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(3, Math.max(0, Math.floor(v))) : 0);
+
+/** 0.8(7챕터×6) 스테이지 → 지금 캠페인의 1부터 센 위치. 클라이언트 v2Order와 같다. */
+function v2Pos(c: number, i: number): number {
+  const idx = i === 6 ? PER_CHAPTER : Math.round(((i - 1) * (PER_CHAPTER - 2)) / 4) + 1;
+  return (c - 1) * PER_CHAPTER + idx;
+}
+
+/**
+ * 저장 데이터에서 순위 점수를 뽑는다. 이상한 값은 걸러낸다.
+ * 아직 새 버전으로 접속하지 않은 예전 저장(v1, v2)도 클라이언트 이전 규칙대로 환산한다.
+ */
 export function rankStats(raw: unknown): { endless: number; stars: number; cleared: number; title: string } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as { v?: unknown; stars?: unknown; endless?: unknown };
-  const legacy = typeof r.v !== 'number' || r.v < 3;
+  const v = typeof r.v === 'number' && Number.isFinite(r.v) ? r.v : 1;
+  const entries = r.stars && typeof r.stars === 'object' ? Object.entries(r.stars as Record<string, unknown>) : [];
   let stars = 0;
   let cleared = 0;
   let top = 0;
-  if (!legacy && r.stars && typeof r.stars === 'object') {
-    for (const [id, v] of Object.entries(r.stars as Record<string, unknown>)) {
+  if (v >= 3) {
+    for (const [id, val] of entries) {
       const m = CAMPAIGN_ID.exec(id);
-      const n = typeof v === 'number' && Number.isFinite(v) ? Math.min(3, Math.max(0, Math.floor(v))) : 0;
+      const n = starOf(val);
       if (!m || n === 0) continue;
       stars += n;
       cleared++;
       top = Math.max(top, (Number(m[1]) - 1) * PER_CHAPTER + Number(m[2]));
+    }
+  } else if (v >= 2) {
+    // 7챕터×6: 깬 스테이지만 같은 자리로 옮긴다
+    for (const [id, val] of entries) {
+      const m = /^([1-7])-([1-6])$/.exec(id);
+      const n = starOf(val);
+      if (!m || n === 0) continue;
+      stars += n;
+      cleared++;
+      top = Math.max(top, v2Pos(Number(m[1]), Number(m[2])));
+    }
+  } else {
+    // 4챕터×5: 같은 난이도 지점까지 평균 별로 클리어
+    let reach = -1;
+    const got: number[] = [];
+    for (const [id, val] of entries) {
+      const m = /^([1-4])-([1-5])$/.exec(id);
+      const n = starOf(val);
+      if (!m || n === 0) continue;
+      const o = (Number(m[1]) - 1) * 5 + (Number(m[2]) - 1);
+      reach = Math.max(reach, Math.min(CAMPAIGN_SIZE - 1, Math.round((o * (CAMPAIGN_SIZE - 1)) / 19)));
+      got.push(n);
+    }
+    if (reach >= 0) {
+      const avg = Math.max(1, Math.round(got.reduce((x, y) => x + y, 0) / got.length));
+      cleared = reach + 1;
+      stars = avg * cleared;
+      top = cleared;
     }
   }
   const endless = typeof r.endless === 'number' && Number.isFinite(r.endless) ? Math.min(100_000, Math.max(0, Math.floor(r.endless))) : 0;

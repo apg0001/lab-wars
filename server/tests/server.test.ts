@@ -107,14 +107,16 @@ describe('계정 서버', () => {
     const prof = await mk('교수님', { v: 3, stars: stars(70), endless: 7 });
     await mk('석사생', { v: 3, stars: stars(33), endless: 0 });
     await mk('예전저장', { v: 1, stars: { '4-5': 3 } });
-    await mk('0.8저장', { v: 2, stars: { '1-1': 3 } });
+    await mk('영팔저장', { v: 2, stars: { '1-1': 3 } });
     await mk('사기꾼', { v: 3, stars: { '9-9': 3, hack: 99 }, endless: 'lots' });
 
     const pub = await call('GET', '/api/leaderboard');
     expect(pub.status).toBe(200);
-    expect(pub.json.top.map((r: { name: string }) => r.name)).toEqual(['교수님', '석사생', '학부생1']);
+    expect(pub.json.top.map((r: { name: string }) => r.name)).toEqual(['교수님', '예전저장', '석사생', '학부생1', '영팔저장']);
     expect(pub.json.top[0]).toMatchObject({ rank: 1, endless: 7, stars: 210, cleared: 70, title: '교수' });
-    expect(pub.json.top[1]).toMatchObject({ title: '석사', cleared: 33 });
+    expect(pub.json.top[1]).toMatchObject({ title: '교수', cleared: 70, stars: 210 }); // 예전 4챕터 최종 클리어
+    expect(pub.json.top[2]).toMatchObject({ title: '석사', cleared: 33 });
+    expect(pub.json.top[4]).toMatchObject({ cleared: 1, stars: 3, title: '학부생' }); // 0.8 저장도 환산
     expect(pub.json.top[0].uid).toBeUndefined();
     expect(pub.json.me).toBeNull();
 

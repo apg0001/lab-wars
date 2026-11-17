@@ -5,7 +5,7 @@ import { audio, mtof } from './engine';
  * 몰입감은 살리되 귀가 피곤하지 않게: 부드러운 삼각파·저역 통과, 낮은 드럼.
  */
 
-export type TrackId = 'lobby' | 'battle' | 'boss';
+export type TrackId = 'lobby' | 'battle' | 'boss' | 'spooky' | 'spookyBoss';
 
 interface Track {
   bpm: number;
@@ -66,6 +66,30 @@ const TRACKS: Record<TrackId, Track> = {
     arp: [3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 2, 1, 0, 1],
     arpOct: 12, swing: 0,
     padGain: 0.04, arpGain: 0.03, bassGain: 0.14, drumGain: 0.65, arpLp: 1900,
+  },
+  // 외전: 오르골처럼 높고 드문드문, 시계 초침 같은 하이햇. Am – Fm – Dm – E7(♭9)
+  spooky: {
+    bpm: 70,
+    chords: [[45, 57, 60, 64], [41, 53, 56, 60], [38, 50, 53, 57], [40, 56, 59, 65]],
+    bass: [1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0],
+    kick: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    snare: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    hat: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    arp: [2, _, _, 1, _, _, 3, _, _, _, 0, _, _, 2, _, _],
+    arpOct: 24, swing: 0,
+    padGain: 0.05, arpGain: 0.035, bassGain: 0.12, drumGain: 0.5, arpLp: 3200,
+  },
+  // 외전 보스: Dm – E♭ – Dm – C#dim, 낮게 밀어붙인다
+  spookyBoss: {
+    bpm: 100,
+    chords: [[38, 50, 53, 57], [39, 51, 55, 58], [38, 50, 53, 57], [37, 49, 52, 55]],
+    bass: [1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 2, 0],
+    kick: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    hat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+    arp: [3, _, _, 2, _, _, 1, _, 3, _, _, 2, _, 1, _, 0],
+    arpOct: 24, swing: 0,
+    padGain: 0.045, arpGain: 0.028, bassGain: 0.14, drumGain: 0.6, arpLp: 2400,
   },
 };
 
