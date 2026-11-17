@@ -22,6 +22,22 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.18.1',
+    date: '2026-11-17',
+    title: '간단히 보기 고침',
+    items: [
+      '{check} 연구실 간단히 보기에서 카드 그림이 칸 밖으로 커져 다른 카드를 덮던 문제를 고쳤어요',
+      '{book} 넓은 화면의 간단히 보기는 한 줄에 더 많이 보여요 (연구실 7칸, 도감 10칸)',
+    ],
+    en: {
+      title: 'Compact View Fix',
+      items: [
+        '{check} Fixed card pictures in the lab\'s compact view growing past their box and covering other cards',
+        '{book} Compact view fits more per row on wide screens (7 in the lab, 10 in the Codex)',
+      ],
+    },
+  },
+  {
     version: '0.18.0',
     date: '2026-11-17',
     title: '편해진 연구실',
