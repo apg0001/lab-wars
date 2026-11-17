@@ -22,6 +22,22 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.16.0',
+    date: '2026-11-17',
+    title: 'Hello, World!',
+    items: [
+      '{sparkle} 영어 지원: 브라우저 언어가 한국어가 아니면 영어로 나와요. 타이틀 오른쪽 위나 설정에서 언제든 바꿀 수 있어요',
+      '{scroll} 스토리 105개 장면 전부 영어로 번역했어요. 리뷰어 2는 영어로도 리뷰어 2예요',
+    ],
+    en: {
+      title: 'Hello, World!',
+      items: [
+        '{sparkle} English is here: the game follows your browser language. Switch anytime from the title corner or settings',
+        '{scroll} All 105 story scenes are translated. Reviewer 2 is still Reviewer 2',
+      ],
+    },
+  },
+  {
     version: '0.15.0',
     date: '2026-11-17',
     title: '운도 실력이다',
