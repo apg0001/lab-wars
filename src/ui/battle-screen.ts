@@ -17,6 +17,7 @@ import { isPortrait } from './orientation';
 import { RARITY_LABEL, type CardDef } from '../data/cards';
 import { tr } from '../i18n';
 import { rarityOf } from '../data/units';
+import { runTutorial } from './tutorial';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
@@ -44,6 +45,8 @@ export interface BattleScreenOptions {
   /** 배속 1~3 */
   speed?: number;
   onSpeedChange?: (speed: number) => void;
+  /** 있으면 첫 전투 튜토리얼을 띄우고, 끝내거나 건너뛰면 부른다 */
+  onTutorialDone?: () => void;
 }
 
 /** 전투 화면을 root에 그리고, 정리 함수를 돌려준다. */
@@ -186,6 +189,16 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
         ),
       ));
     }
+  }
+
+  // 첫 전투 튜토리얼: 말풍선을 보는 동안 전투를 멈춘다
+  if (opt.onTutorialDone) {
+    paused = true;
+    const skillRow = skillBtns[0]?.btn.parentElement;
+    runTutorial(screen, { goal: top, units: unitRow, caffeine: cafTxt.parentElement!.parentElement!, skills: skillRow ?? menTxt.parentElement!, camera: mini }, !!skillRow, () => {
+      paused = false;
+      opt.onTutorialDone!();
+    });
   }
 
   // ── 학회 경품 추첨 ──

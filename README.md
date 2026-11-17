@@ -140,7 +140,7 @@ src/
   render/    Canvas 캐릭터·배경·외전 테마·이펙트·타격감 연출
   audio/     Web Audio 합성 효과음·배경음악
   story/     스토리 대본(본편·스테이지·외전)과 애니메이션 컷신 재생기
-  ui/        타이틀·지도·연구실 강화·도감·심사 결과(꾸미기)·전투 HUD (DOM)
+  ui/        타이틀·지도·연구실 강화·편성·첫 전투 튜토리얼·도감·심사 결과(꾸미기)·전투 HUD (DOM)
   save/      저장소 인터페이스, 기기 내 프로필 저장, 계정 서버 동기화
 server/      계정 서버 (Node + SQLite, Docker)
 tests/       Vitest 테스트
