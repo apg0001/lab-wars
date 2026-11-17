@@ -377,14 +377,15 @@ export class App {
     const ch = CHAPTERS[this.chapter - 1]!;
     const stages = STAGES.filter((s) => s.chapter === ch.id);
     const nodes = h('div.stage-path', {}, ...stages.map((s) => this.stageNode(s)));
-    const totalStars = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    // 캠페인 별만 센다 (외전 별은 따로)
+    const totalStars = STAGES.reduce((a, st) => a + (this.save.stars[st.id] ?? 0), 0);
     const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
     this.notice = '';
     this.swap(h('div.screen.map', {},
       this.topBar(tr('스테이지', 'Stages')),
       toast,
       tabs,
-      h('div.chapter-title', {}, h('b', {}, tr(`${ch.id}장 ${ch.name}: ${ch.subtitle}`, `Ch. ${ch.id} ${ch.name}: ${ch.subtitle}`)), h('span.muted', {}, tr(` · 총 별 ${totalStars}/${STAGES.length * 3}`, ` · Stars ${totalStars}/${STAGES.length * 3}`))),
+      h('div.chapter-title', {}, h('b', {}, tr(`${ch.id}장 ${ch.name}: ${ch.subtitle}`, `Ch. ${ch.id} ${ch.name}: ${ch.subtitle}`)), h('span.muted', {}, tr(`{star} 총 별 ${totalStars}/${STAGES.length * 3}`, `{star} Stars ${totalStars}/${STAGES.length * 3}`))),
       nodes,
       this.mapActions(),
     ));
