@@ -916,7 +916,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
  */
 /* 세로: 상태 표시줄·홈 바 영역도 게임 배경색으로 칠해 위아래 검은 띠가 생기지 않게 */
 html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
-.portrait #app { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+/* 아래 홈 바 여백은 40%만 비워 화면을 더 쓴다 (배경은 끝까지 칠한다) */
+.portrait #app { padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) * 0.4); }
 .portrait .stage { width: 100cqw; height: 100cqh; border-radius: 0; }
 .portrait .stage > * { --u: min(1cqw * 100 / 56, 1cqh); }
 .portrait .panel {
