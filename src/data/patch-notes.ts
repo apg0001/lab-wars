@@ -22,6 +22,28 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.17.0',
+    date: '2026-11-17',
+    title: '장비 지원 사업 선정',
+    items: [
+      '{sparkle} 장비 지원 뽑기: 연구비로 뽑기권을 사서 정보통신·전자 장비 유닛 28종(레어 14·에픽 9·레전더리 5)을 뽑아요. 10연차는 에픽 이상 보장, 100회면 레전더리를 골라 받아요',
+      '{swords} 편성 9칸: 연구실의 편성 탭에서 데리고 나갈 9명을 고르고 프리셋 3개를 저장해요. 단축키는 1~9',
+      '{flask} 새 전투 능력: 화상, 둔화, 빙결, 관통, 연쇄 번개, 방어력 감소, 띄우기, 흡혈, 보호막, 회복, 포탑·소환, 부활, 전장 폭격',
+      '{infinity} 무한 모드 버그 군단: 세그폴트, 메모리 누수, 무한 루프, 머지 컨플릭트, 블루스크린, 정전. 30판부터는 커널 패닉과 레거시 코드',
+      '{redbook} 같은 장비가 또 나오면 레벨 상한이 올라가요 (최대 +5). 보스 첫 클리어와 무한 10판마다 뽑기권 1장',
+    ],
+    en: {
+      title: 'Equipment Grant Approved',
+      items: [
+        '{sparkle} Equipment Grant: buy tickets with funding and pull 28 ICT/electronics gear units (14 Rare, 9 Epic, 5 Legendary). 10-pulls guarantee Epic+, and 100 pulls let you pick a Legendary',
+        '{swords} 9-slot Squad: choose who deploys in the Lab’s Squad tab and save up to 3 presets. Hotkeys 1–9',
+        '{flask} New abilities: burn, slow, freeze, pierce, chain lightning, armor shred, knock-up, lifesteal, shields, healing, turrets & summons, revive, field strikes',
+        '{infinity} Endless bug army: Segfault, Memory Leak, Infinite Loop, Merge Conflict, Blue Screen, Power Outage — and from round 30, Kernel Panic and Legacy Code',
+        '{redbook} Duplicates raise that unit’s level cap (up to +5). Free tickets for first boss clears and every 10 endless rounds',
+      ],
+    },
+  },
+  {
     version: '0.16.2',
     date: '2026-11-17',
     title: '연타 주의',
