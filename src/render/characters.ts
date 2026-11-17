@@ -1,4 +1,5 @@
 import type { Look } from '../data/types';
+import { COSMETIC_BY_ID, type Outfit } from '../data/cosmetics';
 
 /** 낙서풍 외곽선 색 */
 export const INK = '#2b2430';
@@ -171,7 +172,7 @@ function student(ctx: Ctx, look: Look, pose: Pose): void {
     ctx.lineTo(-20, hy - 1);
     ctx.stroke();
   }
-  if (pose.tier >= 3) gradCap(ctx, 0, hy - 12);
+  if (pose.tier >= 3 && !capHidden) gradCap(ctx, 0, hy - 12);
 
   // 소품 (공격 시 앞으로 휘두름)
   const px = 11 + sw * 7;
@@ -371,7 +372,7 @@ function jaeminai(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.arc(2, -17, 3, 0.1, Math.PI - 0.1);
   ctx.stroke();
   blob(ctx, 12 + pose.swing * 6, -14, 3.5, 3.5, look.color);
-  if (pose.tier >= 3) gradCap(ctx, 0, -33);
+  if (pose.tier >= 3 && !capHidden) gradCap(ctx, 0, -33);
 }
 
 // ─────────────────────────── 적 ───────────────────────────
@@ -822,11 +823,296 @@ function printer(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.restore();
 }
 
+// ─────────────────────────── 꾸미기 (심사 결과 뽑기) ───────────────────────────
+
+/** 옷장: defId(유닛 id, 주인공 'hero') → 입힌 모자·색. 겉모습만 바꾼다. */
+let wardrobe: Record<string, Outfit> = {};
+/** 모자를 썼으면 3단계 학사모를 숨긴다 */
+let capHidden = false;
+
+export function setWardrobe(w: Record<string, Outfit>): void {
+  wardrobe = w;
+}
+
+/** 초상 캐시 키에 넣을 꾸미기 표시 */
+export function outfitKey(defId: string, outfit?: Outfit): string {
+  const o = outfit ?? wardrobe[defId];
+  return o ? `${o.hat ?? ''}/${o.color ?? ''}` : '';
+}
+
+/** 팔레트 색 (홀로그램은 시간에 따라 돈다) */
+function paletteColor(id: string, time: number): string | undefined {
+  const c = COSMETIC_BY_ID[id]?.color;
+  if (c === 'holo') return `hsl(${Math.round((time * 70 + 190) % 360)}, 80%, 72%)`;
+  return c;
+}
+
+/** 머리 기준점: 정수리 (x, top), 머리 반폭 w, 눈 위치 (ex, ey). 그리기 함수가 옮긴 좌표계 안에서 쓴다. */
+interface HeadAnchor { x: number; top: number; w: number; ex: number; ey: number }
+
+function headAnchor(kind: Look['kind'], tier: number): HeadAnchor | null {
+  switch (kind) {
+    case 'student': return { x: 0, top: -53, w: 13, ex: 3, ey: -39 };
+    case 'drone': return { x: 0, top: -27, w: 11, ex: 4, ey: -15 };
+    case 'gpu': {
+      const w = 34 + (tier - 1) * 6;
+      const h = 40 + (tier - 1) * 6;
+      return { x: 0, top: -h - 6, w: w * 0.42, ex: -4, ey: -h + 6 };
+    }
+    case 'claudy': return { x: 0, top: -44, w: 12, ex: 2, ey: -27 };
+    case 'codexy': return { x: 0, top: tier >= 2 ? -44 : -40, w: 13, ex: 0, ey: -29 };
+    case 'jaeminai': return { x: 0, top: -34, w: 12, ex: 2, ey: -22 };
+    default: return null;
+  }
+}
+
+/** 모자·액세서리. 원점은 정수리(안경류는 눈), 크기는 학생 머리(반폭 13) 기준. */
+function drawHat(ctx: Ctx, id: string, a: HeadAnchor, time: number): void {
+  const def = COSMETIC_BY_ID[id];
+  if (!def) return;
+  ctx.save();
+  const k = a.w / 13;
+  if (def.face) ctx.translate(a.ex, a.ey);
+  else ctx.translate(a.x, a.top);
+  ctx.scale(k, k);
+  line(ctx, 2.2);
+  switch (id) {
+    case 'beanie':
+      ctx.fillStyle = '#ef5350';
+      ctx.beginPath();
+      ctx.moveTo(-14, 7);
+      ctx.bezierCurveTo(-14, -10, 14, -10, 14, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      rrect(ctx, -15, 3, 30, 6, 3, '#c62828');
+      blob(ctx, 0, -8, 4.2, 4.2, '#fff');
+      break;
+    case 'ribbon':
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 13, 14, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.stroke();
+      ctx.lineWidth = 2.6;
+      ctx.strokeStyle = '#ff6fa8';
+      ctx.stroke();
+      line(ctx, 2);
+      ctx.fillStyle = '#ff6fa8';
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(6, 1);
+        ctx.lineTo(6 + s * 8, -5);
+        ctx.lineTo(6 + s * 8, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      blob(ctx, 6, 1, 2.6, 2.6, '#ff4081');
+      break;
+    case 'sprout':
+      ctx.rotate(Math.sin(time * 2.5) * 0.15);
+      ctx.beginPath();
+      ctx.moveTo(0, 3);
+      ctx.lineTo(0, -10);
+      ctx.stroke();
+      ctx.fillStyle = '#7cb342';
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(s * 5, -11, 6, 3.2, s * -0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    case 'ballcap':
+      ctx.fillStyle = '#1e88e5';
+      ctx.beginPath();
+      ctx.moveTo(-14, 6);
+      ctx.bezierCurveTo(-14, -9, 14, -9, 14, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(10, 4);
+      ctx.quadraticCurveTo(24, 2, 26, 7);
+      ctx.lineTo(11, 7);
+      ctx.closePath();
+      ctx.fillStyle = '#1565c0';
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 8px Jua, sans-serif';
+      label(ctx, 'LW', -6, 3);
+      break;
+    case 'roundglasses':
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      ctx.lineWidth = 2.4;
+      for (const dx of [-5, 6]) {
+        ctx.beginPath();
+        ctx.arc(dx, 0, 5.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(-10, -1);
+      ctx.lineTo(-14, -3);
+      ctx.stroke();
+      break;
+    case 'sunglasses':
+      for (const dx of [-5, 6]) rrect(ctx, dx - 5, -3.5, 10, 7, 3, '#212121');
+      ctx.beginPath();
+      ctx.moveTo(-10, -1);
+      ctx.lineTo(-14, -3);
+      ctx.stroke();
+      ctx.strokeStyle = '#90caf9';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-7, -1.5);
+      ctx.lineTo(-4, -1.5);
+      ctx.moveTo(4, -1.5);
+      ctx.lineTo(7, -1.5);
+      ctx.stroke();
+      break;
+    case 'headphones':
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, 13, 15.5, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#424242';
+      ctx.stroke();
+      line(ctx, 2.2);
+      rrect(ctx, -19, 8, 7, 13, 3, '#26c6da');
+      rrect(ctx, 12, 8, 7, 13, 3, '#26c6da');
+      break;
+    case 'catears':
+      for (const s of [-1, 1]) {
+        ctx.fillStyle = '#ffb74d';
+        ctx.beginPath();
+        ctx.moveTo(s * 3, 4);
+        ctx.lineTo(s * 9, -9);
+        ctx.lineTo(s * 14, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f8bbd0';
+        ctx.beginPath();
+        ctx.moveTo(s * 6, 3);
+        ctx.lineTo(s * 9, -4);
+        ctx.lineTo(s * 11.5, 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    case 'partyhat': {
+      ctx.rotate(0.22);
+      const cone = (): void => {
+        ctx.beginPath();
+        ctx.moveTo(-9, 5);
+        ctx.lineTo(0, -20);
+        ctx.lineTo(9, 5);
+        ctx.closePath();
+      };
+      cone();
+      ctx.fillStyle = '#ab47bc';
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.strokeStyle = '#ffeb3b';
+      ctx.lineWidth = 3;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-12, i * 7);
+        ctx.lineTo(12, i * 7 - 8);
+        ctx.stroke();
+      }
+      ctx.restore();
+      line(ctx, 2.2);
+      cone();
+      ctx.stroke();
+      blob(ctx, 0, -21, 3.4, 3.4, '#ff7043');
+      break;
+    }
+    case 'velvet':
+      blob(ctx, 0, -1, 11, 7, '#7b1fa2');
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 15, 4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#4a148c';
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#ffca28';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -7);
+      ctx.quadraticCurveTo(13, -6, 14, 8);
+      ctx.stroke();
+      line(ctx, 2);
+      blob(ctx, 14, 10, 2.4, 3.2, '#ffca28');
+      break;
+    case 'crown':
+      ctx.beginPath();
+      ctx.moveTo(-12, 6);
+      ctx.lineTo(-13, -9);
+      ctx.lineTo(-6, -2);
+      ctx.lineTo(0, -12);
+      ctx.lineTo(6, -2);
+      ctx.lineTo(13, -9);
+      ctx.lineTo(12, 6);
+      ctx.closePath();
+      ctx.fillStyle = '#ffd54f';
+      ctx.fill();
+      ctx.stroke();
+      blob(ctx, 0, 1, 2.6, 2.6, '#e53935');
+      blob(ctx, -7, 2, 1.8, 1.8, '#42a5f5');
+      blob(ctx, 7, 2, 1.8, 1.8, '#66bb6a');
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(time * 5);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(-9, -4, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'halo':
+      ctx.translate(0, -9 + Math.sin(time * 3) * 1.5);
+      ctx.shadowColor = '#fff59d';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 12, 3.6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffe082';
+      ctx.stroke();
+      break;
+    case 'laurel':
+      for (const s of [-1, 1]) {
+        for (let i = 0; i < 4; i++) {
+          const ang = Math.PI * 1.5 + s * (0.35 + i * 0.32);
+          ctx.fillStyle = i % 2 ? '#9ccc65' : '#c0ca33';
+          ctx.beginPath();
+          ctx.ellipse(Math.cos(ang) * 15, 13 + Math.sin(ang) * 15, 5, 2.4, ang + Math.PI / 2 + s * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+      blob(ctx, 0, -1, 2, 2, '#ffca28');
+      break;
+  }
+  ctx.restore();
+}
+
 /**
  * 캐릭터 하나를 (x, y) 발 위치에 그린다. facing 1이면 오른쪽(아군), -1이면 왼쪽(적)을 본다.
  * 그림은 오른쪽을 보는 기준으로 작성되어 있고, 적은 좌우 반전한다.
+ * 옷장(setWardrobe)에 defId가 있으면 그 모자·색을 입힌다. outfit을 주면 그것을 대신 쓴다.
  */
-export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: number, facing: 1 | -1, defId = ''): void {
+export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: number, facing: 1 | -1, defId = '', outfit?: Outfit): void {
+  const fit = outfit ?? wardrobe[defId];
+  if (fit?.color) {
+    const c = paletteColor(fit.color, pose.time);
+    if (c) look = { ...look, color: c };
+  }
+  const hat = fit?.hat ? COSMETIC_BY_ID[fit.hat] : undefined;
+  capHidden = !!hat && !hat.face;
   const s = look.scale ?? 1;
   ctx.save();
   ctx.translate(x, y);
@@ -852,5 +1138,10 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'ghost': ghost(ctx, look, pose, defId); break;
     case 'printer': printer(ctx, look, pose); break;
   }
+  if (hat) {
+    const a = headAnchor(look.kind, pose.tier);
+    if (a) drawHat(ctx, hat.id, a, pose.time);
+  }
+  capHidden = false;
   ctx.restore();
 }

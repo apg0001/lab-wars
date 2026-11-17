@@ -5,6 +5,7 @@ import { FINAL_STAGE, SIDE_STAGES, STAGES, legacyOrder, v2Order, type StageDef }
 /** 0.8(7챕터×6)에는 없던, 챕터 사이에 새로 생긴 스테이지 */
 const v2Gap = (s: StageDef): boolean => s.chapter <= 7 && [2, 4, 6, 8].includes(s.index);
 import { FACILITIES, SKILLS, facilityCost, type FacilityId, type SkillDef } from '../data/upgrades';
+import { COSMETIC_BY_ID, HERO_SLOT, PITY, type Outfit } from '../data/cosmetics';
 
 /** 2: 7챕터 캠페인 (0.8.0) */
 export const SAVE_VERSION = 4;
@@ -13,6 +14,20 @@ export interface UnitProgress {
   level: number;
   /** 진화 단계 1~3 */
   tier: number;
+}
+
+/** "심사 결과" 꾸미기 뽑기 기록. 겉모습만 바꾼다. */
+export interface CosmeticSave {
+  /** 가진 아이템 id */
+  owned: string[];
+  /** 옷장 칸(주인공 'hero' 또는 유닛 id) → 입힌 모자·색 */
+  outfits: Record<string, Outfit>;
+  /** 이름 옆에 붙이는 칭호 id ('' = 없음) */
+  title: string;
+  /** 마지막 희귀 이상 뒤로 이어진 뽑기 수 */
+  pity: number;
+  /** 지금까지 투고(뽑기)한 수 */
+  draws: number;
 }
 
 export interface SaveData {
@@ -28,6 +43,7 @@ export interface SaveData {
   endless: number;
   /** 이미 본 스토리 장면 id */
   seen: string[];
+  cosmetics: CosmeticSave;
   updatedAt: number;
 }
 
@@ -41,8 +57,36 @@ export function newSave(): SaveData {
     facilities: { remodel: 0, coffee: 0, tumbler: 0, meditate: 0, planner: 0, printer: 0, printerRange: 0 },
     endless: 0,
     seen: [],
+    cosmetics: newCosmetics(),
     updatedAt: Date.now(),
   };
+}
+
+export const newCosmetics = (): CosmeticSave => ({ owned: [], outfits: {}, title: '', pity: 0, draws: 0 });
+
+/** 꾸미기 기록 정리: 모르는 아이템·칸은 버리고, 가지지 않은 아이템은 벗긴다. 예전 저장은 빈 옷장으로 시작한다. */
+export function normalizeCosmetics(raw: unknown): CosmeticSave {
+  const out = newCosmetics();
+  if (!raw || typeof raw !== 'object') return out;
+  const r = raw as Partial<Record<keyof CosmeticSave, unknown>>;
+  const int = (x: unknown, max: number): number => (typeof x === 'number' && Number.isFinite(x) ? Math.min(max, Math.max(0, Math.floor(x))) : 0);
+  if (Array.isArray(r.owned)) out.owned = [...new Set(r.owned.filter((id): id is string => typeof id === 'string' && !!COSMETIC_BY_ID[id]))];
+  const has = (id: unknown, kind: string): id is string => typeof id === 'string' && out.owned.includes(id) && COSMETIC_BY_ID[id]!.kind === kind;
+  if (r.outfits && typeof r.outfits === 'object') {
+    const slots = new Set([HERO_SLOT, ...UNITS.map((u) => u.id)]);
+    for (const [slot, v] of Object.entries(r.outfits as Record<string, unknown>)) {
+      if (!slots.has(slot) || !v || typeof v !== 'object') continue;
+      const o = v as Record<string, unknown>;
+      const fit: Outfit = {};
+      if (has(o.hat, 'hat')) fit.hat = o.hat;
+      if (has(o.color, 'color')) fit.color = o.color;
+      if (fit.hat || fit.color) out.outfits[slot] = fit;
+    }
+  }
+  if (has(r.title, 'title')) out.title = r.title;
+  out.pity = int(r.pity, PITY - 1);
+  out.draws = int(r.draws, 1e7);
+  return out;
 }
 
 /** 외부에서 읽은 값을 안전한 SaveData로 정리한다. */
@@ -98,6 +142,7 @@ export function normalizeSave(raw: unknown): SaveData {
     }
   }
   base.endless = Math.max(0, Math.floor(num(r.endless, 0)));
+  base.cosmetics = normalizeCosmetics(r.cosmetics);
   if (Array.isArray(r.seen)) base.seen = r.seen.filter((x): x is string => typeof x === 'string').slice(0, 200);
   if (r.units && typeof r.units === 'object') {
     for (const u of UNITS) {
