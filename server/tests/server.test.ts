@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { createApp, defaultConfig, type Config } from '../src/app.ts';
+import { createApp, defaultConfig, rankLook, type Config } from '../src/app.ts';
 import { Store } from '../src/db.ts';
 import { hashPassword, verifyAccess, verifyPassword } from '../src/auth.ts';
 
@@ -219,5 +219,19 @@ describe('계정 서버', () => {
     const res = await fetch(base + '/api/admin/feedback', { method: 'OPTIONS', headers: { Origin: ORIGIN } });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-methods')).toContain('PATCH');
+  });
+
+  it('순위표 꾸미기: 칭호와 대표 캐릭터·차림을 모양만 검사해 넘긴다', () => {
+    const look = rankLook({
+      cosmetics: { title: 't-reviewer2', avatar: 'coder', outfits: { coder: { hat: 'h-cap', color: 'c-mint' }, hero: { hat: 'h-crown' } } },
+      units: { coder: { level: 5, tier: 2 } },
+    });
+    expect(look).toEqual({ badge: 't-reviewer2', avatar: 'coder', avatarTier: 2, fit: { hat: 'h-cap', color: 'c-mint' } });
+    // 대표 캐릭터가 없으면 주인공 차림
+    expect(rankLook({ cosmetics: { outfits: { hero: { hat: 'h-crown' } } } }).fit).toEqual({ hat: 'h-crown' });
+    // 이상한 값은 버린다
+    const bad = rankLook({ cosmetics: { title: '<script>', avatar: 'x'.repeat(99), outfits: 5 }, units: { x: { tier: 99 } } });
+    expect(bad).toEqual({ badge: '', avatar: '', avatarTier: 1, fit: {} });
+    expect(rankLook(null).badge).toBe('');
   });
 });

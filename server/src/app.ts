@@ -55,6 +55,11 @@ export interface RankRow {
   cleared: number;
   /** 지금 신분 (학부생 ~ 교수) */
   title: string;
+  /** 칭호 아이템 id, 대표 캐릭터와 단계·차림 */
+  badge: string;
+  avatar: string;
+  avatarTier: number;
+  fit: { hat?: string; color?: string };
 }
 
 const FEEDBACK_CATEGORIES: FeedbackCategory[] = ['문의', '건의', '버그'];
@@ -76,6 +81,37 @@ function v2Pos(c: number, i: number): number {
  * 저장 데이터에서 순위 점수를 뽑는다. 이상한 값은 걸러낸다.
  * 아직 새 버전으로 접속하지 않은 예전 저장(v1, v2)도 클라이언트 이전 규칙대로 환산한다.
  */
+/** 순위표에 보이는 꾸미기: 칭호와 대표 캐릭터 (모양만 검사하고, 아이템 의미는 게임이 판단) */
+export interface RankLook {
+  badge: string;
+  avatar: string;
+  avatarTier: number;
+  fit: { hat?: string; color?: string };
+}
+
+const ITEM_ID = /^[a-z0-9-]{1,40}$/;
+
+export function rankLook(raw: unknown): RankLook {
+  const out: RankLook = { badge: '', avatar: '', avatarTier: 1, fit: {} };
+  const r = (raw && typeof raw === 'object' ? raw : {}) as { cosmetics?: unknown; units?: unknown };
+  const c = (r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) as { title?: unknown; avatar?: unknown; outfits?: unknown };
+  if (typeof c.title === 'string' && ITEM_ID.test(c.title)) out.badge = c.title;
+  if (typeof c.avatar === 'string' && ITEM_ID.test(c.avatar)) out.avatar = c.avatar;
+  const slot = out.avatar || 'hero';
+  const outfits = (c.outfits && typeof c.outfits === 'object' ? c.outfits : {}) as Record<string, unknown>;
+  const fit = outfits[slot];
+  if (fit && typeof fit === 'object') {
+    const f = fit as { hat?: unknown; color?: unknown };
+    if (typeof f.hat === 'string' && ITEM_ID.test(f.hat)) out.fit.hat = f.hat;
+    if (typeof f.color === 'string' && ITEM_ID.test(f.color)) out.fit.color = f.color;
+  }
+  const units = (r.units && typeof r.units === 'object' ? r.units : {}) as Record<string, unknown>;
+  const u = out.avatar ? units[out.avatar] : undefined;
+  const tier = u && typeof u === 'object' ? (u as { tier?: unknown }).tier : undefined;
+  if (typeof tier === 'number' && Number.isFinite(tier)) out.avatarTier = Math.min(3, Math.max(1, Math.floor(tier)));
+  return out;
+}
+
 export function rankStats(raw: unknown): { endless: number; stars: number; cleared: number; title: string } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as { v?: unknown; stars?: unknown; endless?: unknown };
   const v = typeof r.v === 'number' && Number.isFinite(r.v) ? r.v : 1;
@@ -139,11 +175,11 @@ export function createApp(store: Store, cfg: Config) {
       } catch {
         /* 깨진 저장은 0점 */
       }
-      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data) };
+      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data), ...rankLook(data) };
     }).filter((r) => r.cleared > 0 || r.endless > 0)
       // 무한 기록 → 별 → 먼저 달성한 사람
       .sort((a, b) => b.endless - a.endless || b.stars - a.stars || b.cleared - a.cleared || a.at - b.at)
-      .map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title }));
+      .map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title, badge: r.badge, avatar: r.avatar, avatarTier: r.avatarTier, fit: r.fit }));
     board = { at: now, rows };
     return rows;
   };

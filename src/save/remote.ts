@@ -57,6 +57,12 @@ export interface RankRow {
   stars: number;
   cleared: number;
   title: string;
+  /** 칭호 아이템 id (심사 결과 뽑기) */
+  badge?: string;
+  /** 대표 캐릭터 유닛 id ('' = 주인공)와 단계·차림 */
+  avatar?: string;
+  avatarTier?: number;
+  fit?: { hat?: string; color?: string };
   /** 서버가 표시해 주는 내 줄 */
   mine?: boolean;
 }
