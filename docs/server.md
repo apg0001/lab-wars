@@ -25,6 +25,11 @@
 | POST | `/api/feedback` | `{category: '문의'\|'건의'\|'버그', text(1~1000자), name?, version?}` → `{ok, id}`. 로그인했으면 계정으로, 아니면 게스트(`name`, 없으면 '게스트')로 저장. 계정(게스트는 IP)당 10분 5회 |
 | GET | `/api/admin/feedback` | `{items, open}` 최신순 300건 (관리자만, 아니면 403) |
 | PATCH | `/api/admin/feedback` | `{id, done}` 처리됨 표시 / 다시 열기 (관리자만) |
+| GET | `/api/admin/players` | `{players}` 선물 보낼 플레이어 목록: 아이디·닉네임·마지막 저장·연구비·뽑기권·클리어·무한 기록 (관리자만) |
+| POST | `/api/admin/gifts` | `{userIds, money?, tickets?, message?}` → `{ok, sent}`. 연구비 0~10,000,000, 뽑기권 0~1000, 하나 이상. 없는 계정은 건너뜀 (관리자만) |
+| GET | `/api/admin/gifts` | `{items}` 보낸 선물 기록 최신 100건, 받은 시각 포함 (관리자만) |
+| GET | `/api/gifts` | `{items}` 내 선물함: 아직 받지 않은 선물 (Bearer 토큰) |
+| POST | `/api/gifts/claim` | `{ids?}` (없으면 전부) → `{items, money, tickets}`. 받음 처리는 한 번만 되고, 게임이 합계를 저장에 더함 (Bearer 토큰) |
 
 ## 닉네임 · 관리자 · 의견함
 
@@ -35,6 +40,17 @@
 
 ```bash
 docker compose exec api node -e "const {DatabaseSync}=require('node:sqlite');console.table(new DatabaseSync('/data/lab-wars.db').prepare('SELECT id,category,author,done,text FROM feedback ORDER BY id DESC LIMIT 20').all())"
+```
+
+## 선물
+
+- 관리자는 타이틀의 **선물 보내기**에서 플레이어를 검색·여러 명 골라 연구비와 장비 뽑기권을 보냅니다. **보낸 기록**에서 받았는지 볼 수 있습니다.
+- 받는 사람은 타이틀(지도에는 선물이 있을 때만)의 **선물함**에서 받습니다. 거절은 없습니다.
+- 저장 데이터를 DB에서 직접 고치지 않습니다. 기기 저장과 충돌하면 덮어써질 수 있어서, 서버는 `gifts` 표에 쌓아 두고 받을 때 한 번만 받음 처리하며 게임이 저장에 더해 동기화합니다.
+- 서버 쉘에서 바로 넣기 (예: apg0001에게 뽑기권 10장):
+
+```bash
+docker compose exec api node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('/data/lab-wars.db');d.prepare(\"INSERT INTO gifts (user_id,money,tickets,message,sender,created_at) SELECT id,0,10,'개발자의 특권','운영자',? FROM users WHERE username='apg0001'\").run(Date.now())"
 ```
 
 ## 보안
