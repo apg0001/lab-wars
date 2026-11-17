@@ -76,6 +76,8 @@ const P: Record<string, string> = {
   pause: '<rect x="8" y="6" width="5.5" height="20" rx="1.5" fill="#fff"/><rect x="18.5" y="6" width="5.5" height="20" rx="1.5" fill="#fff"/>',
   fullscreen: '<path d="M5 12V5h7M27 12V5h-7M5 20v7h7M27 20v7h-7" stroke-width="2.8"/>',
   pencil: '<path d="M21 5l6 6-14 14-7 1 1-7z" fill="#ffd54f"/><path d="M18 8l6 6"/><path d="M7 19l6 6" stroke-width="1.6"/><path d="M21 5l6 6 1.5-1.5a2 2 0 0 0 0-3L26.5 4.5a2 2 0 0 0-3 0z" fill="#f48fb1"/>',
+  meeting: '<rect x="8" y="4" width="16" height="24" rx="1.5" fill="#a1887f"/><circle cx="20.5" cy="17" r="1.3" fill="#2b2430" stroke="none"/><path d="M12 8l4-3 4 3"/><rect x="5" y="9" width="22" height="7" rx="1.5" fill="#fff59d"/><path d="M8.5 12.5h4M15 12.5h2M19.5 12.5h4" stroke="#e53935" stroke-width="1.8"/>',
+  envelope: '<rect x="3" y="7" width="26" height="18" rx="2" fill="#fff8e1"/><path d="M4 9l12 9 12-9"/><path d="M4 24l8.5-7.5M28 24l-8.5-7.5" stroke-width="1.6"/><circle cx="16" cy="17.5" r="3.6" fill="#e53935"/><path d="M14.6 17.5h2.8" stroke="#ffcdd2" stroke-width="1.4"/>',
   mail: '<rect x="4" y="8" width="24" height="17" rx="2" fill="#fff"/><path d="M5 10l11 8 11-8"/><circle cx="25" cy="8" r="4" fill="#ef5350" stroke-width="1.8"/>',
 };
 

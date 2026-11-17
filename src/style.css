@@ -208,6 +208,84 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 
 .aim-hint { position: absolute; top: calc(12 * var(--u)); left: 50%; transform: translateX(-50%); background: #1e88e5; color: #fff; padding: calc(0.5 * var(--u)) calc(1.5 * var(--u)); border-radius: calc(1 * var(--u)); pointer-events: none; }
 
+/* ───── 학회 경품 추첨 카드 ───── */
+.r-common { --rc: #90a4ae; --rbg: #eceff1; }
+.r-rare { --rc: #42a5f5; --rbg: #e3f2fd; }
+.r-legend { --rc: #ffb300; --rbg: #fff8e1; }
+.r-curse { --rc: #8e24aa; --rbg: #f3e5f5; }
+.card-chips {
+  position: absolute; top: calc(5.2 * var(--u)); left: calc(1 * var(--u)); max-width: 28%;
+  display: flex; flex-wrap: wrap; gap: calc(0.4 * var(--u)); pointer-events: none;
+}
+.card-chip {
+  display: inline-flex; align-items: center; gap: calc(0.2 * var(--u)); white-space: nowrap;
+  font-size: calc(1.2 * var(--u)); line-height: 1.2; padding: calc(0.15 * var(--u)) calc(0.6 * var(--u));
+  background: var(--rbg); border: calc(0.18 * var(--u)) solid var(--rc); border-radius: calc(1 * var(--u));
+  box-shadow: 0 calc(0.15 * var(--u)) 0 var(--ink); animation: chip-in 0.3s ease-out;
+}
+@keyframes chip-in { from { transform: scale(0.4); opacity: 0; } }
+
+.draft-layer {
+  position: absolute; inset: 0; z-index: 15; display: grid; place-items: center;
+  background: rgba(20, 16, 26, 0.6); animation: fade-in 0.25s ease-out;
+}
+.draft-layer.done { background: rgba(20, 16, 26, 0); transition: background 0.5s; pointer-events: none; }
+@keyframes fade-in { from { opacity: 0; } }
+.draft-box { text-align: center; color: #fff; }
+.draft-box h2 { margin: 0; font-size: calc(3.2 * var(--u)); color: #ffe082; -webkit-text-stroke: calc(0.12 * var(--u)) var(--ink); }
+.draft-box .muted { color: #fff; margin: calc(0.3 * var(--u)) 0 calc(1.4 * var(--u)); }
+.draft-layer.done .draft-box > :not(.draft-row) { opacity: 0; transition: opacity 0.3s; }
+.draft-row { display: flex; gap: calc(2 * var(--u)); justify-content: center; perspective: calc(120 * var(--u)); }
+.draft-card {
+  position: relative; width: calc(19 * var(--u)); height: calc(27 * var(--u)); padding: 0; border: 0; background: none;
+  animation: deal 0.35s ease-out backwards; animation-delay: calc(var(--i) * 0.08s);
+  transition: transform 0.3s, opacity 0.3s;
+}
+.draft-card .hotkey {
+  position: absolute; top: calc(-0.8 * var(--u)); left: calc(-0.6 * var(--u)); z-index: 2; min-width: calc(2 * var(--u));
+  font-size: calc(1.2 * var(--u)); line-height: calc(1.8 * var(--u)); color: #fff; background: var(--ink); border-radius: calc(0.5 * var(--u)); opacity: 0.8;
+}
+@keyframes deal { from { transform: translateY(calc(20 * var(--u))) rotate(-8deg); opacity: 0; } }
+.card-inner {
+  position: absolute; inset: 0; transform-style: preserve-3d;
+  animation: flip 0.5s ease-in-out forwards; animation-delay: calc(0.4s + var(--i) * 0.28s);
+}
+.draft-layer.ready .card-inner { animation: none; transform: rotateY(180deg); }
+@keyframes flip { 60% { transform: rotateY(200deg) scale(1.06); } to { transform: rotateY(180deg); } }
+.card-back, .card-front {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: calc(0.3 * var(--u)) solid var(--ink); border-radius: calc(1.4 * var(--u)); box-shadow: 0 calc(0.5 * var(--u)) 0 var(--ink);
+  display: flex; flex-direction: column; align-items: center; overflow: hidden;
+}
+.card-back {
+  justify-content: center; gap: calc(0.5 * var(--u));
+  background: repeating-linear-gradient(45deg, #ffcc80 0 calc(1.2 * var(--u)), #ffe0b2 calc(1.2 * var(--u)) calc(2.4 * var(--u)));
+}
+.card-seal { font-size: calc(8 * var(--u)); line-height: 1; }
+.card-q { font-size: calc(3 * var(--u)); color: var(--ink); }
+.card-front {
+  transform: rotateY(180deg); color: var(--ink); background: var(--rbg); padding: calc(0.8 * var(--u)) calc(1 * var(--u)); gap: calc(0.35 * var(--u));
+  border-color: var(--rc); outline: calc(0.25 * var(--u)) solid var(--ink); outline-offset: calc(-0.55 * var(--u));
+}
+.card-rarity { align-self: stretch; background: var(--rc); color: #fff; border-radius: calc(0.6 * var(--u)); font-size: calc(1.3 * var(--u)); -webkit-text-stroke: calc(0.08 * var(--u)) var(--ink); }
+.card-icon { font-size: calc(5.2 * var(--u)); line-height: 1.1; }
+.card-name { font-size: calc(1.75 * var(--u)); line-height: 1.15; font-weight: normal; }
+.card-desc { font-size: calc(1.35 * var(--u)); line-height: 1.25; }
+.card-flavor { margin-top: auto; font-size: calc(1.1 * var(--u)); line-height: 1.25; opacity: 0.65; font-style: normal; }
+.r-curse .card-front { background: linear-gradient(#f3e5f5, #d1c4e9); }
+.r-legend .card-front { background: radial-gradient(circle at 50% 30%, #fffde7, #ffe082); animation: legend-glow 1s ease-in-out infinite alternate; }
+@keyframes legend-glow { to { box-shadow: 0 calc(0.5 * var(--u)) 0 var(--ink), 0 0 calc(3 * var(--u)) #ffd54f; } }
+.card-sparkle { position: absolute; inset: 0; pointer-events: none; }
+.card-sparkle .ico { position: absolute; font-size: calc(2 * var(--u)); animation: twinkle 0.9s ease-in-out infinite alternate; }
+.card-sparkle .ico:nth-child(1) { top: 12%; left: 8%; }
+.card-sparkle .ico:nth-child(2) { top: 28%; right: 8%; animation-delay: 0.3s; }
+.card-sparkle .ico:nth-child(3) { top: 50%; left: 14%; animation-delay: 0.6s; font-size: calc(1.4 * var(--u)); }
+@keyframes twinkle { from { transform: scale(0.4) rotate(0deg); opacity: 0.3; } to { transform: scale(1.1) rotate(25deg); opacity: 1; } }
+.draft-layer:not(.ready) .draft-card { cursor: wait; }
+.draft-layer.ready .draft-card:active { transform: translateY(calc(0.4 * var(--u))); }
+.draft-card.chosen { transform: scale(1.12) translateY(calc(-2 * var(--u))); }
+.draft-card.gone { opacity: 0; transform: scale(0.85); }
+
 /* ───── 타이틀 ───── */
 .title {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(1.2 * var(--u));
@@ -644,3 +722,13 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .portrait .cut-box { position: relative; inset: auto; flex: none; margin: 0 calc(1.6 * var(--u)); min-height: calc(20 * var(--u)); font-size: calc(2.4 * var(--u)); }
 .portrait .cut-title { top: calc(8 * var(--u)); max-width: calc(100% - 4 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .portrait .side-map .top-title { color: #f3e5f5; }
+
+/* ── 학회 경품 추첨 ── */
+.portrait .card-chips { top: auto; bottom: calc(0.6 * var(--u)); left: calc(0.8 * var(--u)); max-width: calc(100% - 1.6 * var(--u)); }
+.portrait .card-chip { font-size: calc(1.4 * var(--u)); }
+.portrait .draft-row { gap: calc(1.2 * var(--u)); }
+.portrait .draft-card { width: calc(16.6 * var(--u)); height: calc(27 * var(--u)); }
+.portrait .card-icon { font-size: calc(4.6 * var(--u)); }
+.portrait .card-name { font-size: calc(1.7 * var(--u)); }
+.portrait .card-desc { font-size: calc(1.4 * var(--u)); }
+.portrait .card-flavor { font-size: calc(1.2 * var(--u)); }
