@@ -5,7 +5,7 @@ import { detectLang, getLang, localizedEntries, setLang, tr } from '../src/i18n'
 import { RANK_TITLES_EN, SERVER_ERRORS_EN, rankTitle, serverError } from '../src/i18n/server';
 import { STORY_EN, bannersOf } from '../src/story/en';
 import { SCENES } from '../src/story/script';
-import { UNITS } from '../src/data/units';
+import { UNITS, UNIT_RARITIES, rarityLabel } from '../src/data/units';
 import { ENEMIES } from '../src/data/enemies';
 import { CHAPTERS, SIDE_CHAPTERS, SIDE_STAGES, STAGES, endlessStage } from '../src/data/stages';
 import { FACILITIES, SKILLS } from '../src/data/upgrades';
@@ -68,7 +68,8 @@ describe('데이터 영어 번역', () => {
   it('영어로 바꾸면 화면에 보이는 데이터에 한글이 남지 않는다', () => {
     setLang('en', false);
     const shown: string[] = [
-      ...UNITS.flatMap((u) => [...u.names, u.role, u.desc]),
+      ...UNITS.flatMap((u) => [...u.names, u.role, u.desc, u.lore ?? '']),
+      ...UNIT_RARITIES.map(rarityLabel),
       ...ENEMIES.flatMap((e) => [e.name, e.role]),
       ...CHAPTERS.flatMap((c) => [c.name, c.subtitle]),
       ...SIDE_CHAPTERS.flatMap((c) => [c.name, c.subtitle, c.rule]),

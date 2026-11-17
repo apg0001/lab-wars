@@ -16,10 +16,11 @@ import { showAudioSettings } from './audio-settings';
 import { isPortrait } from './orientation';
 import { RARITY_LABEL, type CardDef } from '../data/cards';
 import { tr } from '../i18n';
+import { rarityOf } from '../data/units';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
-/** 유닛 슬롯 단축키: 1~9, 0, -, = (최대 12칸) */
+/** 유닛 슬롯 단축키: 1~9 (편성 최대 9칸, 남은 키는 예비) */
 const UNIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'minus', 'equal'];
 const UNIT_KEY_LABEL: Record<string, string> = { minus: '-', equal: '=' };
 
@@ -106,7 +107,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   const unitBtns = opt.loadout.deck.map((d, i) => {
     const cd = h('div.cd-mask');
-    const btn = h('button.unit-btn', { onclick: () => battle.summon(d.def.id), title: d.def.names[d.tier - 1] },
+    const btn = h(`button.unit-btn.u-${rarityOf(d.def)}`, { onclick: () => battle.summon(d.def.id), title: d.def.names[d.tier - 1] },
       h('img', { src: portrait(d.def.look, d.tier, d.def.id), alt: '', draggable: 'false' }),
       h('span.cost', {}, iconEl('coffee'), String(d.def.cost)),
       h('span.hotkey', {}, UNIT_KEYS[i] ? UNIT_KEY_LABEL[UNIT_KEYS[i]!] ?? UNIT_KEYS[i]! : ''),
@@ -173,7 +174,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (p) {
       overlay.replaceChildren(h('div.panel', {},
         h('h2', {}, tr('일시정지', 'Paused')),
-        h('p.muted', {}, tr('전장 드래그: 시점 이동 · 1~0 - =: 소환 · Q: 커피머신 · W/E/R/T: 스킬', 'Drag field: move camera · 1–0 - =: deploy · Q: coffee machine · W/E/R/T: skills')),
+        h('p.muted', {}, tr('전장 드래그: 시점 이동 · 1~9: 소환 · Q: 커피머신 · W/E/R/T: 스킬', 'Drag field: move camera · 1–9: deploy · Q: coffee machine · W/E/R/T: skills')),
         h('div.btn-col', {},
           h('button.btn.primary', { onclick: () => setPaused(false) }, tr('계속하기', 'Resume')),
           h('button.btn', { onclick: () => showAudioSettings(screen) }, tr('{sound} 소리 설정', '{sound} Sound')),

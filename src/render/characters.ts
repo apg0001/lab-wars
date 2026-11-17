@@ -836,6 +836,402 @@ function printer(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.restore();
 }
 
+// ─────────────────────────── 뽑기 장비 (ICT·전자공학 장비) ───────────────────────────
+
+/** 장비용 짧은 다리 (작은 고무발) */
+function stubs(ctx: Ctx, pose: Pose, xs: number[], len = 6): void {
+  const k = pose.moving ? Math.sin(pose.walk * 2) * 2.5 : 0;
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = INK;
+  xs.forEach((x, i) => {
+    const ph = i % 2 ? -k : k;
+    ctx.beginPath();
+    ctx.moveTo(x, -len);
+    ctx.lineTo(x + ph, 0);
+    ctx.stroke();
+  });
+  line(ctx);
+}
+
+/** 모델 버전 표식: Mk.II 은색 · Mk.III 금색 나사 */
+function mkBadge(ctx: Ctx, tier: number, x: number, y: number): void {
+  if (tier < 2) return;
+  ctx.save();
+  line(ctx, 1.5);
+  for (let i = 0; i < tier - 1; i++) blob(ctx, x + i * 6, y, 2.2, 2.2, tier === 3 ? '#ffd54f' : '#cfd8dc');
+  ctx.restore();
+}
+
+/** 장비 얼굴: 동그란 눈 두 개와 작은 입 */
+function gearFace(ctx: Ctx, x: number, y: number, gap = 4, blink = 0): void {
+  ctx.fillStyle = INK;
+  for (const dx of [-gap, gap]) {
+    ctx.beginPath();
+    if (Math.sin(blink * 1.7) > 0.97) ctx.fillRect(x + dx - 2, y - 0.5, 4, 1.4);
+    else ctx.arc(x + dx, y, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.lineWidth = 1.5;
+  ctx.arc(x, y + 3, 2, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  line(ctx);
+}
+
+function gearIron(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  tierGlow(ctx, pose.tier, 0, -18, 24);
+  line(ctx);
+  stubs(ctx, pose, [-8, 8]);
+  // 납땜 스테이션 본체
+  rrect(ctx, -14, -26, 26, 20, 4, look.accent ?? '#90a4ae');
+  rrect(ctx, -10, -23, 12, 7, 2, '#263238');
+  ctx.fillStyle = '#ff7043';
+  ctx.font = 'bold 6px monospace';
+  ctx.fillText(`${330 + pose.tier * 10}`, -9, -17.5);
+  blob(ctx, 7, -19, 3, 3, '#eceff1');
+  gearFace(ctx, -3, -11, 4, t);
+  mkBadge(ctx, pose.tier, -10, -29);
+  // 꼬인 선
+  ctx.strokeStyle = '#37474f';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(12, -12);
+  for (let i = 0; i < 4; i++) ctx.quadraticCurveTo(15 + i * 2, -18 - (i % 2) * 6, 16 + i * 2, -22 - i);
+  ctx.stroke();
+  line(ctx);
+  // 인두 (공격하면 앞으로 찌른다)
+  const sw = pose.swing;
+  ctx.save();
+  ctx.translate(20 + sw * 8, -28 + sw * 4);
+  ctx.rotate(0.5 + sw * 0.4);
+  rrect(ctx, -3, -10, 6, 12, 2, look.color);
+  ctx.fillStyle = '#b0bec5';
+  ctx.fillRect(-1.5, 2, 3, 8);
+  ctx.strokeRect(-1.5, 2, 3, 8);
+  // 달아오른 끝
+  const glow = 0.6 + Math.sin(t * 8) * 0.25 + sw * 0.3;
+  ctx.fillStyle = `rgba(255,${Math.round(120 + 80 * (1 - glow))},40,${Math.min(1, glow)})`;
+  ctx.beginPath();
+  ctx.moveTo(-1.5, 10);
+  ctx.lineTo(0, 15);
+  ctx.lineTo(1.5, 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  // 연기
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#eceff1';
+  const k = (t * 0.8) % 1;
+  ctx.beginPath();
+  ctx.arc(26 + Math.sin(t * 3) * 2, -22 - k * 16, 2.5 + k * 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function gearScope(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  tierGlow(ctx, pose.tier, 0, -22, 26);
+  line(ctx);
+  stubs(ctx, pose, [-10, 10]);
+  rrect(ctx, -17, -38, 34, 32, 4, look.color);
+  // 화면 (파형)
+  rrect(ctx, -14, -35, 20, 15, 2, '#102027');
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(-13, -34, 18, 13);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(118,255,3,.25)';
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-13 + i * 6, -34);
+    ctx.lineTo(-13 + i * 6, -21);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = look.accent ?? '#76ff03';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  const amp = 3.5 + pose.swing * 2;
+  for (let x = -13; x <= 5; x += 1) {
+    const y = -27.5 + Math.sin(x * 0.7 + t * 9) * amp * (pose.tier >= 2 ? 1 : 0.8);
+    if (x === -13) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+  line(ctx);
+  // 손잡이 노브
+  blob(ctx, 11, -31, 3, 3, '#ffca28');
+  blob(ctx, 11, -23, 2.5, 2.5, '#4fc3f7');
+  gearFace(ctx, -4, -13, 5, t + 1);
+  mkBadge(ctx, pose.tier, 6, -16);
+  // 프로브 (앞으로 겨눈다)
+  ctx.strokeStyle = '#212121';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(17, -18);
+  ctx.quadraticCurveTo(24, -12, 24 + pose.swing * 4, -24);
+  ctx.stroke();
+  line(ctx);
+  rrect(ctx, 21 + pose.swing * 4, -32, 6, 9, 2, '#455a64');
+  if (pose.tier >= 3) {
+    ctx.fillStyle = '#ffd54f';
+    ctx.font = 'bold 6px Jua, sans-serif';
+    label(ctx, '4CH', -16, -40);
+  }
+}
+
+function gearFirewall(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  tierGlow(ctx, pose.tier, 0, -24, 28);
+  line(ctx);
+  stubs(ctx, pose, [-11, 0, 11]);
+  // 벽돌 벽
+  const w = 34 + (pose.tier - 1) * 2;
+  const top = -42;
+  rrect(ctx, -w / 2, top, w, 36, 3, look.color);
+  ctx.strokeStyle = 'rgba(43,36,48,.55)';
+  ctx.lineWidth = 1.4;
+  for (let r = 0; r < 4; r++) {
+    const y = top + 9 * (r + 1);
+    if (r < 3) {
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, y);
+      ctx.lineTo(w / 2, y);
+      ctx.stroke();
+    }
+    for (let c = 0; c < 3; c++) {
+      const x = -w / 2 + (r % 2 ? 6 : 11) + c * 11;
+      if (x >= w / 2 - 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 9);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+  line(ctx);
+  // 위에서 일렁이는 불꽃
+  for (let i = 0; i < 3; i++) {
+    const fx = -10 + i * 10;
+    const fh = 7 + Math.sin(t * 7 + i * 2) * 2.5;
+    ctx.fillStyle = i === 1 ? '#ffca28' : (look.accent ?? '#ffcc80');
+    ctx.beginPath();
+    ctx.moveTo(fx - 4, top + 1);
+    ctx.quadraticCurveTo(fx - 3, top - fh * 0.6, fx, top - fh);
+    ctx.quadraticCurveTo(fx + 3, top - fh * 0.6, fx + 4, top + 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 방패 문장과 얼굴
+  ctx.fillStyle = '#e0f7fa';
+  ctx.beginPath();
+  ctx.moveTo(0, -34);
+  ctx.lineTo(9, -31);
+  ctx.lineTo(8, -21);
+  ctx.quadraticCurveTo(4, -15, 0, -13);
+  ctx.quadraticCurveTo(-4, -15, -8, -21);
+  ctx.lineTo(-9, -31);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  gearFace(ctx, 0, -25, 3.5, t + 2);
+  mkBadge(ctx, pose.tier, -w / 2 + 4, -10);
+}
+
+function fan(ctx: Ctx, x: number, y: number, r: number, spin: number): void {
+  blob(ctx, x, y, r, r, '#263238');
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.fillStyle = '#90a4ae';
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.ellipse(r * 0.45, 0, r * 0.45, r * 0.22, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  line(ctx);
+}
+
+function gearCooler(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  tierGlow(ctx, pose.tier, 0, -24, 28);
+  line(ctx);
+  stubs(ctx, pose, [-9, 9]);
+  // 펌프·물탱크 (파란 냉각수가 출렁)
+  rrect(ctx, -16, -24, 14, 18, 4, '#e1f5fe');
+  const lv = -14 + Math.sin(t * 4) * 1.5;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(-15, -23, 12, 16, 3);
+  ctx.clip();
+  ctx.fillStyle = look.color;
+  ctx.fillRect(-15, lv, 12, 20);
+  ctx.restore();
+  ctx.beginPath();
+  ctx.roundRect(-16, -24, 14, 18, 4);
+  ctx.stroke();
+  // 라디에이터와 팬
+  const fans = pose.tier >= 2 ? 2 : 1;
+  const rw = 14;
+  rrect(ctx, 0, -18 - fans * 14, rw + 4, fans * 14 + 12, 3, '#cfd8dc');
+  for (let i = 0; i < fans; i++) fan(ctx, 9, -24 - i * 14 - 2, 6, t * 18 + i);
+  // 호스
+  ctx.strokeStyle = look.color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-9, -24);
+  ctx.quadraticCurveTo(-8, -40, 2, -18 - fans * 14 + 2);
+  ctx.stroke();
+  line(ctx);
+  gearFace(ctx, -9, -13, 3, t + 3);
+  mkBadge(ctx, pose.tier, 2, -10);
+  // 서리 김
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = look.accent ?? '#e1f5fe';
+  const k = (t * 0.7) % 1;
+  ctx.beginPath();
+  ctx.arc(14 + k * 6, -18 - fans * 14 - k * 8, 2 + k * 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function gearPrinter3d(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  tierGlow(ctx, pose.tier, 0, -26, 28);
+  line(ctx);
+  stubs(ctx, pose, [-12, 12], 5);
+  // 프레임
+  rrect(ctx, -17, -46, 34, 6, 2, '#455a64');
+  rrect(ctx, -17, -10, 34, 5, 2, '#455a64');
+  ctx.fillStyle = look.color;
+  ctx.fillRect(-17, -40, 4, 30);
+  ctx.strokeRect(-17, -40, 4, 30);
+  ctx.fillRect(13, -40, 4, 30);
+  ctx.strokeRect(13, -40, 4, 30);
+  // 출력물 (자란다)
+  const grow = 3 + ((t * 0.35) % 1) * 10;
+  rrect(ctx, -6, -10 - grow, 12, grow, 2, look.accent ?? '#ff7043');
+  // 노즐 (좌우로)
+  const nx = Math.sin(t * 5) * 8 + pose.swing * 3;
+  ctx.strokeStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(-13, -30);
+  ctx.lineTo(13, -30);
+  ctx.stroke();
+  rrect(ctx, nx - 4, -33, 8, 7, 1.5, '#ffca28');
+  ctx.beginPath();
+  ctx.moveTo(nx - 1.5, -26);
+  ctx.lineTo(nx, -23);
+  ctx.lineTo(nx + 1.5, -26);
+  ctx.stroke();
+  // 위 막대에 얼굴
+  ctx.fillStyle = '#fff';
+  gearFace(ctx, 0, -43, 4, t + 4);
+  mkBadge(ctx, pose.tier, 8, -49);
+}
+
+function gearTurret(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  line(ctx);
+  // 세 발 받침
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-9, 0);
+  ctx.lineTo(0, -8);
+  ctx.lineTo(9, 0);
+  ctx.moveTo(0, -8);
+  ctx.lineTo(0, 0);
+  ctx.stroke();
+  line(ctx);
+  // 층층이 뽑힌 몸통
+  rrect(ctx, -10, -20, 20, 12, 3, look.color);
+  ctx.strokeStyle = 'rgba(43,36,48,.35)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-9, -17 + i * 3);
+    ctx.lineTo(9, -17 + i * 3);
+    ctx.stroke();
+  }
+  line(ctx);
+  // 포신
+  const recoil = pose.swing * 3;
+  rrect(ctx, 6 - recoil, -18, 12, 5, 1.5, look.accent ?? '#5d4037');
+  blob(ctx, -1, -24, 6, 5, look.color);
+  ctx.fillStyle = Math.sin(t * 6) > 0 ? '#ff1744' : '#b71c1c';
+  ctx.beginPath();
+  ctx.arc(1, -24, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function gearCluster(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  tierGlow(ctx, pose.tier, 0, -32, 36);
+  line(ctx);
+  // 바퀴 달린 랙
+  for (const wx of [-13, 13]) blob(ctx, wx, -3, 4, 4, '#424242');
+  const units = 3 + (pose.tier >= 3 ? 1 : 0);
+  const uh = 12;
+  const top = -6 - units * uh - 6;
+  rrect(ctx, -18, top, 36, units * uh + 6, 3, look.color);
+  for (let i = 0; i < units; i++) {
+    const y = top + 3 + i * uh;
+    rrect(ctx, -15, y, 30, uh - 2, 2, '#37474f');
+    // 깜빡이는 LED
+    for (let j = 0; j < 4; j++) {
+      const on = Math.sin(t * (7 + j) + i * 1.9 + j) > 0.1;
+      ctx.fillStyle = on ? (look.accent ?? '#40c4ff') : '#1c313a';
+      ctx.fillRect(-12 + j * 4, y + 3.5, 2.5, 2.5);
+    }
+    ctx.strokeStyle = '#78909c';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(4, y + 3);
+    ctx.lineTo(12, y + 3);
+    ctx.moveTo(4, y + 6.5);
+    ctx.lineTo(12, y + 6.5);
+    ctx.stroke();
+    line(ctx);
+  }
+  // 맨 위 칸에 얼굴 (화면)
+  rrect(ctx, -11, top - 13, 22, 12, 3, '#102027');
+  ctx.fillStyle = look.accent ?? '#40c4ff';
+  const blink = Math.sin(t * 1.3) > 0.96;
+  for (const dx of [-4, 4]) {
+    if (blink) ctx.fillRect(dx - 2, top - 7.5, 4, 1.4);
+    else ctx.fillRect(dx - 1.5, top - 9.5, 3, 4);
+  }
+  // 공격(연산) 중이면 위로 빛 기둥
+  if (pose.swing > 0) {
+    ctx.save();
+    ctx.globalAlpha = pose.swing * 0.6;
+    ctx.fillStyle = look.accent ?? '#40c4ff';
+    ctx.fillRect(-2, top - 30, 4, 17);
+    ctx.restore();
+  }
+  mkBadge(ctx, pose.tier, -14, top + units * uh + 1);
+}
+
+function gear(ctx: Ctx, look: Look, pose: Pose): void {
+  switch (look.variant) {
+    case 'iron': gearIron(ctx, look, pose); break;
+    case 'scope': gearScope(ctx, look, pose); break;
+    case 'firewall': gearFirewall(ctx, look, pose); break;
+    case 'cooler': gearCooler(ctx, look, pose); break;
+    case 'printer3d': gearPrinter3d(ctx, look, pose); break;
+    case 'turret': gearTurret(ctx, look, pose); break;
+    case 'cluster': gearCluster(ctx, look, pose); break;
+    default: gearScope(ctx, look, pose);
+  }
+}
+
 // ─────────────────────────── 꾸미기 (심사 결과 뽑기) ───────────────────────────
 
 /** 옷장: defId(유닛 id, 주인공 'hero') → 입힌 모자·색. 겉모습만 바꾼다. */
@@ -1150,6 +1546,7 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'professor': professor(ctx, look, pose, defId); break;
     case 'ghost': ghost(ctx, look, pose, defId); break;
     case 'printer': printer(ctx, look, pose); break;
+    case 'gear': gear(ctx, look, pose); break;
   }
   if (hat) {
     const a = headAnchor(look.kind, pose.tier);
