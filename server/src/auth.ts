@@ -53,3 +53,12 @@ export function validateCredentials(username: unknown, password: unknown): strin
   if (typeof password !== 'string' || password.length < 8 || password.length > 128) return '비밀번호는 8~128자로 정해 주세요.';
   return null;
 }
+
+const NICK_RE = /^[a-zA-Z0-9_가-힣 ]{2,12}$/;
+
+/** 닉네임을 다듬는다(앞뒤 공백 제거, 연속 공백은 하나로). 규칙에 맞지 않으면 null. */
+export function cleanNickname(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().replace(/ {2,}/g, ' ');
+  return NICK_RE.test(s) ? s : null;
+}
