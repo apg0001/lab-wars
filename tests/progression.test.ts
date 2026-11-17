@@ -99,7 +99,7 @@ describe('성장 시스템', () => {
   });
 
   it('손상된 저장 데이터를 안전하게 정리한다', () => {
-    const s = normalizeSave({ v: 3, money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
+    const s = normalizeSave({ v: 4, money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
     expect(s.money).toBe(0);
     expect(s.stars['1-1']).toBe(3);
     expect(s.units.grunt).toEqual({ level: 15, tier: 3 });
@@ -121,20 +121,35 @@ describe('성장 시스템', () => {
     expect(Object.values(fresh.stars).every((v) => v === 0)).toBe(true);
   });
 
-  it('7챕터×6 저장은 깬 만큼 인정하고 사이에 생긴 스테이지도 채운다', () => {
+  it('7챕터×6 저장은 깬 스테이지만 옮기고, 사이에 생긴 스테이지는 열어만 둔다', () => {
     takeMigrationNotes();
     const old = normalizeSave({ v: 2, stars: { '1-1': 3, '1-2': 2, '1-3': 3, '1-4': 1, '1-5': 3, '1-6': 2, '2-1': 3 }, seen: ['ch1-intro'], endless: 0 });
     expect(old.stars['1-10']).toBe(2); // 보스 → 보스
     expect(old.stars['1-1']).toBe(3);
     expect(old.stars['1-3']).toBe(2); // 예전 1-2 자리
-    expect(old.stars['1-2']).toBe(2); // 새로 생긴 칸은 다음 스테이지 별을 따른다
+    expect(old.stars['1-2'] ?? 0).toBe(0); // 새로 생긴 칸은 안 깬 상태
+    expect(isStageOpen(old, STAGE_BY_ID['1-2']!)).toBe(true);
+    expect(isStageOpen(old, STAGE_BY_ID['1-3']!)).toBe(true); // 깬 곳은 앞 칸과 상관없이 열림
     expect(old.stars['2-1']).toBe(3);
-    expect(old.stars['2-2'] ?? 0).toBe(0);
+    expect(isStageOpen(old, STAGE_BY_ID['2-3']!)).toBe(false);
     expect(old.seen).toEqual(['ch1-intro']);
     expect(takeMigrationNotes()).toHaveLength(1);
-    const all = normalizeSave({ v: 2, stars: Object.fromEntries(Array.from({ length: 42 }, (_, i) => [`${Math.floor(i / 6) + 1}-${(i % 6) + 1}`, 3])) });
-    expect(STAGES.every((s) => all.stars[s.id] === 3)).toBe(true);
     expect(STAGES).toHaveLength(70);
+  });
+
+  it('0.9.0에서 잘못 채운 사이 스테이지는 플레이 기록이 없으면 되돌린다', () => {
+    takeMigrationNotes();
+    const stars = Object.fromEntries(STAGES.map((s) => [s.id, 3]));
+    const s = normalizeSave({ v: 3, stars, seen: ['st-1-2'] });
+    expect(s.stars['1-2']).toBe(3); // 직접 들어가 본 곳은 유지
+    expect(s.stars['1-4']).toBe(0);
+    expect(s.stars['7-8']).toBe(0);
+    expect(s.stars['7-10']).toBe(3);
+    expect(STAGES.filter((x) => !s.stars[x.id])).toHaveLength(27);
+    expect(takeMigrationNotes()).toHaveLength(1);
+    // 한 번 고친 저장(v4)은 다시 건드리지 않는다
+    expect(normalizeSave({ ...s, v: 4 }).stars['1-4']).toBe(0);
+    expect(normalizeSave({ v: 4, stars }).stars['1-4']).toBe(3);
   });
 
   it('일정 관리 앱은 재소환 대기시간을 레벨당 4% 줄인다', () => {
