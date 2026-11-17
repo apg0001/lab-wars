@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.16.2',
+    date: '2026-11-17',
+    title: '연타 주의',
+    items: [
+      '{check} 숫자키를 꾹 누른 채 소환하다가 경품 추첨 창이 뜨면 카드가 저절로 골라지던 문제를 고쳤어요. 이제 키에서 손을 뗐다가 다시 눌러야 골라져요',
+    ],
+    en: {
+      title: 'Mind the Mashing',
+      items: [
+        '{check} Holding a number key to summon no longer auto-picks a prize card when the draft pops up. Release and press again to choose',
+      ],
+    },
+  },
+  {
     version: '0.16.1',
     date: '2026-11-17',
     title: '내 얼굴을 걸고',
