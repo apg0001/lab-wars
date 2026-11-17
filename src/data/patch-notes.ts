@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.19.2',
+    date: '2026-11-18',
+    title: '선물이 왔어요',
+    items: [
+      '{gift} 게임을 켜 둔 동안에도 선물이 오면 "선물이 도착했어요!" 알림이 뜨고 선물함 배지가 바로 바뀌어요',
+      '{infinity} 캠페인을 다 깼다면 "연구실로"를 누를 때 바로 무한 모드가 열려요',
+      '{phone} 홈 화면 앱(아이폰 세로): 위쪽 반투명 그라데이션을 없애고 아래쪽 빈 공간을 줄였어요. 홈 화면 아이콘을 지우고 다시 추가해야 적용돼요',
+    ],
+    en: {
+      title: 'Special Delivery',
+      items: [
+        '{gift} Gifts that arrive while you play now pop a "You\'ve got gifts!" notice and update the inbox badge right away',
+        '{infinity} Once the campaign is cleared, "To the Lab" opens Endless Mode directly',
+        '{phone} Home-screen app (iPhone portrait): removed the translucent gradient at the top and trimmed the empty space at the bottom. Re-add the home-screen icon to apply',
+      ],
+    },
+  },
+  {
     version: '0.19.1',
     date: '2026-11-18',
     title: '숨 고르기',
