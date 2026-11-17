@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.19.4',
+    date: '2026-11-18',
+    title: '어떤 화면이든 꽉 차게',
+    items: [
+      '{phone} 아이패드·갤럭시 탭 가로, 폴드 안쪽 화면도 위아래 여백 없이 화면을 꽉 채워요 (위 전장·아래 큰 버튼 배치)',
+      '{swords} 키 큰 폰에서는 소환 버튼이 3칸으로 커지고, 넓은 태블릿에서는 한 줄로 펼쳐져요',
+      '{target} 세로 화면 전장이 조금 더 커졌어요',
+    ],
+    en: {
+      title: 'Fill Any Screen',
+      items: [
+        '{phone} iPad / Galaxy Tab landscape and foldable inner screens now fill the whole screen (battlefield on top, big buttons below)',
+        '{swords} Tall phones get bigger 3-column summon buttons; wide tablets lay them out in one row',
+        '{target} The portrait battlefield is a bit larger',
+      ],
+    },
+  },
+  {
     version: '0.19.3',
     date: '2026-11-18',
     title: '화면 끝까지',
