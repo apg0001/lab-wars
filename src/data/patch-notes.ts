@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.19.3',
+    date: '2026-11-18',
+    title: '화면 끝까지',
+    items: [
+      '{phone} 아이폰 홈 화면 앱 세로 화면에서 아래쪽에 남던 빈 띠를 없애고 화면 끝까지 쓰도록 고쳤어요',
+    ],
+    en: {
+      title: 'Edge to Edge',
+      items: [
+        '{phone} The iPhone home-screen app now uses the full portrait screen, with no empty strip at the bottom',
+      ],
+    },
+  },
+  {
     version: '0.19.2',
     date: '2026-11-18',
     title: '선물이 왔어요',
