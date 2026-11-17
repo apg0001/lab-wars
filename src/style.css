@@ -919,6 +919,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 /* 아래 홈 바 여백은 40%만 비워 화면을 더 쓴다 (배경은 끝까지 칠한다) */
 .portrait #app { padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) * 0.4); }
+/* 아이폰 홈 화면 앱: 실제 화면 높이로 (orientation.ts가 --app-h를 넣는다) */
+.portrait #app { bottom: auto; height: var(--app-h, 100%); box-sizing: border-box; }
 .portrait .stage { width: 100cqw; height: 100cqh; border-radius: 0; }
 .portrait .stage > * { --u: min(1cqw * 100 / 56, 1cqh); }
 .portrait .panel {
