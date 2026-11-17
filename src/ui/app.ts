@@ -144,8 +144,9 @@ export class App {
     this.profiles.remember(p);
     this.gifts = 0;
     if (p.kind === 'account') void this.checkGifts();
-    const next = STAGES.find((s) => !isCleared(this.save, s.id)) ?? STAGES[STAGES.length - 1]!;
-    this.chapter = next.chapter;
+    // 다음에 깰 스테이지가 있는 챕터로, 캠페인을 다 깼으면 무한 모드 탭으로 들어간다
+    const next = STAGES.find((s) => !isCleared(this.save, s.id));
+    this.chapter = next ? next.chapter : CHAPTERS.length + 1;
     if (go) this.showMap();
   }
 
