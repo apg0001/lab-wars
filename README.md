@@ -150,6 +150,8 @@ docs/        기획서, 서버 문서, README 이미지
 ## 👤 만든 사람
 
 **[박기찬](https://github.com/apg0001)** (`apg0001`): 기획·개발·밸런스, 그리고 대학원 생존.
+
+[![카카오페이로 커피 사 주기](https://img.shields.io/badge/☕_개발자에게_커피_사_주기-카카오페이-ffe812?style=for-the-badge&labelColor=3e2723)](https://qr.kakaopay.com/FX42hVm7D)
 교수님의 잡무를 직접 겪으며 만들었습니다.
 
 ## 🤝 기여

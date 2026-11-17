@@ -32,6 +32,7 @@ import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
 import { portrait } from './icons';
 import { closetTab, drawTab } from './gacha';
+import { donateLink } from './donate';
 import { myAvatar, rankAvatar } from './avatar';
 import { COSMETIC_BY_ID } from '../data/cosmetics';
 import { titleName } from '../sim/gacha';
@@ -219,7 +220,10 @@ export class App {
           ? tr(`{key} ${this.api?.user?.username ?? p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이`, `{key} Logged in as ${this.api?.user?.username ?? p.name} · continue on any device`)
           : tr('게스트 · 이 기기에만 저장 중', 'Guest · saved on this device only') + (this.api ? tr(' (로그인하면 다른 기기에서도 이어서 할 수 있어요)', ' (log in to continue on other devices)') : ''))
         : tr('진행 상황은 이 기기에 저장됩니다', 'Progress is saved on this device')),
-      h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, tr('기획·개발 박기찬', 'Made by Gichan Park')),
+      h('div.title-credits', {},
+        donateLink(),
+        h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, tr('기획·개발 박기찬', 'Made by Gichan Park')),
+      ),
     ));
     maybeShowUpdates(this.root.firstElementChild, this.profiles.list().length > 0);
   }
@@ -373,14 +377,15 @@ export class App {
     const ch = CHAPTERS[this.chapter - 1]!;
     const stages = STAGES.filter((s) => s.chapter === ch.id);
     const nodes = h('div.stage-path', {}, ...stages.map((s) => this.stageNode(s)));
-    const totalStars = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    // 캠페인 별만 센다 (외전 별은 따로)
+    const totalStars = STAGES.reduce((a, st) => a + (this.save.stars[st.id] ?? 0), 0);
     const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
     this.notice = '';
     this.swap(h('div.screen.map', {},
       this.topBar(tr('스테이지', 'Stages')),
       toast,
       tabs,
-      h('div.chapter-title', {}, h('b', {}, tr(`${ch.id}장 ${ch.name}: ${ch.subtitle}`, `Ch. ${ch.id} ${ch.name}: ${ch.subtitle}`)), h('span.muted', {}, tr(` · 총 별 ${totalStars}/${STAGES.length * 3}`, ` · Stars ${totalStars}/${STAGES.length * 3}`))),
+      h('div.chapter-title', {}, h('b', {}, tr(`${ch.id}장 ${ch.name}: ${ch.subtitle}`, `Ch. ${ch.id} ${ch.name}: ${ch.subtitle}`)), h('span.muted', {}, tr(`{star} 총 별 ${totalStars}/${STAGES.length * 3}`, `{star} Stars ${totalStars}/${STAGES.length * 3}`))),
       nodes,
       this.mapActions(),
     ));
