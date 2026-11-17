@@ -26,6 +26,8 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   '서버 오류가 났어요.': 'Server error.',
   '요청이 너무 커요.': 'Request too large.',
   'JSON 형식이 아니에요.': 'Not valid JSON.',
+  '받는 사람을 골라 주세요.': 'Please pick at least one recipient.',
+  '선물은 연구비 0~10000000, 뽑기권 0~1000 사이로, 하나 이상 넣어 주세요.': 'Gifts must be 0–10,000,000 funds and 0–1000 tickets, with at least one above zero.',
 };
 
 /** 상태 코드별 기본 영어 설명 (모르는 메시지일 때) */

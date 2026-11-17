@@ -234,4 +234,48 @@ describe('계정 서버', () => {
     expect(bad).toEqual({ badge: '', avatar: '', avatarTier: 1, fit: {} });
     expect(rankLook(null).badge).toBe('');
   });
+  it('선물: 관리자가 여러 명에게 보내고, 받은 사람은 한 번만 받는다', async () => {
+    const admin = await call('POST', '/api/auth/register', { username: 'apg0001', password: 'password123' });
+    const kim = await call('POST', '/api/auth/register', { username: 'kim', password: 'password123' });
+    const lee = await call('POST', '/api/auth/register', { username: 'lee', password: 'password123' });
+    await call('PUT', '/api/save', { data: { v: 5, money: 300, gear: { tickets: 2 } }, version: 0 }, kim.json.access);
+
+    // 관리자만
+    expect((await call('GET', '/api/admin/players', undefined, kim.json.access)).status).toBe(403);
+    expect((await call('POST', '/api/admin/gifts', { userIds: [kim.json.user.id], money: 1 }, kim.json.access)).status).toBe(403);
+
+    const players = (await call('GET', '/api/admin/players', undefined, admin.json.access)).json.players as { id: number; username: string; money: number; tickets: number }[];
+    expect(players).toHaveLength(3);
+    expect(players.find((p) => p.username === 'kim')).toMatchObject({ money: 300, tickets: 2 });
+
+    // 잘못된 선물은 거절
+    expect((await call('POST', '/api/admin/gifts', { userIds: [], money: 1 }, admin.json.access)).status).toBe(400);
+    expect((await call('POST', '/api/admin/gifts', { userIds: [kim.json.user.id] }, admin.json.access)).status).toBe(400);
+    expect((await call('POST', '/api/admin/gifts', { userIds: [kim.json.user.id], money: -5 }, admin.json.access)).status).toBe(400);
+    expect((await call('POST', '/api/admin/gifts', { userIds: [kim.json.user.id], tickets: 1.5 }, admin.json.access)).status).toBe(400);
+
+    const sent = await call('POST', '/api/admin/gifts', { userIds: [kim.json.user.id, lee.json.user.id, kim.json.user.id, 9999], money: 100000, tickets: 10, message: '개발자의 특권' }, admin.json.access);
+    expect(sent.json).toEqual({ ok: true, sent: 2 });
+    await call('POST', '/api/admin/gifts', { userIds: [kim.json.user.id], tickets: 3 }, admin.json.access);
+
+    const box = (await call('GET', '/api/gifts', undefined, kim.json.access)).json.items;
+    expect(box).toHaveLength(2);
+    expect(box[0]).toMatchObject({ money: 100000, tickets: 10, message: '개발자의 특권', sender: 'apg0001' });
+
+    // 하나만 받기 → 나머지 받기 → 다시 받아도 0
+    const one = await call('POST', '/api/gifts/claim', { ids: [box[1].id] }, kim.json.access);
+    expect(one.json).toMatchObject({ money: 0, tickets: 3 });
+    const rest = await call('POST', '/api/gifts/claim', {}, kim.json.access);
+    expect(rest.json).toMatchObject({ money: 100000, tickets: 10 });
+    const again = await call('POST', '/api/gifts/claim', {}, kim.json.access);
+    expect(again.json).toMatchObject({ items: [], money: 0, tickets: 0 });
+    // 남의 선물은 받을 수 없다
+    const leeBox = (await call('GET', '/api/gifts', undefined, lee.json.access)).json.items;
+    expect((await call('POST', '/api/gifts/claim', { ids: [leeBox[0].id] }, kim.json.access)).json.items).toEqual([]);
+    expect((await call('GET', '/api/gifts')).status).toBe(401);
+
+    const log = (await call('GET', '/api/admin/gifts', undefined, admin.json.access)).json.items;
+    expect(log).toHaveLength(3);
+    expect(log.filter((g: { claimedAt: number | null }) => g.claimedAt).length).toBe(2);
+  });
 });
