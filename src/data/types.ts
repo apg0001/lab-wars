@@ -77,6 +77,8 @@ export interface UnitDef extends CombatStats {
 export interface BossPattern {
   summon?: { id: string; every: number; count: number };
   stomp?: { dmg: number; radius: number; every: number };
+  /** 호통: HP 비율이 at 아래로 처음 떨어질 때마다 모든 아군을 stun초 기절시키고 push만큼 밀어낸다 (없으면 기본값) */
+  rage?: { at: number[]; stun: number; push: number };
 }
 
 export interface EnemyDef extends CombatStats {

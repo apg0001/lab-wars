@@ -38,6 +38,8 @@ export interface StageDef {
   /** 스테이지 특징 한 줄 설명 */
   note?: string;
   reward: number;
+  /** 시간 제한(초). 넘기면 패배 (없으면 무제한) */
+  timeLimit?: number;
   /** 외전 번호 (1~3). 외전 스테이지는 STAGES에 들어가지 않는다 */
   side?: number;
   /** 전장 배경 테마 (외전) */
@@ -130,14 +132,27 @@ function poolAt(c: number, kind: StageKind): { id: string; weight: number }[] {
       const age = c - from;
       const base = WEIGHTS[id] ?? 1;
       const w = id === 'memo' ? Math.max(1.5, base - age * 0.25) : base;
-      // 초반 학회(c<10)는 공중 질문 공세를 조금 덜어 대공 유닛이 적을 때의 벽을 낮춘다
-      const k = kind === 'conference' && id === 'plane' && c < 10 ? 1 : (mul[id] ?? 1);
+      // 초반~중반 학회(c<12, 5-3까지)는 공중 질문 공세를 조금 덜어 대공 유닛이 적을 때의 벽을 낮춘다
+      const k = kind === 'conference' && id === 'plane' && c < 12 ? 1 : (mul[id] ?? 1);
       return { id, weight: w * k };
     });
 }
 
 /** 적 능력치 배율: 곡선을 따라 오르고, 초반(1~2챕터)엔 조금 더 세게 해서 처음부터 긴장감을 준다 (3챕터부터 원래대로) */
-const enemyScale = (c: number): number => 1 + c * 0.1 + (c <= 6 ? c * 0.03 : Math.max(0, 0.18 - (c - 6) * 0.045));
+/**
+ * 전체 난이도 상향 (0.14.0). 1챕터 튜토리얼은 0에서 서서히 오르고,
+ * 원래 벽이던 5~6챕터(c≈11~16)는 그대로 두거나 오히려 살짝 낮추고, 쉬웠던 2~4챕터와 7챕터·외전은 더 올린다.
+ */
+const HARD = (c: number): number => {
+  if (c < 3) return 1 + c * 0.027;
+  if (c < 8.3) return 1.08;
+  if (c < 10.5) return 1.05; // 4챕터: 5챕터 앞에서 성장이 밀리지 않게 완만하게
+  if (c < 12.5) return 0.97;
+  if (c < 14.5) return 0.94; // 5-7 ~ 6-3: 원래부터 가장 높던 벽을 깎아 곡선을 고르게
+  if (c < 16.5) return 1;
+  return 1.1;
+};
+const enemyScale = (c: number): number => (1 + c * 0.1 + (c <= 6 ? c * 0.03 : Math.max(0, 0.18 - (c - 6) * 0.045))) * HARD(c);
 
 /** 곡선 위치 c에서의 기본 수치 (외전·무한 모드도 같이 쓴다) */
 export function numbersAt(c: number): Pick<StageDef, 'scale' | 'enemyBaseHp' | 'towerAtk' | 'spawnEvery' | 'rush'> {
@@ -182,8 +197,12 @@ function makeStage(chapter: number, index: number): StageDef {
     killMul: KILL_MUL,
     note: KIND_NOTE[kind],
     reward: Math.round((60 + c * 30 + (isBoss ? 80 : 0)) * REWARD_MUL * (vacation || thesis ? 1.3 : 1)),
+    timeLimit: isBoss ? TIME_LIMIT.boss : TIME_LIMIT.normal,
   };
 }
+
+/** 시간 제한(초): 일반 5분, 보스 6분, 무한 모드 8분 */
+export const TIME_LIMIT = { normal: 300, boss: 360, endless: 480 };
 
 /** 스테이지가 두 배 넘게 늘어난 만큼 한 판 보상을 줄인다. */
 export const REWARD_MUL = 0.45;
@@ -245,6 +264,7 @@ export function endlessStage(n: number): StageDef {
     caffeineMul: undefined,
     note: '{infinity} 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스.',
     reward: Math.round(80 + c * 12),
+    timeLimit: TIME_LIMIT.endless,
   };
 }
 
@@ -304,6 +324,8 @@ function makeSideStage(sc: SideChapter, index: number): StageDef {
     order: 1000 + sc.id * 10 + index,
     name: SIDE_PLAN[sc.id - 1]![index - 1]!,
     kind: isBoss ? 'boss' : 'normal',
+    // 외전 2는 정전으로 시야가 좁아 사람에게 더 어렵다 (봇은 어둠을 무시) → 상향분을 뺀다
+    scale: sc.mods?.dark ? n.scale / 1.1 : n.scale,
     spawnEvery: n.spawnEvery * (isBoss ? 1.6 : 1),
     rush: { ...n.rush, size: Math.round(n.rush.size * (isBoss ? 0.5 : 1)) },
     pool: Object.entries(sc.pool).map(([id, weight]) => ({ id, weight })),
@@ -311,6 +333,7 @@ function makeSideStage(sc: SideChapter, index: number): StageDef {
     killMul: KILL_MUL,
     note: sc.rule,
     reward: Math.round((60 + c * 30 + (isBoss ? 120 : 0)) * REWARD_MUL * 1.25),
+    timeLimit: isBoss ? TIME_LIMIT.boss : TIME_LIMIT.normal,
     side: sc.id,
     theme: sc.theme,
     mods: sc.mods,

@@ -5,6 +5,24 @@ export interface UserRow {
   username: string;
   pass_hash: string;
   created_at: number;
+  /** 화면에 보이는 이름. 비어 있으면 아이디를 쓴다. */
+  nickname: string | null;
+}
+
+export type FeedbackCategory = '문의' | '건의' | '버그';
+
+export interface FeedbackRow {
+  id: number;
+  category: FeedbackCategory;
+  text: string;
+  user_id: number | null;
+  /** 보낸 사람: 계정이면 아이디(닉네임), 게스트면 적은 이름 */
+  author: string;
+  guest: number;
+  version: string;
+  created_at: number;
+  done: number;
+  done_at: number | null;
 }
 
 export interface SaveRow {
@@ -40,13 +58,29 @@ export class Store {
         version INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        text TEXT NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        author TEXT NOT NULL,
+        guest INTEGER NOT NULL DEFAULT 0,
+        version TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0,
+        done_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS feedback_created ON feedback(created_at);
     `);
+    // 예전 DB에는 닉네임 칸이 없다: 있을 때만 건너뛰고 없으면 추가한다
+    const cols = this.db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+    if (!cols.some((c) => c.name === 'nickname')) this.db.exec('ALTER TABLE users ADD COLUMN nickname TEXT');
   }
 
   createUser(username: string, passHash: string, now: number): UserRow | null {
     try {
       const r = this.db.prepare('INSERT INTO users (username, pass_hash, created_at) VALUES (?, ?, ?)').run(username, passHash, now);
-      return { id: Number(r.lastInsertRowid), username, pass_hash: passHash, created_at: now };
+      return { id: Number(r.lastInsertRowid), username, pass_hash: passHash, created_at: now, nickname: null };
     } catch {
       return null; // 이미 있는 이름
     }
@@ -58,6 +92,10 @@ export class Store {
 
   userById(id: number): UserRow | undefined {
     return this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
+  }
+
+  setNickname(id: number, nickname: string): void {
+    this.db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(nickname, id);
   }
 
   addRefresh(tokenHash: string, userId: number, expiresAt: number): void {
@@ -96,8 +134,25 @@ export class Store {
   }
 
   /** 순위 계산용: 저장이 있는 모든 사용자 */
-  allSaves(): { user_id: number; username: string; data: string; updated_at: number }[] {
-    return this.db.prepare('SELECT s.user_id, u.username, s.data, s.updated_at FROM saves s JOIN users u ON u.id = s.user_id').all() as { user_id: number; username: string; data: string; updated_at: number }[];
+  allSaves(): { user_id: number; username: string; nickname: string | null; data: string; updated_at: number }[] {
+    return this.db.prepare('SELECT s.user_id, u.username, u.nickname, s.data, s.updated_at FROM saves s JOIN users u ON u.id = s.user_id').all() as { user_id: number; username: string; nickname: string | null; data: string; updated_at: number }[];
+  }
+
+  addFeedback(f: { category: FeedbackCategory; text: string; userId: number | null; author: string; guest: boolean; version: string; now: number }): number {
+    const r = this.db.prepare('INSERT INTO feedback (category, text, user_id, author, guest, version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(f.category, f.text, f.userId, f.author, f.guest ? 1 : 0, f.version, f.now);
+    return Number(r.lastInsertRowid);
+  }
+
+  /** 최신순 의견 목록 */
+  listFeedback(limit: number): FeedbackRow[] {
+    return this.db.prepare('SELECT * FROM feedback ORDER BY created_at DESC, id DESC LIMIT ?').all(limit) as unknown as FeedbackRow[];
+  }
+
+  /** 처리됨 표시를 바꾼다. 없는 번호면 false. */
+  markFeedback(id: number, done: boolean, now: number): boolean {
+    const r = this.db.prepare('UPDATE feedback SET done = ?, done_at = ? WHERE id = ?').run(done ? 1 : 0, done ? now : null, id);
+    return Number(r.changes) > 0;
   }
 
   close(): void {

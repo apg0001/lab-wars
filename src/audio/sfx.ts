@@ -179,6 +179,25 @@ export const sfx = {
     audio.noise(o, { filter: 'bandpass', freq: 300, q: 4, dur: 1.8, gain: 0.15, attack: 0.02 });
   },
 
+  /** 보스 호통: 낮게 으르렁대다 터지는 고함 */
+  rage(): void {
+    const o = audio.sfxOut({ vol: 1 }, 1.6);
+    if (!o) return;
+    audio.tone(o, { type: 'sawtooth', f0: mtof(40), f1: mtof(33), dur: 0.9, gain: 0.2, lp: 700, attack: 0.04 });
+    audio.tone(o, { type: 'sawtooth', f0: mtof(47), f1: mtof(40), dur: 0.9, gain: 0.12, lp: 700, attack: 0.04, detune: 12 });
+    audio.noise(o, { filter: 'lowpass', freq: 1400, freqEnd: 200, dur: 0.7, gain: 0.35 });
+  },
+
+  /** 남은 시간 경고: 똑딱 두 번 */
+  timeWarn(): void {
+    const o = audio.sfxOut({ vol: 0.9 }, 0.8);
+    if (!o) return;
+    [0, 0.3].forEach((t) => {
+      audio.tone(o, { type: 'square', f0: 1760, dur: 0.04, gain: 0.05, lp: 3000, at: t });
+      audio.tone(o, { type: 'square', f0: 1320, dur: 0.04, gain: 0.05, lp: 3000, at: t + 0.15 });
+    });
+  },
+
   rush(): void {
     const o = audio.sfxOut({ vol: 0.9 }, 0.9);
     if (!o) return;
@@ -236,6 +255,8 @@ export function playBattleSfx(e: BattleEvent, camX: number, viewW: number): void
     case 'skill': sfx.skill(e.id); break;
     case 'bossSpawn': case 'alarm': sfx.bossSpawn(); break;
     case 'rush': sfx.rush(); break;
+    case 'rage': sfx.rage(); break;
+    case 'timeWarn': sfx.timeWarn(); break;
     case 'end': if (e.result === 'win') sfx.win(); else sfx.lose(); break;
   }
 }

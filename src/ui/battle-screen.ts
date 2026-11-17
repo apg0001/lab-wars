@@ -26,6 +26,8 @@ export interface BattleEnd {
   killReward: number;
   kills: number;
   seconds: number;
+  /** 시간 제한을 넘겨 졌다 */
+  timeout: boolean;
 }
 
 export interface BattleScreenOptions {
@@ -274,8 +276,11 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     enemyBar.style.width = `${(battle.enemy.hp / battle.enemy.maxHp) * 100}%`;
     allyTxt.textContent = fmt(battle.ally.hp);
     enemyTxt.textContent = fmt(battle.enemy.hp);
-    const sec = Math.floor(battle.t);
+    // 시간 제한이 있으면 남은 시간을, 없으면 경과 시간을 보여 준다
+    const left = battle.timeLeft;
+    const sec = left === null ? Math.floor(battle.t) : Math.ceil(left);
     timeTxt.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    timeTxt.classList.toggle('low', left !== null && left <= 30 && !battle.result);
     cafFill.style.width = `${(battle.caffeine / battle.caffeineMax) * 100}%`;
     cafNum.textContent = ` ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`;
     const bc = battle.brewCost();
@@ -308,7 +313,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   function endBattle(): void {
     ended = true;
     const win = battle.result === 'win';
-    const res = opt.onEnd({ win, baseHpRatio: battle.ally.hp / battle.ally.maxHp, killReward: battle.killReward, kills: battle.kills, seconds: battle.t });
+    const res = opt.onEnd({ win, baseHpRatio: battle.ally.hp / battle.ally.maxHp, killReward: battle.killReward, kills: battle.kills, seconds: battle.t, timeout: battle.timedOut });
     window.setTimeout(() => {
       overlay.hidden = false;
       overlay.replaceChildren(h(`div.panel.result.${win ? 'win' : 'lose'}`, {},

@@ -7,6 +7,8 @@ services:
     env_file: .env
     environment:
       MW_TRUST_PROXY: "1"
+      # 게임 안 의견함을 볼 수 있는 관리자 아이디 (쉼표로 여러 개)
+      ADMIN_USERS: "apg0001"
     ports:
       # 외부 공개는 Tailscale Funnel 등 프록시가 담당하고, 컨테이너는 로컬에만 연다
       - "127.0.0.1:8787:8787"

@@ -23,6 +23,10 @@ export const BREW_MAX = 6;
 const ALARM_AT = [0.75, 0.5, 0.25];
 /** 비상 소집 충격파 범위 (교수실 앞에서) */
 export const ALARM_RADIUS = 300;
+/** 보스 호통 기본값: HP 66%·33% 아래로 처음 떨어질 때 모든 아군을 1.2초 기절, 70 밀어내기 */
+export const BOSS_RAGE = { at: [0.66, 0.33], stun: 1.2, push: 70 };
+/** 남은 시간이 이만큼이면 경고 배너 */
+const TIME_WARN = 60;
 /** 단계 n → n+1 비용 */
 export const BREW_COST = [30, 50, 75, 105, 140];
 
@@ -50,6 +54,10 @@ export interface Fighter {
   /** 넉백 경직 남은 시간과 밀려나는 속도 */
   kbT: number;
   kbV: number;
+  /** 기절 남은 시간 (이동·공격 불가) */
+  stunT: number;
+  /** 보스: 지금까지 일으킨 호통 횟수 */
+  rageN: number;
   auraMul: number;
   dead: boolean;
   deathT: number;
@@ -109,6 +117,8 @@ export type BattleEvent =
   | { type: 'heal' }
   | { type: 'bossSpawn' }
   | { type: 'alarm' }
+  | { type: 'rage'; x: number }
+  | { type: 'timeWarn' }
   | { type: 'rush' }
   | { type: 'end'; result: 'win' | 'lose' };
 
@@ -158,6 +168,9 @@ export class Battle {
   /** 외전 멘탈 붕괴 상태 */
   broken = false;
   result: BattleResult = null;
+  /** 시간 제한을 넘겨 졌는지 */
+  timedOut = false;
+  private timeWarned = false;
   killReward = 0;
   kills = 0;
   private spawnTimer = 0;
@@ -249,7 +262,7 @@ export class Battle {
         this.banner('{snack} 야식 도착!');
         break;
       case 'allnight':
-        this.hasteT = 8;
+        this.hasteT = 6;
         this.banner('{moon} 밤샘 모드!');
         break;
       case 'aircon':
@@ -267,6 +280,12 @@ export class Battle {
       }
     }
     return true;
+  }
+
+  /** 남은 시간(초). 시간 제한이 없으면 null */
+  get timeLeft(): number | null {
+    const lim = this.stage.timeLimit;
+    return lim ? Math.max(0, lim - this.t) : null;
   }
 
   // ───────────── 진행 ─────────────
@@ -320,14 +339,23 @@ export class Battle {
     for (const f of this.fighters) if (f.dead) f.deathT += dt;
     this.fighters = this.fighters.filter((f) => !f.dead || f.deathT < 0.6);
 
+    const left = this.timeLeft;
     if (this.enemy.hp <= 0) this.finish('win');
     else if (this.ally.hp <= 0) this.finish('lose');
+    else if (left !== null && left <= 0) {
+      this.timedOut = true;
+      this.finish('lose');
+    } else if (left !== null && left <= TIME_WARN && !this.timeWarned) {
+      this.timeWarned = true;
+      this.banner('{clock} 퇴근 1분 전!');
+      this.emit({ type: 'timeWarn' });
+    }
   }
 
   private finish(r: BattleResult): void {
     this.result = r;
     if (r) this.emit({ type: 'end', result: r });
-    this.banner(r === 'win' ? '교수실 함락!' : '연구실이 망가졌다…');
+    this.banner(r === 'win' ? '교수실 함락!' : this.timedOut ? '{clock} 야근 확정… 시간 초과' : '연구실이 망가졌다…');
   }
 
   // ───────────── 적 출현 ─────────────
@@ -388,7 +416,7 @@ export class Battle {
       uid: this.uidSeq++, side, defId, name, look, tier, stats,
       hp: stats.hp, maxHp: stats.hp, x, depth: this.rng() * 14,
       cd: 0.3, healCd: stats.heal?.every ?? 0, summonCd: 0, stompCd: 0,
-      attacking: false, swing: 0, hitFlash: 0, kbT: 0, kbV: 0, auraMul: 1, dead: false, deathT: 0,
+      attacking: false, swing: 0, hitFlash: 0, kbT: 0, kbV: 0, stunT: 0, rageN: 0, auraMul: 1, dead: false, deathT: 0,
       reward, isBoss: false, walk: this.rng() * 10,
     };
     this.fighters.push(f);
@@ -421,12 +449,12 @@ export class Battle {
   }
 
   private speedMul(f: Fighter): number {
-    if (f.side === 'ally') return this.hasteT > 0 ? 1.2 : 1;
+    if (f.side === 'ally') return this.hasteT > 0 ? 1.15 : 1;
     return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
   }
 
   private atkRateMul(f: Fighter): number {
-    if (f.side === 'ally') return this.hasteT > 0 ? 1.6 : 1;
+    if (f.side === 'ally') return this.hasteT > 0 ? 1.4 : 1;
     return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
   }
 
@@ -456,7 +484,10 @@ export class Battle {
 
   private tickFighter(f: Fighter, dt: number): void {
     const s = f.stats;
-    f.cd -= dt * this.atkRateMul(f);
+    const stunned = f.stunT > 0;
+    // 기절 중에는 공격 대기도 흐르지 않는다
+    if (stunned) f.stunT = Math.max(0, f.stunT - dt);
+    else f.cd -= dt * this.atkRateMul(f);
     f.hitFlash = Math.max(0, f.hitFlash - dt);
     f.swing = Math.max(0, f.swing - dt * 3);
 
@@ -465,6 +496,11 @@ export class Battle {
       f.kbT -= dt;
       f.x = clamp(f.x + f.kbV * dt, ALLY_FRONT - 40, ENEMY_FRONT + 40);
       f.kbV *= Math.exp(-6 * dt);
+      f.attacking = false;
+      return;
+    }
+    // 기절: 제자리에서 아무것도 못 한다
+    if (stunned) {
       f.attacking = false;
       return;
     }
@@ -621,6 +657,7 @@ export class Battle {
     if (kb && !f.isBoss && f.hp > dmg && this.rng() < kb.chance) this.knockback(f, kb.dist);
     f.hp -= dmg;
     f.hitFlash = 0.12;
+    if (f.isBoss && f.hp > 0) this.checkRage(f);
     this.fx.push({ kind: 'dmg', x: f.x + (this.rng() - 0.5) * 16, y: this.fy(f) - 40 - (f.look.scale ?? 1) * 20, t: 0, life: 0.6, text: String(Math.round(dmg)), color: from === 'ally' ? '#fff' : '#ff8a80' });
     if (f.hp <= 0) {
       f.dead = true;
@@ -648,6 +685,33 @@ export class Battle {
     f.swing = 0;
     this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 0.6, text: '넉백!', color: '#80d8ff' });
     this.emit({ type: 'knockback', x: f.x, y: this.fy(f) - 20 });
+  }
+
+  /** 보스 HP가 호통 기준선 아래로 처음 떨어졌으면 (기준선마다 한 번) 호통 */
+  private checkRage(f: Fighter): void {
+    const rage = ENEMY_BY_ID[f.defId]?.boss?.rage ?? BOSS_RAGE;
+    while (f.rageN < rage.at.length && f.hp / f.maxHp <= rage.at[f.rageN]!) {
+      f.rageN++;
+      this.bossRage(f, rage.stun, rage.push);
+    }
+  }
+
+  /**
+   * 보스 호통: 전장의 모든 아군을 잠깐 기절시키고 뒤로 밀어낸다.
+   * 보스에 몰아치던 흐름을 끊어 보스전에 굴곡을 준다.
+   */
+  private bossRage(f: Fighter, stun: number, push: number): void {
+    for (const o of this.alive('ally')) {
+      o.stunT = Math.max(o.stunT, stun);
+      o.kbT = 0.4;
+      o.kbV = -push * 6;
+      o.swing = 0;
+      o.attacking = false;
+    }
+    this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.8, r: 420 });
+    this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: '{anger} 이게 뭐야!', color: '#ff5252' });
+    this.emit({ type: 'rage', x: f.x });
+    this.banner(`{anger} ${f.name} 호통!`);
   }
 
   private damageBase(b: Base, dmg: number, x: number): void {
