@@ -881,3 +881,11 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .portrait .card-name { font-size: calc(1.7 * var(--u)); }
 .portrait .card-desc { font-size: calc(1.4 * var(--u)); }
 .portrait .card-flavor { font-size: calc(1.2 * var(--u)); }
+
+/* ── 영어 (src/i18n): 둥근 라틴 글꼴을 앞에 두고, 한글은 Jua로 넘어간다 ── */
+html[lang='en'] { --font: 'Fredoka', 'Jua', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif; }
+html[lang='en'] body { font-weight: 500; }
+.title-corner .lang-btn { font-size: calc(1.5 * var(--u)); }
+.audio-row.lang-row { grid-template-columns: calc(11 * var(--u)) 1fr; }
+.portrait .audio-row.lang-row { grid-template-columns: calc(10 * var(--u)) 1fr; }
+.lang-pick { display: flex; gap: calc(0.8 * var(--u)); }
