@@ -639,14 +639,19 @@ export class App {
   showLab(tab: 'units' | 'facilities' = 'units'): void {
     music.play('lobby');
     const body = tab === 'units' ? this.unitCards() : this.facilityCards();
+    // 같은 탭을 다시 그릴 때(레벨업·강화 후)는 보던 위치를 지킨다
+    const prev = this.root.querySelector<HTMLElement>(`.lab .card-grid[data-tab="${tab}"]`);
+    const keep = prev ? prev.scrollTop : 0;
+    const grid = h('div.card-grid', { 'data-tab': tab }, ...body);
     this.swap(h('div.screen.lab', {},
       this.topBar('연구실 강화', () => this.showMap()),
       h('div.lab-tabs', {},
         h(`button.chapter-tab${tab === 'units' ? '.on' : ''}`, { onclick: () => this.showLab('units') }, '🧑‍🎓 동료'),
         h(`button.chapter-tab${tab === 'facilities' ? '.on' : ''}`, { onclick: () => this.showLab('facilities') }, '🏗️ 시설'),
       ),
-      h('div.card-grid', {}, ...body),
+      grid,
     ));
+    if (keep) grid.scrollTop = keep;
   }
 
   private unitCards(): HTMLElement[] {
