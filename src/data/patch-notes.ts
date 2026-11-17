@@ -22,6 +22,30 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.19.0',
+    date: '2026-11-18',
+    title: '외전 4·5·6·7',
+    items: [
+      '{redbook} 외전 4편 추가! 엔딩 뒤 외전 지도에서 할 수 있어요',
+      '{clock} 외전 4 · 마감 24시: 시간 제한이 짧고, 시간이 갈수록 적이 빨라져요. 보스는 학회 제출 시스템',
+      '{robot} 외전 5 · AI 시대의 연구실: 내가 소환한 유닛을 적이 복제해 내보내요. 보스는 자동 리뷰 AI',
+      '{coin} 외전 6 · 졸업 후: 랩실 창업기: 카페인 충전이 점점 줄어드는 번레이트. 보스는 투자 심사역',
+      '{warn} 외전 7 · 연구실 정전의 날: 20초마다 순간 정전으로 기절하고 일부는 저장 안 한 데이터처럼 사라져요. 무정전 전원 장치(UPS) 근처는 안전',
+      '{scroll} 새 적 15종, 새 배경음악 2곡, 컷신 28개',
+    ],
+    en: {
+      title: 'Side Stories 4–7',
+      items: [
+        '{redbook} Four new side stories, on the side-story map after the ending',
+        '{clock} 4 · 24 Hours to Deadline: a short time limit and enemies that speed up over time. Boss: the Submission System',
+        '{robot} 5 · The Lab in the Age of AI: the enemy clones units you summon. Boss: the Auto-Review AI',
+        '{coin} 6 · The Lab Startup: caffeine income keeps shrinking (burn rate). Boss: the VC Partner',
+        '{warn} 7 · Blackout Day: power blips every 20s stun your squad and may wipe unsaved units. Stay near a UPS',
+        '{scroll} 15 new enemies, 2 new music tracks, 28 cutscenes',
+      ],
+    },
+  },
+  {
     version: '0.18.1',
     date: '2026-11-17',
     title: '간단히 보기 고침',
