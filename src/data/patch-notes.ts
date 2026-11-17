@@ -22,6 +22,30 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.20.0',
+    date: '2026-11-18',
+    title: '전공 수업 개강',
+    items: [
+      '{cap} 전공 모드가 열렸어요! 1-10을 깨면 전공 배정. 지도 위에서 스토리 모드와 전공 모드를 바꿔요',
+      '{books} 정보통신공학 41과목을 1~4학년 이수체계도에서 골라 들어요. 선수과목을 이수해야 다음 과목이 열려요',
+      '{brain} 과목마다 그 과목다운 규칙: 자료구조는 스택처럼 끼어드는 잡무, 컴퓨터구성은 캐시 히트와 파이프라인, 알고리즘은 Big-O 교수님, 신호와시스템은 깜빡이는 적, 데이터베이스는 롤백…',
+      '{prof} 과목마다 기말 보스로 담당 교수님이 나와요. 교수님 16명은 모두 가상 인물이에요',
+      '{star} 이기면 연구실 체력으로 A+~D0, 지면 F. C+ 이하는 재수강(최고 A0)! 전 과목 이수하면 졸업이에요',
+      '{trophy} 순위표에 전공 평점(GPA)이 함께 보여요',
+    ],
+    en: {
+      title: 'Classes Begin',
+      items: [
+        '{cap} Major Mode is here! Clear 1-10 to get your major assigned, then switch between Story Mode and Major Mode above the map',
+        '{books} Take all 41 Information & Communication Engineering courses on a Year 1–4 curriculum map. Pass prerequisites to unlock later courses',
+        '{brain} Every course has a rule true to its subject: busywork cutting in like a stack in Data Structures, cache hits and pipelines in Computer Organization, a Big-O professor in Algorithms, flickering enemies in Signals and Systems, rollbacks in Databases…',
+        '{prof} Each course ends with its professor as the final boss. All 16 professors are fictional',
+        '{star} Win and your Lab\'s HP earns an A+~D0; lose and it\'s an F. C+ or lower can be retaken (capped at A0). Pass everything to graduate',
+        '{trophy} The leaderboard now shows each player\'s major GPA',
+      ],
+    },
+  },
+  {
     version: '0.19.4',
     date: '2026-11-18',
     title: '어떤 화면이든 꽉 차게',

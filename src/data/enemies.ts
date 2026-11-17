@@ -1,5 +1,6 @@
 import type { EnemyDef } from './types';
 import { localizeAll } from '../i18n';
+import { courseEnemies } from './course-enemies';
 
 export const ENEMIES: EnemyDef[] = [
   { id: 'memo', name: '잡무 쪽지', role: '약한 물량', reward: 3,
@@ -304,6 +305,9 @@ export const ENEMIES: EnemyDef[] = [
     boss: { summon: { id: 'conflict', every: 10, count: 2 }, stomp: { dmg: 50, radius: 130, every: 8 } },
     look: { kind: 'glitch', variant: 'legacy', color: '#d7ccc8', accent: '#33691e', scale: 2.3 } },
 ];
+
+// 전공 모드 과목 적·교수님 (src/data/course-enemies.ts)
+ENEMIES.push(...courseEnemies());
 
 localizeAll(ENEMIES);
 

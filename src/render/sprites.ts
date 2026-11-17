@@ -96,6 +96,8 @@ export interface SpriteState {
   flash: boolean;
   /** 서로 다른 순간에 다시 그리도록 흩뜨리는 값 (0~1) */
   phase: number;
+  /** 윤곽선만 (전공 과목 '디지털영상처리'): 검은 실루엣으로 그린다 */
+  silhouette?: boolean;
 }
 
 interface Sprite {
@@ -123,7 +125,7 @@ export class SpriteCache {
     // 0.25 단위로 끊어 창 크기가 조금 바뀔 때마다 캔버스를 다시 만들지 않게
     const pr = Math.max(0.5, Math.ceil(pixelRatio * 4) / 4);
     const bucket = Math.floor(time * ANIM_FPS + st.phase);
-    const key = `${bucket}|${st.facing}|${pr}|${lookKey(st.look, st.defId, st.tier)}|${st.look.color}`;
+    const key = `${bucket}|${st.facing}|${pr}|${st.silhouette ? 'S' : ''}|${lookKey(st.look, st.defId, st.tier)}|${st.look.color}`;
     let sp = this.map.get(uid);
     if (!sp) {
       sp = this.free.pop() ?? newSprite();
@@ -188,4 +190,11 @@ function render(sp: Sprite, st: SpriteState, time: number, pr: number): void {
   const left = st.facing === 1 ? l : -r;
   g.setTransform(pr, 0, 0, pr, -left * pr, -t * pr);
   drawCharacter(g, st.look, { walk: st.walk, swing: st.swing, tier: st.tier, time, moving: st.moving }, 0, 0, st.facing, st.defId);
+  if (st.silhouette) {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#2b2430';
+    g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'source-over';
+  }
 }

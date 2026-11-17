@@ -82,6 +82,13 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 | 6 · After Graduation: The Lab Startup | 🔥 **Burn Rate**: caffeine charge shrinks over time, down to 35% | VC Partner ("So what's the business model?" flying questions) |
 | 7 · Blackout Day | ⚡ **Power Blip**: every 20s allies are stunned 1.5s and each has a 10% chance to vanish. Allies near a UPS are safe | Main Breaker (blips come faster as its HP drops) |
 
+### 🎓 Major Mode: 41 ICE courses
+
+Clear 1-10 to get your **major assigned**. Pick courses on the curriculum map (Years 1–4 × two terms), beat the course's professor (all fictional) in the final, and earn a **grade (A+~F)**. **Each course's core idea is its battle rule**: Data Structures pushes new enemies to the front like a stack (LIFO), Computer Organization rewards cache hits and stalls the enemy pipeline, Algorithms makes the professor hit n² harder, Signals and Systems samples enemies so they flicker in and out of view, and so on.
+
+- C+ or lower can be **retaken** (capped at A0); prerequisites unlock later courses. Pass everything to graduate!
+- Your GPA shows on the **leaderboard**.
+
 ### 🎨 And also
 - 🖌️ **Zero image files**: every character, background, and effect is drawn directly with Canvas
 - 🎵 **Zero audio files**: 7 music tracks and all sound effects are synthesized live with Web Audio (separate music/SFX toggles and volume)
