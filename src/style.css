@@ -919,6 +919,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 /* 아래 홈 바 여백은 40%만 비워 화면을 더 쓴다 (배경은 끝까지 칠한다) */
 .portrait #app { padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) * 0.4); }
+/* 아이폰 홈 화면 앱: 실제 화면 높이로 (orientation.ts가 --app-h를 넣는다) */
+.portrait #app { bottom: auto; height: var(--app-h, 100%); box-sizing: border-box; }
 .portrait .stage { width: 100cqw; height: 100cqh; border-radius: 0; }
 .portrait .stage > * { --u: min(1cqw * 100 / 56, 1cqh); }
 .portrait .panel {
@@ -942,7 +944,7 @@ html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 .portrait .hud-btns { grid-area: btns; justify-self: end; }
 .portrait .hud-btns .icon-btn { font-size: calc(1.8 * var(--u)); min-width: calc(5.4 * var(--u)); padding: calc(0.4 * var(--u)) calc(0.8 * var(--u)); }
 .portrait .battle-field {
-  position: relative; inset: auto; order: 2; flex: none; height: min(calc(100cqw * 0.72), 44cqh);
+  position: relative; inset: auto; order: 2; flex: none; height: min(calc(100cqw * 0.84), 48cqh);
   margin-top: calc(0.8 * var(--u)); border-block: calc(0.25 * var(--u)) solid var(--ink); overflow: hidden;
 }
 .portrait .battle-field .boss-bar { top: calc(0.6 * var(--u)); left: 18%; right: 18%; }
@@ -963,7 +965,7 @@ html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 .portrait .skill-btn .cost, .portrait .skill-row.grid .skill-btn .cost { font-size: calc(1.6 * var(--u)); }
 .portrait .unit-row {
   /* 칸 수와 크기(--cols, --cell)는 battle-screen.ts가 남은 공간에 맞춰 정한다 */
-  order: 3; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), min(var(--cell, calc(12 * var(--u))), calc(13 * var(--u))));
+  order: 3; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), min(var(--cell, calc(12 * var(--u))), calc(18 * var(--u))));
   justify-content: center; align-content: end; gap: calc(1.1 * var(--u)); overflow: hidden auto; touch-action: pan-y; padding: calc(0.4 * var(--u)) calc(0.2 * var(--u)) calc(0.8 * var(--u));
 }
 .portrait .unit-btn { min-width: 0; max-width: none; width: 100%; aspect-ratio: 1; }
@@ -1234,3 +1236,5 @@ html[lang='en'] body { font-weight: 500; }
 .portrait .mode-btn { font-size: calc(1.9 * var(--u)); }
 
 .rank-title .rank-gpa { display: block; font-size: calc(1.15 * var(--u)); opacity: 0.75; }
+/* 세로 배치를 쓰는 가로 태블릿(.wide): 전장을 더 크게, 아래 버튼은 한 줄 */
+.portrait.wide .battle-field { height: 52cqh; }

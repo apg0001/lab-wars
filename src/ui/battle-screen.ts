@@ -372,7 +372,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     canvas.width = Math.round(viewW * scale);
     canvas.height = Math.round(viewH * scale);
   };
-  /** 세로 화면: 남은 공간에 유닛 버튼이 가장 크게 들어가는 칸 수(4~6)를 고른다 */
+  /** 세로 배치: 남은 공간에 유닛 버튼이 가장 크게 들어가는 칸 수(3~9)를 고른다 (키 큰 폰은 3칸으로 크게, 태블릿은 한 줄로 펼친다) */
   const layoutUnits = (): void => {
     if (!isPortrait()) return;
     const r = unitRow.getBoundingClientRect();
@@ -380,7 +380,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const gap = parseFloat(getComputedStyle(unitRow).columnGap) || 0;
     const n = Math.max(1, unitBtns.length);
     let best = { cols: 4, cell: 0 };
-    for (let cols = 4; cols <= 6; cols++) {
+    for (let cols = 3; cols <= 9; cols++) {
       const rows = Math.ceil(n / cols);
       const cell = Math.min((r.width - gap * (cols - 1)) / cols, (r.height - gap * (rows - 1)) / rows);
       if (cell > best.cell + 1) best = { cols, cell };
