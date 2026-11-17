@@ -25,10 +25,22 @@ export type LookKind =
   | 'ghost'
   | 'printer'
   /** 뽑기 장비 (ICT·전자공학 장비). 어떤 장비인지는 look.variant */
-  | 'gear';
+  | 'gear'
+  /** 무한 모드 전용 버그·장애 군단. 어떤 버그인지는 look.variant */
+  | 'glitch';
 
 /** 장비 그림 종류 (look.kind === 'gear') */
-export type GearVariant = 'iron' | 'scope' | 'firewall' | 'cooler' | 'printer3d' | 'turret' | 'cluster';
+export type GearVariant =
+  | 'iron' | 'scope' | 'firewall' | 'cooler' | 'printer3d' | 'turret' | 'cluster'
+  // 레어
+  | 'breadboard' | 'multimeter' | 'arduino' | 'logic' | 'ups' | 'pi' | 'siggen' | 'router' | 'packet' | 'wafer' | 'debugger' | 'dish'
+  // 에픽
+  | 'tesla' | 'tower' | 'robotarm' | 'rack' | 'reflow' | 'emp' | 'fiber'
+  // 레전더리
+  | 'quantum' | 'accelerator' | 'npu' | 'tokamak';
+
+/** 버그 군단 그림 종류 (look.kind === 'glitch') */
+export type GlitchVariant = 'segfault' | 'leak' | 'loop' | 'conflict' | 'bsod' | 'outage' | 'panic' | 'legacy';
 
 /** 유닛 등급: 기본(스토리 해금) · 레어 · 에픽 · 레전더리(뽑기) */
 export type UnitRarity = 'basic' | 'rare' | 'epic' | 'legend';
@@ -43,8 +55,8 @@ export interface Look {
   prop?: 'none' | 'keyboard' | 'laptop' | 'shield' | 'flask' | 'headband' | 'clipboard';
   /** 크기 배율 (기본 1) */
   scale?: number;
-  /** 장비 그림 종류 */
-  variant?: GearVariant;
+  /** 장비·버그 그림 종류 */
+  variant?: GearVariant | GlitchVariant;
 }
 
 /** 맞힌 상대에게 거는 상태 이상 */
@@ -55,6 +67,10 @@ export interface HitEffects {
   slow?: { mul: number; dur: number };
   /** 빙결: chance 확률로 dur초 기절 (보스는 40%만) */
   freeze?: { chance: number; dur: number };
+  /** 방어 깎기: 받는 피해 ×mul 을 dur초 (다시 맞으면 시간 갱신, 더 센 쪽으로) */
+  armorShred?: { mul: number; dur: number };
+  /** 띄우기: chance 확률로 dur초 공중에 떠서 아무것도 못 한다 (보스 면역) */
+  knockup?: { chance: number; dur: number };
 }
 
 /** 설치형 도우미 (포탑): 제자리에서 공격하다 life초 뒤 사라진다 */
@@ -68,6 +84,8 @@ export interface TurretSpec {
   range: number;
   interval: number;
   look: Look;
+  /** 0보다 크면 제자리 포탑 대신 이 속도로 걸어가는 졸개 (라우터의 패킷) */
+  speed?: number;
 }
 
 export interface CombatStats {
@@ -113,6 +131,27 @@ export interface CombatStats {
   revive?: { hpRatio: number };
   /** 전장 연산 타격: every초마다 전장의 모든 적에게 dmg 피해 */
   fieldStrike?: { dmg: number; every: number };
+  /** 방어 깎기 (맞힌 적이 받는 피해 증가) */
+  armorShred?: HitEffects['armorShred'];
+  /** 띄우기 (확률 공중 띄움) */
+  knockup?: HitEffects['knockup'];
+  /** 연쇄 번개: 맞힌 적에서 range 안의 다른 적으로 jumps번 튄다 (튈 때마다 피해 ×falloff) */
+  chain?: { jumps: number; range: number; falloff: number };
+  /** 흡혈: 준 피해의 ratio만큼 자기 HP 회복 */
+  lifesteal?: number;
+  /** 대공 배율: 공중 적에게 주는 피해 ×airMul */
+  airMul?: number;
+  /** 기절 장판: every초마다 반경 안 상대를 dur초 기절 (보스는 40%만) */
+  stunField?: { every: number; radius: number; dur: number };
+  // ── 무한 모드 버그 군단 능력 (주로 적) ──
+  /** 분열: 쓰러지면 HP×hpRatio, 크기×scale인 같은 적 count마리로 갈라진다 (갈라진 쪽은 다시 갈라지지 않는다) */
+  split?: { count: number; hpRatio: number; scale: number };
+  /** 성장: 초당 최대 HP가 처음의 rate배씩 늘어 max배까지 (늘어난 만큼 HP도 차고 몸도 커진다) */
+  grow?: { rate: number; max: number };
+  /** 재출현: 처음 쓰러지면 보상 없이 출발점으로 돌아가 HP×hpRatio로 다시 온다 */
+  respawn?: { hpRatio: number };
+  /** 카페인 흡수: 맞힐 때마다 상대 연구실의 카페인을 이만큼 빼앗는다 */
+  caffeineDrain?: number;
 }
 
 export interface UnitDef extends CombatStats {
@@ -154,6 +193,8 @@ export interface EnemyDef extends CombatStats {
   id: string;
   name: string;
   role: string;
+  /** 도감 설명 (무한 모드 버그 군단) */
+  desc?: string;
   reward: number;
   boss?: BossPattern;
   look: Look;
@@ -164,4 +205,5 @@ export interface EnemyDef extends CombatStats {
 export interface EnemyEn {
   name: string;
   role: string;
+  desc?: string;
 }
