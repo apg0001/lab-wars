@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.17.1',
+    date: '2026-11-17',
+    title: '커피 한 잔의 여유',
+    items: [
+      '{coffee} 타이틀과 패치노트 창에 개발자 후원 링크(카카오페이)를 달았어요. 대학원생 개발자의 카페인이 됩니다',
+    ],
+    en: {
+      title: 'Coffee Break',
+      items: [
+        '{coffee} Added a small support link for Korean players (KakaoPay)',
+      ],
+    },
+  },
+  {
     version: '0.17.0',
     date: '2026-11-17',
     title: '장비 지원 사업 선정',
