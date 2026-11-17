@@ -121,6 +121,103 @@ describe('계정 서버', () => {
     expect(pub.json.me).toBeNull();
 
     const mine = await call('GET', '/api/leaderboard', undefined, prof);
-    expect(mine.json.me).toMatchObject({ rank: 1, name: '교수님' });
+    expect(mine.json.me).toMatchObject({ rank: 1, name: '교수님', mine: true });
+    expect(mine.json.top[1].mine).toBeUndefined();
+  });
+
+  it('닉네임: 기본은 아이디, 바꾸면 응답·순위표에 반영, 잘못된 값은 거절', async () => {
+    const reg = await call('POST', '/api/auth/register', { username: 'nick01', password: 'password123' });
+    expect(reg.json.user).toMatchObject({ username: 'nick01', nickname: 'nick01' });
+    expect(reg.json.user.admin).toBeUndefined();
+    const tok = reg.json.access as string;
+    await call('PUT', '/api/save', { data: { v: 3, stars: { '1-1': 3 } }, version: 0 }, tok);
+    expect((await call('GET', '/api/leaderboard')).json.top[0].name).toBe('nick01');
+
+    expect((await call('PUT', '/api/me/nickname', { nickname: '  김  석사 ' }, tok)).json.user.nickname).toBe('김 석사');
+    expect((await call('GET', '/api/me', undefined, tok)).json.user).toMatchObject({ username: 'nick01', nickname: '김 석사' });
+    expect((await call('GET', '/api/leaderboard')).json.top[0].name).toBe('김 석사');
+    const login = await call('POST', '/api/auth/login', { username: 'nick01', password: 'password123' });
+    expect(login.json.user.nickname).toBe('김 석사');
+
+    for (const bad of ['a', 'x'.repeat(13), '{coin}', '<b>hi</b>', 3]) {
+      expect((await call('PUT', '/api/me/nickname', { nickname: bad }, tok)).status).toBe(400);
+    }
+    expect((await call('PUT', '/api/me/nickname', { nickname: '손님' })).status).toBe(401);
+    expect((await call('GET', '/api/me')).status).toBe(401);
+  });
+
+  it('예전 DB(닉네임 칸 없음)도 열면 칸을 추가한다', async () => {
+    const { DatabaseSync } = await import('node:sqlite');
+    const { mkdtempSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const file = join(mkdtempSync(join(tmpdir(), 'lw-')), 'old.db');
+    const old = new DatabaseSync(file);
+    old.exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE COLLATE NOCASE, pass_hash TEXT NOT NULL, created_at INTEGER NOT NULL)');
+    old.prepare('INSERT INTO users (username, pass_hash, created_at) VALUES (?, ?, ?)').run('oldie', 'x', 1);
+    old.close();
+    const s = new Store(file);
+    expect(s.userByName('oldie')).toMatchObject({ username: 'oldie', nickname: null });
+    s.setNickname(s.userByName('oldie')!.id, '고참');
+    s.close();
+    const again = new Store(file); // 두 번 열어도 문제없다
+    expect(again.userByName('oldie')!.nickname).toBe('고참');
+    again.close();
+  });
+
+  it('관리자: ADMIN_USERS에 있는 계정만 의견함을 보고 처리 표시를 바꾼다', async () => {
+    const admin = await call('POST', '/api/auth/register', { username: 'APG0001', password: 'password123' });
+    expect(admin.json.user.admin).toBe(true);
+    expect((await call('GET', '/api/me', undefined, admin.json.access)).json.user.admin).toBe(true);
+    const user = await call('POST', '/api/auth/register', { username: 'normal', password: 'password123' });
+    expect(user.json.user.admin).toBeUndefined();
+
+    expect((await call('GET', '/api/admin/feedback')).status).toBe(401);
+    expect((await call('GET', '/api/admin/feedback', undefined, user.json.access)).status).toBe(403);
+    expect((await call('PATCH', '/api/admin/feedback', { id: 1, done: true }, user.json.access)).status).toBe(403);
+
+    const sent = await call('POST', '/api/feedback', { category: '건의', text: '보스 체력 좀 줄여 주세요', version: '0.13.0' }, user.json.access);
+    expect(sent.status).toBe(200);
+    clock += 1000;
+    await call('POST', '/api/feedback', { category: '문의', text: '  저장이 안 돼요  ', name: '지나가던 학부생' });
+
+    const list = await call('GET', '/api/admin/feedback', undefined, admin.json.access);
+    expect(list.status).toBe(200);
+    expect(list.json.open).toBe(2);
+    expect(list.json.items.map((f: { text: string }) => f.text)).toEqual(['저장이 안 돼요', '보스 체력 좀 줄여 주세요']);
+    expect(list.json.items[0]).toMatchObject({ category: '문의', author: '지나가던 학부생', guest: true, done: false });
+    expect(list.json.items[1]).toMatchObject({ category: '건의', author: 'normal', guest: false, version: '0.13.0' });
+
+    const id = list.json.items[1].id as number;
+    expect((await call('PATCH', '/api/admin/feedback', { id, done: true }, admin.json.access)).status).toBe(200);
+    let after = await call('GET', '/api/admin/feedback', undefined, admin.json.access);
+    expect(after.json.open).toBe(1);
+    expect(after.json.items[1]).toMatchObject({ done: true, doneAt: clock });
+    await call('PATCH', '/api/admin/feedback', { id, done: false }, admin.json.access);
+    after = await call('GET', '/api/admin/feedback', undefined, admin.json.access);
+    expect(after.json.items[1]).toMatchObject({ done: false, doneAt: null });
+    expect((await call('PATCH', '/api/admin/feedback', { id: 999, done: true }, admin.json.access)).status).toBe(404);
+    expect((await call('PATCH', '/api/admin/feedback', { id, done: 'yes' }, admin.json.access)).status).toBe(400);
+  });
+
+  it('의견 보내기: 입력 검사와 10분 5회 한도', async () => {
+    expect((await call('POST', '/api/feedback', { category: '잡담', text: '안녕' })).status).toBe(400);
+    expect((await call('POST', '/api/feedback', { category: '버그', text: '   ' })).status).toBe(400);
+    expect((await call('POST', '/api/feedback', { category: '버그', text: 'x'.repeat(1001) })).status).toBe(400);
+    // 위 3번도 한도에 센다 → 2번 더 보내면 6번째부터 막힌다
+    expect((await call('POST', '/api/feedback', { category: '버그', text: '한 번' })).status).toBe(200);
+    expect((await call('POST', '/api/feedback', { category: '버그', text: '두 번' })).status).toBe(200);
+    expect((await call('POST', '/api/feedback', { category: '버그', text: '세 번' })).status).toBe(429);
+    // 계정은 IP와 따로 센다
+    const reg = await call('POST', '/api/auth/register', { username: 'fbuser', password: 'password123' });
+    expect((await call('POST', '/api/feedback', { category: '버그', text: '계정으로' }, reg.json.access)).status).toBe(200);
+    clock += 10 * 60 * 1000 + 1;
+    expect((await call('POST', '/api/feedback', { category: '버그', text: '다시' })).status).toBe(200);
+  });
+
+  it('PATCH도 CORS 허용 메서드에 들어 있다', async () => {
+    const res = await fetch(base + '/api/admin/feedback', { method: 'OPTIONS', headers: { Origin: ORIGIN } });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-methods')).toContain('PATCH');
   });
 });

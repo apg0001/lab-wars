@@ -15,7 +15,8 @@ import {
 } from '../sim/progression';
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
-import { AccountApi, AccountSaveStore, API_URL, ApiError, progressScore, type RankRow, type SyncState } from '../save/remote';
+import { AccountApi, AccountSaveStore, API_URL, ApiError, displayName, progressScore, type RankRow, type SyncState } from '../save/remote';
+import { showFeedbackForm, showFeedbackInbox, showNicknameForm } from './feedback';
 import { mountBattle } from './battle-screen';
 import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
@@ -117,6 +118,9 @@ export class App {
       this.showTitle();
       return;
     }
+    // 자동 로그인으로 받은 최신 닉네임을 프로필 이름에 반영한다
+    const acct = p.kind === 'account' ? this.api?.user : null;
+    if (acct && displayName(acct) !== p.name) this.profile = p = this.profiles.upsertAccount(acct.id, displayName(acct));
     this.profiles.remember(p);
     const next = STAGES.find((s) => !isCleared(this.save, s.id)) ?? STAGES[STAGES.length - 1]!;
     this.chapter = next.chapter;
@@ -161,6 +165,7 @@ export class App {
         h('div.btn-row', {},
           h('button.btn.small', { onclick: () => this.showProfiles() }, '{user} 프로필 변경'),
           this.api && p.kind !== 'account' ? h('button.btn.small', { onclick: () => this.showLogin() }, '{key} 로그인 / 가입') : null,
+          ...this.accountButtons(),
         ),
       )
       : this.newProfileForm();
@@ -176,7 +181,7 @@ export class App {
       body,
       notice,
       h('p.title-foot', {}, p
-        ? (p.kind === 'account' ? `{key} ${p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
+        ? (p.kind === 'account' ? `{key} ${this.api?.user?.username ?? p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
         : '진행 상황은 이 기기에 저장됩니다'),
     ));
     maybeShowUpdates(this.root.firstElementChild, this.profiles.list().length > 0);
@@ -196,7 +201,22 @@ export class App {
       h('div.btn-row', {},
         this.api ? h('button.btn.small', { onclick: () => this.showLogin() }, '{key} 로그인 / 가입') : null,
         this.profiles.list().length ? h('button.btn.small', { onclick: () => this.showProfiles() }, '{user} 기존 프로필') : null,
+        ...this.accountButtons(),
       ));
+  }
+
+  /** 타이틀 버튼 줄: 닉네임 바꾸기(계정), 의견함(관리자), 의견 보내기(누구나) */
+  private accountButtons(): (HTMLElement | null)[] {
+    const host = (): Element | null => this.root.firstElementChild;
+    const user = this.profile?.kind === 'account' ? this.api?.user : null;
+    return [
+      user && this.api ? h('button.btn.small', { onclick: () => showNicknameForm(host(), this.api!, (u) => {
+        if (this.profile?.kind === 'account') this.profile = this.profiles.upsertAccount(u.id, displayName(u));
+        this.showTitle();
+      }) }, '{pencil} 닉네임') : null,
+      user?.admin && this.api ? h('button.btn.small', { onclick: () => showFeedbackInbox(host(), this.api!) }, '{mail} 의견함') : null,
+      h('button.btn.small', { onclick: () => showFeedbackForm(host(), this.api, this.profile?.kind === 'guest' ? this.profile.name : '') }, '{megaphone} 의견 보내기'),
+    ];
   }
 
   private showProfiles(): void {
@@ -251,7 +271,7 @@ export class App {
       msg.textContent = '잠시만요…';
       try {
         const u = mode === 'login' ? await api.login(user.value.trim(), pass.value) : await api.register(user.value.trim(), pass.value);
-        const acct = this.profiles.upsertAccount(u.id, u.username);
+        const acct = this.profiles.upsertAccount(u.id, displayName(u));
         // 계정이 비어 있고 지금 게스트로 진행한 게 있으면 옮길지 묻는다
         if (guest && progressScore(guest.save) > 0) {
           const remote = await api.getSave().catch(() => null);
@@ -572,7 +592,7 @@ export class App {
     const isAccount = this.profile?.kind === 'account';
     overlay.append(h('div.panel.rank-panel', {},
       h('h2', {}, '{trophy} 연구실 순위'),
-      h('p.muted.rank-sub', {}, '무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 아이디가 표시돼요.'),
+      h('p.muted.rank-sub', {}, '무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 닉네임이 표시돼요.'),
       body,
       isAccount || !this.api ? null : h('p.notice', {}, '{key} 로그인하면 내 기록도 순위에 올라가요.'),
       h('button.btn.primary', { onclick: close }, '닫기'),
@@ -596,9 +616,9 @@ export class App {
         body.replaceChildren(h('p.muted', {}, '아직 순위에 오른 사람이 없어요. 첫 번째가 되어 보세요!'));
         return;
       }
-      const meName = this.api?.user?.username;
+      const meName = this.api?.user ? displayName(this.api.user) : undefined;
       body.replaceChildren(
-        h('div.rank-list', {}, ...lb.top.map((r) => row(r, r.name === meName))),
+        h('div.rank-list', {}, ...lb.top.map((r) => row(r, !!r.mine || (lb.me !== null && lb.me.mine === undefined && r.name === meName)))),
         ...(lb.me && lb.me.rank > lb.top.length ? [h('div.rank-list.mine', {}, row(lb.me, true))] : []),
         h('p.muted', {}, `총 ${lb.total}명`),
       );

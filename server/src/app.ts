@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { hashPassword, newRefreshToken, sha256, signAccess, validateCredentials, verifyAccess, verifyPassword } from './auth.ts';
-import type { Store } from './db.ts';
+import { cleanNickname, hashPassword, newRefreshToken, sha256, signAccess, validateCredentials, verifyAccess, verifyPassword } from './auth.ts';
+import type { FeedbackCategory, Store, UserRow } from './db.ts';
 
 export interface Config {
   secret: string;
@@ -12,6 +12,10 @@ export interface Config {
   maxSaveBytes: number;
   /** 인증 요청 한도: IP당 windowSec 동안 max회 */
   authLimit: { max: number; windowSec: number };
+  /** 의견 보내기 한도: 계정(게스트는 IP)당 windowSec 동안 max회 */
+  feedbackLimit: { max: number; windowSec: number };
+  /** 관리자 아이디 (대소문자 무시) */
+  adminUsers: string[];
   now: () => number;
 }
 
@@ -23,6 +27,8 @@ export const defaultConfig = (secret: string): Config => ({
   refreshTtlSec: 60 * 24 * 3600,
   maxSaveBytes: 64 * 1024,
   authLimit: { max: 10, windowSec: 60 },
+  feedbackLimit: { max: 5, windowSec: 10 * 60 },
+  adminUsers: ['apg0001'],
   now: () => Date.now(),
 });
 
@@ -39,6 +45,7 @@ const DUMMY_HASH = hashPassword('dummy-password-for-timing');
 
 export interface RankRow {
   rank: number;
+  /** 닉네임 (없으면 아이디) */
   name: string;
   /** 무한 모드 최고 판 */
   endless: number;
@@ -50,7 +57,9 @@ export interface RankRow {
   title: string;
 }
 
-const TITLES = ['학부생', '학연생', '학석사', '석사', '석박', '박사', '포닥'];
+const FEEDBACK_CATEGORIES: FeedbackCategory[] = ['문의', '건의', '버그'];
+
+const TITLES =['학부생', '학연생', '학석사', '석사', '석박', '박사', '포닥'];
 const CAMPAIGN_ID = /^([1-7])-([1-9]|10)$/;
 const PER_CHAPTER = 10;
 const CAMPAIGN_SIZE = 7 * PER_CHAPTER;
@@ -130,7 +139,7 @@ export function createApp(store: Store, cfg: Config) {
       } catch {
         /* 깨진 저장은 0점 */
       }
-      return { uid: s.user_id, name: s.username, at: s.updated_at, ...rankStats(data) };
+      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data) };
     }).filter((r) => r.cleared > 0 || r.endless > 0)
       // 무한 기록 → 별 → 먼저 달성한 사람
       .sort((a, b) => b.endless - a.endless || b.stars - a.stars || b.cleared - a.cleared || a.at - b.at)
@@ -141,23 +150,34 @@ export function createApp(store: Store, cfg: Config) {
 
   const hits = new Map<string, { count: number; reset: number }>();
 
-  const limit = (ip: string): void => {
+  const limit = (key: string, rule = cfg.authLimit, msg = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'): void => {
     const now = cfg.now();
-    const h = hits.get(ip);
+    const h = hits.get(key);
     if (!h || h.reset <= now) {
-      hits.set(ip, { count: 1, reset: now + cfg.authLimit.windowSec * 1000 });
+      hits.set(key, { count: 1, reset: now + rule.windowSec * 1000 });
       if (hits.size > 10_000) for (const [k, v] of hits) if (v.reset <= now) hits.delete(k);
       return;
     }
     h.count++;
-    if (h.count > cfg.authLimit.max) throw new HttpError(429, '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+    if (h.count > rule.max) throw new HttpError(429, msg);
   };
 
-  const issue = (userId: number, username: string) => {
+  const admins = new Set(cfg.adminUsers.map((u) => u.toLowerCase()));
+  const isAdmin = (u: UserRow): boolean => admins.has(u.username.toLowerCase());
+  const publicUser = (u: UserRow) => ({ id: u.id, username: u.username, nickname: u.nickname || u.username, ...(isAdmin(u) ? { admin: true } : {}) });
+
+  const issue = (user: UserRow) => {
     const now = cfg.now();
     const refresh = newRefreshToken();
-    store.addRefresh(sha256(refresh), userId, now + cfg.refreshTtlSec * 1000);
-    return { access: signAccess(cfg.secret, userId, cfg.accessTtlSec, now), refresh, user: { id: userId, username } };
+    store.addRefresh(sha256(refresh), user.id, now + cfg.refreshTtlSec * 1000);
+    return { access: signAccess(cfg.secret, user.id, cfg.accessTtlSec, now), refresh, user: publicUser(user) };
+  };
+
+  /** Bearer 토큰이 맞으면 그 사용자, 없거나 틀리면 undefined (선택 인증) */
+  const maybeUser = (req: IncomingMessage): UserRow | undefined => {
+    const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
+    const uid = m ? verifyAccess(cfg.secret, m[1]!, cfg.now()) : null;
+    return uid === null ? undefined : store.userById(uid);
   };
 
   const authed = (req: IncomingMessage): number => {
@@ -165,6 +185,12 @@ export function createApp(store: Store, cfg: Config) {
     const uid = m ? verifyAccess(cfg.secret, m[1]!, cfg.now()) : null;
     if (uid === null || !store.userById(uid)) throw new HttpError(401, '다시 로그인해 주세요.');
     return uid;
+  };
+
+  const adminOnly = (req: IncomingMessage): UserRow => {
+    const user = store.userById(authed(req))!;
+    if (!isAdmin(user)) throw new HttpError(403, '관리자만 볼 수 있어요.');
+    return user;
   };
 
   type Handler = (req: IncomingMessage, body: Record<string, unknown>, ip: string) => unknown;
@@ -177,7 +203,7 @@ export function createApp(store: Store, cfg: Config) {
       if (err) throw new HttpError(400, err);
       const user = store.createUser(b.username as string, hashPassword(b.password as string), cfg.now());
       if (!user) throw new HttpError(409, '이미 사용 중인 아이디예요.');
-      return issue(user.id, user.username);
+      return issue(user);
     },
 
     'POST /api/auth/login': (_req, b, ip) => {
@@ -185,7 +211,7 @@ export function createApp(store: Store, cfg: Config) {
       const user = typeof b.username === 'string' ? store.userByName(b.username) : undefined;
       const ok = verifyPassword(typeof b.password === 'string' ? b.password : '', user?.pass_hash ?? DUMMY_HASH);
       if (!user || !ok) throw new HttpError(401, '아이디 또는 비밀번호가 맞지 않아요.');
-      return issue(user.id, user.username);
+      return issue(user);
     },
 
     // 갱신 토큰은 쓸 때마다 새것으로 바뀐다 (자동 로그인)
@@ -195,7 +221,7 @@ export function createApp(store: Store, cfg: Config) {
       const uid = store.takeRefresh(sha256(b.refresh), cfg.now());
       const user = uid === null ? undefined : store.userById(uid);
       if (!user) throw new HttpError(401, '로그인이 만료됐어요. 다시 로그인해 주세요.');
-      return issue(user.id, user.username);
+      return issue(user);
     },
 
     'POST /api/auth/logout': (_req, b) => {
@@ -203,12 +229,60 @@ export function createApp(store: Store, cfg: Config) {
       return { ok: true };
     },
 
+    // 내 정보 (닉네임·관리자 여부)
+    'GET /api/me': (req) => ({ user: publicUser(store.userById(authed(req))!) }),
+
+    'PUT /api/me/nickname': (req, b) => {
+      const uid = authed(req);
+      const nick = cleanNickname(b.nickname);
+      if (!nick) throw new HttpError(400, '닉네임은 2~12자의 한글·영문·숫자·밑줄·띄어쓰기만 쓸 수 있어요.');
+      store.setNickname(uid, nick);
+      board = null;
+      return { user: publicUser(store.userById(uid)!) };
+    },
+
+    // 의견 보내기: 로그인했으면 계정으로, 아니면 게스트(이름 선택)로 남는다
+    'POST /api/feedback': (req, b, ip) => {
+      const user = maybeUser(req);
+      limit(user ? `fb:u:${user.id}` : `fb:ip:${ip}`, cfg.feedbackLimit, '의견을 너무 자주 보냈어요. 10분쯤 뒤에 다시 보내 주세요.');
+      const category = FEEDBACK_CATEGORIES.find((c) => c === b.category);
+      if (!category) throw new HttpError(400, '분류를 골라 주세요.');
+      const text = typeof b.text === 'string' ? b.text.trim() : '';
+      if (text.length < 1 || text.length > 1000) throw new HttpError(400, '내용은 1~1000자로 적어 주세요.');
+      const guestName = typeof b.name === 'string' ? b.name.trim().slice(0, 20) : '';
+      const author = user
+        ? (user.nickname && user.nickname !== user.username ? `${user.nickname} (${user.username})` : user.username)
+        : guestName || '게스트';
+      const version = typeof b.version === 'string' ? b.version.slice(0, 32) : '';
+      const id = store.addFeedback({ category, text, userId: user?.id ?? null, author, guest: !user, version, now: cfg.now() });
+      return { ok: true, id };
+    },
+
+    // 의견함: 관리자만, 최신순
+    'GET /api/admin/feedback': (req) => {
+      adminOnly(req);
+      const items = store.listFeedback(300).map((f) => ({
+        id: f.id, category: f.category, text: f.text, author: f.author, guest: f.guest === 1,
+        version: f.version, createdAt: f.created_at, done: f.done === 1, doneAt: f.done_at,
+      }));
+      return { items, open: items.filter((f) => !f.done).length };
+    },
+
+    // 처리됨 표시 / 다시 열기: {id, done}
+    'PATCH /api/admin/feedback': (req, b) => {
+      adminOnly(req);
+      if (typeof b.id !== 'number' || typeof b.done !== 'boolean') throw new HttpError(400, '잘못된 요청이에요.');
+      if (!store.markFeedback(b.id, b.done, cfg.now())) throw new HttpError(404, '없는 의견이에요.');
+      return { ok: true, id: b.id, done: b.done };
+    },
+
     // 순위표: 누구나 볼 수 있고, 로그인했으면 내 순위도 준다.
     'GET /api/leaderboard': (req) => {
       const rows = leaderboard();
       const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
       const uid = m ? verifyAccess(cfg.secret, m[1]!, cfg.now()) : null;
-      const strip = ({ uid: _u, ...r }: RankRow & { uid: number }): RankRow => r;
+      // 닉네임은 겹칠 수 있으니 내 줄은 서버가 표시해 준다
+      const strip = ({ uid: u, ...r }: RankRow & { uid: number }): RankRow & { mine?: true } => (u === uid ? { ...r, mine: true } : r);
       const mine = uid === null ? undefined : rows.find((r) => r.uid === uid);
       return { top: rows.slice(0, 50).map(strip), me: mine ? strip(mine) : null, total: rows.length };
     },
@@ -241,7 +315,7 @@ export function createApp(store: Store, cfg: Config) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
       res.setHeader('Access-Control-Max-Age', '600');
     }
     res.setHeader('X-Content-Type-Options', 'nosniff');
