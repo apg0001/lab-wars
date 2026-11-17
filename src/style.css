@@ -501,3 +501,11 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .fb-tag.cat-건의 { background: #fff8e1; }
 .panel p.fb-body { margin: calc(0.4 * var(--u)) 0 0; font-size: calc(1.7 * var(--u)); white-space: pre-wrap; word-break: break-word; user-select: text; -webkit-user-select: text; }
 .title-actions .btn-row { flex-wrap: wrap; }
+/* 패치노트 / 업데이트 소식: 짧은 가로 화면에서도 목록만 스크롤 */
+.title-corner .patch-btn { font-size: calc(1.6 * var(--u)); }
+.patch-panel { width: min(calc(68 * var(--u)), 92%); max-height: calc(100% - 4 * var(--u)); box-sizing: border-box; display: flex; flex-direction: column; }
+.patch-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; text-align: left; margin-bottom: calc(1.2 * var(--u)); padding-right: calc(0.6 * var(--u)); }
+.patch-note + .patch-note { margin-top: calc(1.2 * var(--u)); padding-top: calc(1.2 * var(--u)); border-top: calc(0.2 * var(--u)) dashed var(--ink); }
+.patch-head { display: flex; justify-content: space-between; align-items: baseline; gap: calc(1 * var(--u)); font-size: calc(1.9 * var(--u)); }
+.patch-note ul { margin: calc(0.5 * var(--u)) 0 0; padding-left: calc(2.4 * var(--u)); }
+.patch-note li { margin: calc(0.3 * var(--u)) 0; font-size: calc(1.7 * var(--u)); }

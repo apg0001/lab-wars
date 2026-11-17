@@ -21,6 +21,7 @@ import { mountBattle } from './battle-screen';
 import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
 import { mountGallery } from './gallery';
+import { maybeShowUpdates, showPatchNotes } from './patch-notes';
 import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscreen } from './fullscreen';
 import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
@@ -174,7 +175,7 @@ export class App {
       ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void toggleFullscreen(this.root.firstElementChild) }, fsLabel())
       : null;
     this.swap(h('div.screen.title', {},
-      h('div.title-corner', {}, this.audioBtn(), fsBtn),
+      h('div.title-corner', {}, h('button.icon-btn.patch-btn', { title: '패치노트', onclick: () => showPatchNotes(this.root.firstElementChild) }, '{scroll} 패치노트'), this.audioBtn(), fsBtn),
       h('div.title-logo', {}, h('h1', {}, '랩워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
       cast,
       body,
@@ -183,6 +184,7 @@ export class App {
         ? (p.kind === 'account' ? `{key} ${this.api?.user?.username ?? p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
         : '진행 상황은 이 기기에 저장됩니다'),
     ));
+    maybeShowUpdates(this.root.firstElementChild, this.profiles.list().length > 0);
   }
 
   private newProfileForm(): HTMLElement {

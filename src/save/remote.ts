@@ -1,10 +1,11 @@
 import { normalizeSave, type SaveData } from '../sim/progression';
+import { GAME_VERSION } from '../data/patch-notes';
 import { kv, LocalSaveStore, type SaveStore } from './store';
 
 /** 배포 시 VITE_API_URL로 계정 서버 주소를 넣는다. 비어 있으면 로그인 기능을 숨긴다. */
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
-/** 의견에 함께 남길 게임 버전 (배포 시 VITE_APP_VERSION, 없으면 빌드 모드) */
-const APP_VERSION: string = String(import.meta.env.VITE_APP_VERSION ?? import.meta.env.MODE ?? '');
+/** 의견에 함께 남길 게임 버전 (패치노트 최신 항목) */
+const APP_VERSION: string = GAME_VERSION;
 
 export interface AccountUser {
   id: number;
