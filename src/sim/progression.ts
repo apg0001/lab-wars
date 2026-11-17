@@ -1,10 +1,13 @@
 import type { CombatStats, UnitDef } from '../data/types';
 import { UNITS } from '../data/units';
 import { FINAL_STAGE, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
+
+/** 0.8(7챕터×6)에는 없던, 챕터 사이에 새로 생긴 스테이지 */
+const v2Gap = (s: StageDef): boolean => s.chapter <= 7 && [2, 4, 6, 8].includes(s.index);
 import { FACILITIES, SKILLS, facilityCost, type FacilityId, type SkillDef } from '../data/upgrades';
 
 /** 2: 7챕터 캠페인 (0.8.0) */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface UnitProgress {
   level: number;
@@ -69,27 +72,29 @@ export function normalizeSave(raw: unknown): SaveData {
         migrationNotes.push(`📚 캠페인이 학부생~포닥 7챕터로 늘어났어요. 예전 진행도에 맞춰 ${STAGES[reach]!.id}까지 클리어로 옮겼어요.`);
       }
     } else if (num(r.v, 1) < 3) {
-      // 7챕터×6 → 7챕터×10: 깬 스테이지는 그대로 인정하고, 사이에 새로 생긴 스테이지도 클리어로 채운다.
+      // 7챕터×6 → 7챕터×10: 실제로 깬 스테이지만 옮긴다. 사이에 새로 생긴 스테이지는 열리기만 한다.
       let reach = -1;
-      const at: number[] = [];
       for (const [id, v] of Object.entries(r.stars)) {
         const o = v2Order(id);
         const st = starOf(v);
         if (o === null || st === 0) continue;
         reach = Math.max(reach, o);
-        at[o] = st;
+        base.stars[STAGES[o]!.id] = st;
       }
-      if (reach >= 0) {
-        // 새로 생긴 스테이지는 바로 다음에 있는 예전 스테이지의 별을 따른다
-        let carry = 3;
-        for (let o = reach; o >= 0; o--) {
-          if (at[o]) carry = at[o]!;
-          base.stars[STAGES[o]!.id] = at[o] ?? carry;
-        }
-        migrationNotes.push(`📚 챕터마다 스테이지가 10개로 늘었어요. 깬 진행도는 그대로 ${STAGES[reach]!.id}까지 인정했어요. 새 장면은 📜 스토리에서 볼 수 있어요.`);
-      }
+      if (reach >= 0) migrationNotes.push(`📚 챕터마다 스테이지가 10개로 늘었어요. 깬 스테이지는 그대로 옮겼고, 사이에 새로 생긴 스테이지는 열어 뒀어요.`);
     } else {
       for (const s of STAGES) base.stars[s.id] = starOf(r.stars[s.id]);
+      if (num(r.v, 1) < 4) {
+        // 0.9.0 이전 버그: 사이 스테이지를 깬 것으로 채웠다. 실제로 들어가 본 기록(장면)이 없으면 되돌린다.
+        const seen = new Set(Array.isArray(r.seen) ? r.seen : []);
+        let fixed = 0;
+        for (const s of STAGES) {
+          if (!v2Gap(s) || !base.stars[s.id] || seen.has(`st-${s.id}`)) continue;
+          base.stars[s.id] = 0;
+          fixed++;
+        }
+        if (fixed) migrationNotes.push(`🔧 예전 진행도를 옮길 때 안 깬 스테이지 ${fixed}개가 클리어로 잘못 표시됐어요. 바로잡았고, 그 스테이지들은 열려 있어요.`);
+      }
     }
   }
   base.endless = Math.max(0, Math.floor(num(r.endless, 0)));
@@ -133,7 +138,7 @@ export const isEndlessOpen = (save: SaveData): boolean => isCleared(save, FINAL_
 
 export function isStageOpen(save: SaveData, stage: StageDef): boolean {
   if (stage.kind === 'endless') return isEndlessOpen(save) && stage.index <= save.endless + 1;
-  if (stage.order === 0) return true;
+  if (stage.order === 0 || isCleared(save, stage.id)) return true;
   const prev = STAGES[stage.order - 1];
   return !!prev && isCleared(save, prev.id);
 }
