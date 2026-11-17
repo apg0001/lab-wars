@@ -34,11 +34,15 @@ export interface BattleScreenOptions {
   onEnd: (end: BattleEnd) => { title: string; lines: string[]; stars: number };
   actions: (win: boolean) => { label: string; primary?: boolean; run: () => void }[];
   onQuit: () => void;
-  speed2x?: boolean;
-  onSpeedChange?: (on: boolean) => void;
+  /** 배속 1~3 */
+  speed?: number;
+  onSpeedChange?: (speed: number) => void;
 }
 
 /** 전투 화면을 root에 그리고, 정리 함수를 돌려준다. */
+/** 배속 버튼 순서 */
+const SPEEDS = [1, 2, 3];
+
 export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => void {
   const battle = new Battle(opt.stage, opt.loadout, (Date.now() & 0xffff) + 1);
   const canvas = document.createElement('canvas');
@@ -48,7 +52,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   /** 화면 비율에 따라 바뀌는 가로 시야 (resize에서 갱신) */
   let viewW = VIEW_W;
   let maxCam = WORLD_W - viewW;
-  let speed = opt.speed2x ? 2 : 1;
+  let speed = SPEEDS.includes(opt.speed ?? 1) ? (opt.speed ?? 1) : 1;
   let paused = false;
   let armed: 'bombard' | null = null;
   let ended = false;
@@ -63,7 +67,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const allyTxt = h('span.hp-txt');
   const enemyTxt = h('span.hp-txt');
   const timeTxt = h('span.time');
-  const speedBtn = h('button.icon-btn', { title: '배속', onclick: () => setSpeed(speed === 1 ? 2 : 1) }, '');
+  const speedBtn = h('button.icon-btn', { title: '배속', onclick: () => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!) }, '');
   const pauseBtn = h('button.icon-btn', { title: '일시정지', onclick: () => setPaused(true) }, '⏸');
   const mini = h('div.minimap');
   const miniDots = h('div.mini-dots');
@@ -130,8 +134,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   function setSpeed(s: number): void {
     speed = s;
-    speedBtn.textContent = s === 2 ? '⏩2x' : '▶1x';
-    opt.onSpeedChange?.(s === 2);
+    speedBtn.textContent = s === 3 ? '⏭3x' : s === 2 ? '⏩2x' : '▶1x';
+    speedBtn.classList.toggle('fast', s > 1);
+    opt.onSpeedChange?.(s);
   }
   setSpeed(speed);
 
