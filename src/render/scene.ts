@@ -1,10 +1,11 @@
 import { ALLY_FRONT, BASE_W, ENEMY_FRONT, GROUND_Y, WORLD_W, type Battle, type Base, type Fighter, type Projectile } from '../sim/battle';
 import { tr } from '../i18n';
 import { RANGED_THRESHOLD } from '../data/types';
-import { drawCharacter, INK } from './characters';
+import { INK } from './characters';
 import type { Juice } from './juice';
 import { drawDarkness, drawThemeBackdrop, type Light } from './spooky';
 import { drawRich, iconImg } from './doodle';
+import { SpriteCache } from './sprites';
 
 /** 기준 화면 크기 (16:9). 더 넓은 화면에서는 세로를 고정하고 가로로 더 보여준다. */
 export const VIEW_W = 960;
@@ -37,7 +38,22 @@ export function setPortraitAspect(aspect: number): number {
 
 type Ctx = CanvasRenderingContext2D;
 
+/** 전투마다 캐릭터 스프라이트 캐시를 둔다 (전투가 끝나면 함께 사라진다) */
+const spriteCaches = new WeakMap<Battle, SpriteCache>();
+/** 깊이 정렬에 다시 쓰는 배열 (매 프레임 새 배열을 만들지 않게) */
+const drawList: Fighter[] = [];
+/** 이번 프레임에 그릴 화면 범위 (월드 x)와 캔버스 배율 */
+let viewL = 0;
+let viewR = VIEW_W;
+let pixelRatio = 1;
+
 export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juice?: Juice): void {
+  const m = ctx.getTransform();
+  pixelRatio = Math.hypot(m.a, m.b);
+  viewL = camX;
+  viewR = camX + viewW;
+  let sprites = spriteCaches.get(b);
+  if (!sprites) spriteCaches.set(b, (sprites = new SpriteCache()));
   ctx.save();
   if (b.stage.theme) drawThemeBackdrop(ctx, b.stage.theme, viewW, GROUND_Y, VIEW_H, camX * 0.5, time);
   else drawBackdrop(ctx, camX);
@@ -47,8 +63,16 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   withBaseShake(ctx, b.enemy, () => drawOffice(ctx, b.enemy, time));
 
   // 지상 → 공중 순, 같은 층은 깊이(y) 순으로 그린다
-  const sorted = [...b.fighters].sort((p, q) => Number(!!p.stats.flying) - Number(!!q.stats.flying) || b.fy(p) - b.fy(q));
-  for (const f of sorted) drawFighter(ctx, b, f, time);
+  // 화면 밖(여유 포함) 전투원은 그리지 않는다
+  drawList.length = 0;
+  for (const f of b.fighters) {
+    const margin = 130 * (f.look.scale ?? 1);
+    if (f.x + margin >= viewL && f.x - margin <= viewR) drawList.push(f);
+  }
+  drawList.sort((p, q) => Number(!!p.stats.flying) - Number(!!q.stats.flying) || b.fy(p) - b.fy(q));
+  for (const f of drawList) drawFighter(ctx, b, f, time, sprites);
+  drawList.length = 0;
+  sprites.endFrame();
   for (const p of b.projectiles) drawProjectile(ctx, p, time);
   juice?.draw(ctx);
   drawFx(ctx, b, false);
@@ -360,7 +384,7 @@ function drawOffice(ctx: Ctx, base: Base, time: number): void {
 
 // ─────────────── 캐릭터 ───────────────
 
-function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
+function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: SpriteCache): void {
   const y = b.fy(f);
   const facing = f.side === 'ally' ? 1 : -1;
   ctx.save();
@@ -413,8 +437,12 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
     ctx.translate(0, 20);
   }
   ctx.scale(sx, sy);
-  if (f.hitFlash > 0 && !f.dead) ctx.filter = 'brightness(1.9) saturate(0.5)';
-  drawCharacter(ctx, f.look, { walk: f.walk, swing: f.swing, tier: f.tier, time, moving: !f.attacking && !f.dead }, 0, 0, facing as 1 | -1, f.defId);
+  // 자세는 스프라이트 캐시에서 (초당 ANIM_FPS번만 다시 그림), 맞은 번쩍임도 스프라이트에 미리 칠한다
+  sprites.draw(ctx, f.uid, {
+    look: f.look, defId: f.defId, tier: f.tier, facing: facing as 1 | -1,
+    walk: f.walk, swing: f.swing, moving: !f.attacking && !f.dead,
+    flash: f.hitFlash > 0 && !f.dead, phase: (f.uid * 0.6180339887) % 1,
+  }, time, pixelRatio);
   ctx.restore();
 
   if (!f.dead) drawStatus(ctx, f, y, time);

@@ -448,12 +448,33 @@ function gloom(ctx: Ctx, w: number, ground: number, h: number, scroll: number, t
 export interface Light { x: number; y: number; r: number }
 
 let darkCanvas: HTMLCanvasElement | null = null;
+/** 빛 하나의 모양 (가운데 1/4은 완전히 밝고 바깥으로 흐려짐). 한 번 그려 두고 크기만 바꿔 찍는다. */
+let lightStamp: HTMLCanvasElement | null = null;
+const STAMP = 128;
 
-/** 정전: 화면 전체를 어둡게 덮고 빛이 닿는 곳만 뚫는다 (화면 좌표). */
+function getLightStamp(): HTMLCanvasElement {
+  if (lightStamp) return lightStamp;
+  lightStamp = document.createElement('canvas');
+  lightStamp.width = lightStamp.height = STAMP;
+  const g = lightStamp.getContext('2d')!;
+  const r = STAMP / 2;
+  const grad = g.createRadialGradient(r, r, r * 0.25, r, r, r);
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, STAMP, STAMP);
+  return lightStamp;
+}
+
+/**
+ * 정전: 화면 전체를 어둡게 덮고 빛이 닿는 곳만 뚫는다 (화면 좌표).
+ * 어둠은 부드러워서 절반 해상도로 그린 뒤 늘려 붙인다 (채우는 픽셀이 1/4).
+ */
 export function drawDarkness(ctx: Ctx, w: number, h: number, lights: Light[], t: number): void {
   if (typeof document === 'undefined') return;
   if (!darkCanvas) darkCanvas = document.createElement('canvas');
-  const k = ctx.getTransform().a || 1;
+  const a = ctx.getTransform().a || 1;
+  const k = a * 0.5;
   const cw = Math.max(1, Math.round(w * k));
   const ch = Math.max(1, Math.round(h * k));
   if (darkCanvas.width !== cw || darkCanvas.height !== ch) {
@@ -469,15 +490,15 @@ export function drawDarkness(ctx: Ctx, w: number, h: number, lights: Light[], t:
   d.fillStyle = `rgba(4,3,14,${out})`;
   d.fillRect(0, 0, w, h);
   d.globalCompositeOperation = 'destination-out';
+  const stamp = getLightStamp();
   for (const l of lights) {
-    const g = d.createRadialGradient(l.x, l.y, l.r * 0.25, l.x, l.y, l.r);
-    g.addColorStop(0, 'rgba(0,0,0,1)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    d.fillStyle = g;
-    d.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+    // 화면 밖 빛은 건너뛴다
+    if (l.x + l.r < 0 || l.x - l.r > w || l.y + l.r < 0 || l.y - l.r > h) continue;
+    d.drawImage(stamp, l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
   }
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(darkCanvas, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(darkCanvas, 0, 0, w * a, h * a);
   ctx.restore();
 }
