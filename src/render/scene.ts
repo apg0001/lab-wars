@@ -412,8 +412,10 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
   drawCharacter(ctx, f.look, { walk: f.walk, swing: f.swing, tier: f.tier, time, moving: !f.attacking && !f.dead }, 0, 0, facing as 1 | -1, f.defId);
   ctx.restore();
 
-  // 기절 표시: 머리 위에서 빙글빙글
-  if (!f.dead && f.stunT > 0) {
+  if (!f.dead) drawStatus(ctx, f, y, time);
+
+  // 기절 표시: 머리 위에서 빙글빙글 (빙결은 얼음으로 따로 보인다)
+  if (!f.dead && f.stunT > 0 && f.frozenT <= 0) {
     const s = f.look.scale ?? 1;
     const top = y - 62 * s - (f.tier >= 3 ? 8 : 0) - 14;
     const img = iconImg('dizzy');
@@ -443,6 +445,67 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
   }
 }
 
+/** 상태 이상 표시: 보호막 방울, 얼음 덩어리, 불꽃, 머리 위 아이콘 줄 */
+function drawStatus(ctx: Ctx, f: Fighter, y: number, time: number): void {
+  const s = f.look.scale ?? 1;
+  const midY = y - 26 * s;
+  if (f.shield > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.5 + Math.sin(time * 5 + f.uid) * 0.15;
+    ctx.fillStyle = 'rgba(128,222,234,.25)';
+    ctx.strokeStyle = '#4dd0e1';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(f.x, midY, 21 * s, 33 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (f.frozenT > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, f.frozenT * 3) * 0.75;
+    ctx.fillStyle = 'rgba(179,229,252,.6)';
+    ctx.strokeStyle = '#e1f5fe';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(f.x - 17 * s, y - 58 * s, 34 * s, 58 * s, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(f.x - 9 * s, y - 50 * s);
+    ctx.lineTo(f.x - 3 * s, y - 40 * s);
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (f.burnT > 0) {
+    const img = iconImg('fire');
+    if (img) {
+      for (let i = 0; i < 2; i++) {
+        const k = (time * 1.6 + i * 0.5) % 1;
+        ctx.save();
+        ctx.globalAlpha = 1 - k;
+        const sz = 12 * (1 - k * 0.4);
+        ctx.drawImage(img, f.x + (i ? 7 : -9) * s - sz / 2, y - 20 * s - k * 26 * s - sz / 2, sz, sz);
+        ctx.restore();
+      }
+    }
+  }
+  const icons: string[] = [];
+  if (f.burnT > 0) icons.push('fire');
+  if (f.slowT > 0) icons.push('snail');
+  if (f.frozenT > 0) icons.push('snow');
+  if (f.shield > 0) icons.push('guard');
+  if (!icons.length) return;
+  const top = y - 62 * s - (f.tier >= 3 ? 8 : 0) - (f.stunT > 0 && f.frozenT <= 0 ? 30 : 14);
+  const sz = 13;
+  let x = f.x - (icons.length * sz) / 2;
+  for (const name of icons) {
+    const img = iconImg(name);
+    if (img) ctx.drawImage(img, x, top - sz / 2, sz, sz);
+    x += sz;
+  }
+}
+
 // ─────────────── 투사체 ───────────────
 
 function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
@@ -465,10 +528,28 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.stroke();
       break;
     }
+    case 'wave': {
+      // 오실로스코프 파형 빔: 쏜 자리부터 지금 위치까지 사인파
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = 'rgba(118,255,3,.9)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      const len = x - p.x0;
+      for (let i = 0; i <= 24; i++) {
+        const px = p.x0 + (len * i) / 24;
+        const py = p.y0 + (y - p.y0) * (i / 24) + Math.sin(i * 1.3 + time * 30) * 5;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      break;
+    }
     case 'flask':
     case 'bomb':
+    case 'coolant':
       ctx.rotate(time * 10);
-      ctx.fillStyle = p.kind === 'flask' ? '#69f0ae' : '#212121';
+      ctx.fillStyle = p.kind === 'flask' ? '#69f0ae' : p.kind === 'coolant' ? '#4fc3f7' : '#212121';
       ctx.beginPath();
       ctx.arc(0, 0, 6, 0, Math.PI * 2);
       ctx.fill();
@@ -573,6 +654,20 @@ function drawFx(ctx: Ctx, b: Battle, screenSpace: boolean): void {
         ctx.arc(e.x, e.y, (e.r ?? 30) * (0.4 + k * 0.6), 0, Math.PI * 2);
         ctx.fill();
         break;
+      case 'zap': {
+        // 연산 타격: 위에서 내리꽂는 번개
+        const img = iconImg('bolt');
+        ctx.strokeStyle = '#80d8ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(e.x - 6, e.y - 140);
+        ctx.lineTo(e.x + 4, e.y - 70);
+        ctx.lineTo(e.x - 3, e.y - 60);
+        ctx.lineTo(e.x, e.y);
+        ctx.stroke();
+        if (img) ctx.drawImage(img, e.x - 11, e.y - 22, 22, 22);
+        break;
+      }
       case 'stomp':
         ctx.strokeStyle = '#ff5252';
         ctx.lineWidth = 5;

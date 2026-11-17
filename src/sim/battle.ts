@@ -1,4 +1,4 @@
-import { RANGED_THRESHOLD, type CombatStats, type Look, type Side } from '../data/types';
+import { RANGED_THRESHOLD, type CombatStats, type HitEffects, type Look, type Side } from '../data/types';
 import { tr } from '../i18n';
 import { ENEMY_BY_ID } from '../data/enemies';
 import type { StageDef } from '../data/stages';
@@ -66,9 +66,30 @@ export interface Fighter {
   reward: number;
   isBoss: boolean;
   walk: number;
+  // ── 상태 이상·장비 능력 ──
+  /** 화상 남은 시간·초당 피해·틱 누적 */
+  burnT: number;
+  burnDps: number;
+  burnAcc: number;
+  /** 둔화 남은 시간과 속도 배율 */
+  slowT: number;
+  slowMul: number;
+  /** 빙결 연출 남은 시간 (움직임은 stunT가 막는다) */
+  frozenT: number;
+  /** 보호막 (피해를 먼저 막는다) */
+  shield: number;
+  shieldCd: number;
+  /** 1회 부활을 이미 썼는지 */
+  revived: boolean;
+  turretCd: number;
+  strikeCd: number;
+  /** 포탑: 세운 유닛 uid (아니면 0) */
+  ownerUid: number;
+  /** 남은 수명 (포탑만 유한) */
+  lifeT: number;
 }
 
-export type ProjectileKind = 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt';
+export type ProjectileKind = 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt' | 'wave' | 'coolant';
 
 export interface Projectile {
   kind: ProjectileKind;
@@ -87,9 +108,15 @@ export interface Projectile {
   hitsBase: boolean;
   arc: number;
   knockback?: { chance: number; dist: number };
+  /** 맞힌 적에게 거는 상태 이상 */
+  hit?: HitEffects;
+  /** 관통: 쏜 자리부터 대상 뒤 pierce까지 줄 위의 적을 모두 맞힌다 */
+  pierce?: number;
+  /** 관통 판정: 쏜 쪽이 공중을 맞힐 수 있는지 */
+  antiAir?: boolean;
 }
 
-export type FxKind = 'dmg' | 'text' | 'boom' | 'heal' | 'stomp' | 'spawn' | 'poof';
+export type FxKind = 'dmg' | 'text' | 'boom' | 'heal' | 'stomp' | 'spawn' | 'poof' | 'zap';
 
 export interface Fx {
   kind: FxKind;
@@ -117,6 +144,8 @@ export type BattleEvent =
   | { type: 'brew'; level: number }
   | { type: 'skill'; id: SkillId }
   | { type: 'heal' }
+  | { type: 'strike'; n: number }
+  | { type: 'revive'; x: number }
   | { type: 'bossSpawn' }
   | { type: 'alarm' }
   | { type: 'rage'; x: number }
@@ -383,7 +412,10 @@ export class Battle {
 
     this.spawnEnemies(dt);
     this.computeAuras();
-    for (const f of this.fighters) if (!f.dead) this.tickFighter(f, dt);
+    for (const f of this.fighters) {
+      if (!f.dead) this.tickStatus(f, dt);
+      if (!f.dead) this.tickFighter(f, dt);
+    }
     this.tickTower(this.ally, dt);
     this.tickTower(this.enemy, dt);
     this.tickProjectiles(dt);
@@ -585,6 +617,8 @@ export class Battle {
       cd: 0.3, healCd: stats.heal?.every ?? 0, summonCd: 0, stompCd: 0,
       attacking: false, swing: 0, hitFlash: 0, kbT: 0, kbV: 0, stunT: 0, rageN: 0, auraMul: 1, dead: false, deathT: 0,
       reward, isBoss: false, walk: this.rng() * 10,
+      burnT: 0, burnDps: 0, burnAcc: 0, slowT: 0, slowMul: 1, frozenT: 0, shield: 0, shieldCd: 0, revived: false,
+      turretCd: stats.turret?.every ?? 0, strikeCd: stats.fieldStrike?.every ?? 0, ownerUid: 0, lifeT: Infinity,
     };
     this.fighters.push(f);
     return f;
@@ -617,13 +651,123 @@ export class Battle {
   }
 
   private speedMul(f: Fighter): number {
-    if (f.side === 'ally') return this.hasteT > 0 ? 1.15 : 1;
-    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
+    const slow = f.slowT > 0 ? f.slowMul : 1;
+    if (f.side === 'ally') return (this.hasteT > 0 ? 1.15 : 1) * slow;
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * slow;
   }
 
   private atkRateMul(f: Fighter): number {
-    if (f.side === 'ally') return this.hasteT > 0 ? 1.4 : 1;
-    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy();
+    const slow = f.slowT > 0 ? f.slowMul : 1;
+    if (f.side === 'ally') return (this.hasteT > 0 ? 1.4 : 1) * slow;
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * slow;
+  }
+
+  /** 맞힌 적에게 거는 상태 이상만 골라낸다 (없으면 undefined) */
+  private hitEffects(s: CombatStats): HitEffects | undefined {
+    return s.burn || s.slow || s.freeze ? { burn: s.burn, slow: s.slow, freeze: s.freeze } : undefined;
+  }
+
+  /** 화상·둔화·빙결 걸기. 빙결 확률만 전투 난수를 쓴다. */
+  private applyHit(f: Fighter, e: HitEffects): void {
+    if (f.dead) return;
+    if (e.burn) {
+      f.burnDps = f.burnT > 0 ? Math.max(f.burnDps, e.burn.dps) : e.burn.dps;
+      f.burnT = Math.max(f.burnT, e.burn.dur);
+    }
+    if (e.slow) {
+      f.slowMul = f.slowT > 0 ? Math.min(f.slowMul, e.slow.mul) : e.slow.mul;
+      f.slowT = Math.max(f.slowT, e.slow.dur);
+    }
+    if (e.freeze && this.rng() < e.freeze.chance) {
+      const d = e.freeze.dur * (f.isBoss ? 0.4 : 1);
+      f.stunT = Math.max(f.stunT, d);
+      f.frozenT = Math.max(f.frozenT, d);
+      f.attacking = false;
+      f.swing = 0;
+    }
+  }
+
+  /** 상태 이상과 상시 능력 (기절·넉백 중에도 흐른다) */
+  private tickStatus(f: Fighter, dt: number): void {
+    const s = f.stats;
+    const foe: Side = f.side === 'ally' ? 'enemy' : 'ally';
+    if (f.burnT > 0) {
+      f.burnT -= dt;
+      f.burnAcc += dt;
+      if (f.burnAcc >= 0.5 - 1e-9) {
+        f.burnAcc -= 0.5;
+        this.damageFighter(f, f.burnDps * 0.5, foe, undefined, false, undefined, true);
+      }
+      if (f.burnT <= 1e-9) {
+        f.burnT = 0;
+        f.burnAcc = 0;
+      }
+      if (f.dead) return;
+    }
+    f.slowT = Math.max(0, f.slowT - dt);
+    f.frozenT = Math.max(0, f.frozenT - dt);
+    if (f.lifeT !== Infinity) {
+      f.lifeT -= dt;
+      if (f.lifeT <= 0) {
+        // 포탑 수명 끝: 조용히 사라진다 (처치 보상 없음)
+        f.dead = true;
+        f.hp = 0;
+        this.fx.push({ kind: 'poof', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5 });
+        return;
+      }
+    }
+    if (s.caffeineGen && f.side === 'ally') this.caffeine = Math.min(this.caffeineMax, this.caffeine + s.caffeineGen * dt);
+    if (s.healZone) {
+      const pulse = Math.floor(this.t) !== Math.floor(this.t - dt);
+      for (const o of this.alive(f.side)) {
+        if (Math.abs(o.x - f.x) > s.healZone.radius || o.hp >= o.maxHp) continue;
+        o.hp = Math.min(o.maxHp, o.hp + s.healZone.hps * dt);
+        if (pulse) this.fx.push({ kind: 'heal', x: o.x, y: this.fy(o) - 34, t: 0, life: 0.7 });
+      }
+    }
+    if (s.shield) {
+      f.shieldCd -= dt;
+      if (f.shieldCd <= 0) {
+        f.shieldCd = s.shield.every;
+        for (const o of this.alive(f.side)) {
+          if (o !== f && (s.shield.radius <= 0 || Math.abs(o.x - f.x) > s.shield.radius)) continue;
+          o.shield = Math.max(o.shield, s.shield.amount);
+        }
+      }
+    }
+  }
+
+  /** 3D 프린터 등: 제자리에서 쏘는 포탑을 세운다 */
+  private tickTurret(f: Fighter, dt: number): void {
+    const spec = f.stats.turret!;
+    f.turretCd -= dt;
+    if (f.turretCd > 0) return;
+    const mine = this.fighters.filter((o) => !o.dead && o.ownerUid === f.uid).length;
+    if (mine >= spec.max) return;
+    f.turretCd = spec.every;
+    const stats: CombatStats = { hp: spec.hp, atk: spec.atk, range: spec.range, speed: 0, interval: spec.interval };
+    const t = this.addFighter(f.side, `${f.defId}:turret`, tr('포탑', 'Turret'), spec.look, f.tier, stats, f.x - 8 * (f.side === 'ally' ? 1 : -1), 0);
+    t.ownerUid = f.uid;
+    t.lifeT = spec.life;
+    t.depth = f.depth + 6;
+    this.fx.push({ kind: 'spawn', x: t.x, y: this.fy(t), t: 0, life: 0.4 });
+  }
+
+  /** 슈퍼컴퓨터 클러스터 등: 전장의 모든 적에게 연산 타격 */
+  private tickStrike(f: Fighter, dt: number): void {
+    const fs = f.stats.fieldStrike!;
+    f.strikeCd -= dt;
+    if (f.strikeCd > 0) return;
+    const foes = this.alive(f.side === 'ally' ? 'enemy' : 'ally');
+    if (!foes.length) return;
+    f.strikeCd = fs.every;
+    const dmg = fs.dmg * (f.side === 'ally' ? this.cardMods.allyAtk * (this.broken ? 0.75 : 1) : 1);
+    for (const o of foes) {
+      this.fx.push({ kind: 'zap', x: o.x, y: this.fy(o) - 20, t: 0, life: 0.5 });
+      this.damageFighter(o, dmg, f.side);
+    }
+    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 90, t: 0, life: 1.1, text: tr('{sparkle} 연산 완료!', '{sparkle} Compute done!'), color: '#80d8ff' });
+    this.emit({ type: 'strike', n: foes.length });
   }
 
   private canHit(attacker: CombatStats, target: Fighter): boolean {
@@ -691,6 +835,8 @@ export class Battle {
 
     const def = f.side === 'enemy' ? ENEMY_BY_ID[f.defId] : undefined;
     if (def?.boss) this.tickBoss(f, def.boss, dt);
+    if (s.turret) this.tickTurret(f, dt);
+    if (s.fieldStrike) this.tickStrike(f, dt);
 
     const target = this.findTarget(f);
     const hitBase = !target && this.baseInRange(f);
@@ -710,7 +856,7 @@ export class Battle {
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
-      else this.damageFighter(target, atk, f.side, s.knockback, true);
+      else this.damageFighter(target, atk, f.side, s.knockback, true, this.hitEffects(s));
     } else {
       const bx = f.side === 'ally' ? ENEMY_FRONT + 20 : ALLY_FRONT - 20;
       if (ranged) this.shoot(f, atk, bx, GROUND_Y - 80, null, true);
@@ -749,8 +895,11 @@ export class Battle {
     this.projectiles.push({
       kind, side: f.side, x0: f.x, y0, x1: tx, y1: ty, t: 0, dur: 0.12 + dist / 520,
       dmg, splash: f.stats.splash ?? 0, buildingMul: f.stats.buildingMul ?? 1,
-      targetUid, hitsBase, arc: kind === 'flask' || kind === 'bomb' ? 40 + dist * 0.15 : 0,
+      targetUid, hitsBase, arc: kind === 'flask' || kind === 'bomb' || kind === 'coolant' ? 40 + dist * 0.15 : 0,
       knockback: f.stats.knockback,
+      hit: this.hitEffects(f.stats),
+      pierce: f.stats.pierce,
+      antiAir: f.stats.range >= RANGED_THRESHOLD,
     });
   }
 
@@ -798,6 +947,18 @@ export class Battle {
 
   private impact(p: Projectile): void {
     const foe: Side = p.side === 'ally' ? 'enemy' : 'ally';
+    if (p.pierce !== undefined) {
+      // 관통: 쏜 자리부터 대상 뒤 pierce까지 줄 위의 적을 모두 맞힌다
+      const dir = p.side === 'ally' ? 1 : -1;
+      const end = (p.x1 - p.x0) * dir + p.pierce;
+      for (const o of this.alive(foe)) {
+        if (o.stats.flying && !p.antiAir) continue;
+        const d = (o.x - p.x0) * dir;
+        if (d >= -12 && d <= end + bodyR(o)) this.damageFighter(o, p.dmg, p.side, p.knockback, false, p.hit);
+      }
+      if (p.hitsBase) this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul, p.x1);
+      return;
+    }
     if (p.hitsBase) {
       this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul, p.x1);
       return;
@@ -805,7 +966,7 @@ export class Battle {
     if (p.splash > 0) {
       for (const o of this.alive(foe)) {
         const dy = Math.abs(this.fy(o) - p.y1);
-        if (Math.abs(o.x - p.x1) <= p.splash + bodyR(o) && dy < 170) this.damageFighter(o, p.dmg, p.side, p.knockback);
+        if (Math.abs(o.x - p.x1) <= p.splash + bodyR(o) && dy < 170) this.damageFighter(o, p.dmg, p.side, p.knockback, false, p.hit);
       }
       // 범위 공격이 건물 앞에서 터지면 건물도 맞는다.
       const base = p.side === 'ally' ? this.enemy : this.ally;
@@ -816,22 +977,45 @@ export class Battle {
       return;
     }
     const tgt = this.fighters.find((f) => f.uid === p.targetUid && !f.dead);
-    if (tgt) this.damageFighter(tgt, p.dmg, p.side, p.knockback);
+    if (tgt) this.damageFighter(tgt, p.dmg, p.side, p.knockback, false, p.hit);
   }
 
-  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }, melee = false): void {
+  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }, melee = false, eff?: HitEffects, burn = false): void {
     if (f.dead) return;
     // 학회 뒤풀이: 아군 무적
     if (f.side === 'ally' && this.invulnT > 0) return;
+    // 보호막이 먼저 막는다
+    if (f.shield > 0) {
+      const absorbed = Math.min(f.shield, dmg);
+      f.shield -= absorbed;
+      dmg -= absorbed;
+      if (dmg <= 0) {
+        f.hitFlash = 0.06;
+        if (eff) this.applyHit(f, eff);
+        return;
+      }
+    }
     this.emit({ type: 'hit', x: f.x, y: this.fy(f) - 20 * (f.look.scale ?? 1), dmg, melee, to: f.side });
     if (kb && !f.isBoss && f.hp > dmg && this.rng() < kb.chance) this.knockback(f, kb.dist);
     f.hp -= dmg;
     f.hitFlash = 0.12;
     if (f.isBoss && f.hp > 0) this.checkRage(f);
-    this.fx.push({ kind: 'dmg', x: f.x + (this.rng() - 0.5) * 16, y: this.fy(f) - 40 - (f.look.scale ?? 1) * 20, t: 0, life: 0.6, text: String(Math.round(dmg)), color: from === 'ally' ? '#fff' : '#ff8a80' });
+    this.fx.push({ kind: 'dmg', x: f.x + (this.rng() - 0.5) * 16, y: this.fy(f) - 40 - (f.look.scale ?? 1) * 20, t: 0, life: 0.6, text: String(Math.round(dmg)), color: burn ? '#ffab40' : from === 'ally' ? '#fff' : '#ff8a80' });
+    if (f.hp > 0 && eff) this.applyHit(f, eff);
+    if (f.hp <= 0 && f.stats.revive && !f.revived) {
+      // 1회 부활 (재부팅)
+      f.revived = true;
+      f.hp = Math.max(1, f.maxHp * f.stats.revive.hpRatio);
+      f.burnT = 0;
+      f.burnAcc = 0;
+      this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 80, t: 0, life: 1.2, text: tr('{retry} 재부팅!', '{retry} Rebooting!'), color: '#80d8ff' });
+      this.emit({ type: 'revive', x: f.x });
+      return;
+    }
     if (f.hp <= 0) {
       f.dead = true;
       f.hp = 0;
+      if (f.stats.deathBurst) this.deathBurst(f);
       this.fx.push({ kind: 'poof', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5 });
       this.emit({ type: 'kill', x: f.x, y: this.fy(f) - 16, side: f.side, boss: f.isBoss });
       if (f.side === 'enemy') {
@@ -846,6 +1030,16 @@ export class Battle {
         this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${reward}{coin} +${caf}{coffee}`, color: '#ffd54f' });
       }
     }
+  }
+
+  /** 쓰러질 때 폭발: 반경 안 적에게 피해와 자기 상태 이상 */
+  private deathBurst(f: Fighter): void {
+    const b = f.stats.deathBurst!;
+    const foe: Side = f.side === 'ally' ? 'enemy' : 'ally';
+    const eff = this.hitEffects(f.stats);
+    for (const o of this.alive(foe)) if (Math.abs(o.x - f.x) <= b.radius + bodyR(o)) this.damageFighter(o, b.dmg, f.side, undefined, false, eff);
+    this.fx.push({ kind: 'boom', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5, r: b.radius, color: f.stats.freeze ? '#81d4fa' : undefined });
+    this.emit({ type: 'boom', x: f.x, y: this.fy(f) - 16, r: b.radius, side: f.side, big: false });
   }
 
   /** 뒤(자기 진영 쪽)로 밀어내고 잠깐 경직시킨다. 보스는 면역. */
@@ -965,6 +1159,9 @@ function projectileKind(defId: string): ProjectileKind {
     case 'revision': return 'bomb';
     case 'notif': return 'notif';
     case 'plane': return 'paper';
+    case 'scope': return 'wave';
+    case 'cooler': return 'coolant';
+    case 'cluster': return 'code';
     default: return 'bolt';
   }
 }

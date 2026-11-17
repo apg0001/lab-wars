@@ -1,7 +1,7 @@
 import { ENEMIES } from '../data/enemies';
 import { SIDE_STAGES, STAGES } from '../data/stages';
-import { UNITS } from '../data/units';
-import { RANGED_THRESHOLD, type CombatStats, type Look } from '../data/types';
+import { UNITS, UNIT_RARITIES, isGachaUnit, rarityLabel, rarityOf } from '../data/units';
+import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitRarity } from '../data/types';
 import { drawCharacter } from '../render/characters';
 import { isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
 import { SKILLS } from '../data/upgrades';
@@ -35,8 +35,22 @@ function tags(st: CombatStats): string {
   if (st.heal) t.push(tr('회복', 'Heal'));
   if (st.buildingMul) t.push(tr(`건물 ×${st.buildingMul}`, `Building ×${st.buildingMul}`));
   if (st.knockback) t.push(tr(`넉백 ${Math.round(st.knockback.chance * 100)}%`, `Knockback ${Math.round(st.knockback.chance * 100)}%`));
+  if (st.burn) t.push(tr(`{fire} 화상 ${st.burn.dps}/초`, `{fire} Burn ${st.burn.dps}/s`));
+  if (st.slow) t.push(tr(`{snail} 둔화 ${Math.round((1 - st.slow.mul) * 100)}%`, `{snail} Slow ${Math.round((1 - st.slow.mul) * 100)}%`));
+  if (st.freeze) t.push(tr(`{snow} 빙결 ${Math.round(st.freeze.chance * 100)}%`, `{snow} Freeze ${Math.round(st.freeze.chance * 100)}%`));
+  if (st.pierce) t.push(tr('관통', 'Pierce'));
+  if (st.deathBurst) t.push(tr('사망 폭발', 'Death burst'));
+  if (st.shield) t.push(tr(`{guard} 보호막 ${st.shield.amount}`, `{guard} Shield ${st.shield.amount}`));
+  if (st.healZone) t.push(tr('회복 구역', 'Heal zone'));
+  if (st.caffeineGen) t.push(tr(`{coffee} +${st.caffeineGen}/초`, `{coffee} +${st.caffeineGen}/s`));
+  if (st.turret) t.push(tr('포탑 설치', 'Turrets'));
+  if (st.revive) t.push(tr('1회 부활', 'Revive once'));
+  if (st.fieldStrike) t.push(tr(`{bolt} 전장 타격 ${st.fieldStrike.dmg}`, `{bolt} Field strike ${st.fieldStrike.dmg}`));
   return t.join(' · ');
 }
+
+/** 동료 탭의 등급 필터 */
+let rarityFilter: UnitRarity | 'all' = 'all';
 
 export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => void, initial: Tab = 'ally'): () => void {
   let stopPreview: (() => void) | null = null;
@@ -46,13 +60,21 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
     stopPreview?.();
     const grid = h('div.dex-grid');
     if (tab === 'ally') {
+      grid.append(h('div.rarity-filter', {}, ...(['all', ...UNIT_RARITIES] as const).map((r) => h(`button.chapter-tab${r === 'all' ? '' : `.u-${r}`}${rarityFilter === r ? '.on' : ''}`, {
+        onclick: () => { rarityFilter = r; render('ally'); },
+      }, r === 'all' ? tr('전체', 'All') : rarityLabel(r)))));
       for (const u of UNITS) {
+        const r = rarityOf(u);
+        if (rarityFilter !== 'all' && rarityFilter !== r) continue;
         const owned = isUnitOwned(save, u);
-        grid.append(h('div.dex-ally', {},
-          h('div.dex-ally-head', {}, h('b', {}, u.names[0]), h('span.muted', {}, ` ${u.role}`), owned ? null : h('span.dex-lock', {}, u.unlock.subscribe ? tr('구독 필요', 'Subscription') : tr(`${u.unlock.stage} 클리어 시 합류`, `Joins after ${u.unlock.stage}`))),
+        // 아직 못 얻은 뽑기 장비는 실루엣과 '?'로만
+        const hidden = isGachaUnit(u) && !owned;
+        const lock = owned ? null : h('span.dex-lock', {}, hidden ? tr('{crate} 장비 지원에서 획득', '{crate} From Equipment Grant') : u.unlock.subscribe ? tr('구독 필요', 'Subscription') : tr(`${u.unlock.stage} 클리어 시 합류`, `Joins after ${u.unlock.stage}`));
+        grid.append(h(`div.dex-ally.u-${r}${hidden ? '.hidden' : ''}`, {},
+          h('div.dex-ally-head', {}, r !== 'basic' ? h('span.rarity-chip.mini', {}, rarityLabel(r)) : null, h('b', {}, hidden ? '???' : u.names[0]), hidden ? null : h('span.muted', {}, ` ${u.role}`), lock),
           h('div.dex-tiers', {}, ...[1, 2, 3].map((tier) => h('button.dex-cell', {
-            onclick: () => preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: u.desc, stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }),
-          }, h('img', { src: portrait(u.look, tier, u.id), alt: '' }), h('span', {}, u.names[tier - 1]!)))),
+            onclick: () => !hidden && preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: [u.desc, u.lore ? `"${u.lore}"` : ''].filter(Boolean).join(' '), stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }),
+          }, h('img', { src: portrait(u.look, tier, u.id, 1, undefined, hidden), alt: '' }), h('span', {}, hidden ? '?' : u.names[tier - 1]!)))),
         ));
       }
     } else if (tab === 'skill') {

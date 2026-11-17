@@ -1,9 +1,11 @@
-import type { UnitDef } from './types';
-import { localizeAll } from '../i18n';
+import type { UnitDef, UnitRarity } from './types';
+import { localizeAll, tr } from '../i18n';
 
 const degree = (role: string): [string, string, string] => [`학부 ${role}`, `석사 ${role}`, `박사 ${role}`];
 /** 영어 학위 단계: Undergrad / Master's / PhD */
 const degreeEn = (role: string): [string, string, string] => [`Undergrad ${role}`, `Master's ${role}`, `PhD ${role}`];
+/** 장비(뽑기 유닛) 진화 단계: 모델 버전 Mk.I / Mk.II / Mk.III (영어도 같은 꼴) */
+const model = (name: string): [string, string, string] => [`${name} Mk.I`, `${name} Mk.II`, `${name} Mk.III`];
 
 export const UNITS: UnitDef[] = [
   {
@@ -143,8 +145,112 @@ export const UNITS: UnitDef[] = [
     look: { kind: 'jaeminai', color: '#7986cb', accent: '#b39ddb' },
     en: { names: ['Jaeminai', 'Jaeminai Plus', 'Jaeminai Ultra'], role: 'AI assistant · Twins', desc: 'Call one and two show up. Twice the fun. (Parody character)' },
   },
+
+  // ───────── 뽑기 장비 (ICT·전자공학 장비). 기본 유닛과 비슷한 체급의 옆그레이드, 레전더리는 비싸고 대기가 길다 ─────────
+  {
+    id: 'iron',
+    rarity: 'rare',
+    names: model('납땜 인두'),
+    role: '근접 · 화상',
+    desc: '350도 인두 끝으로 지진다. 맞은 적은 3초 동안 화상 피해를 입는다.',
+    lore: '실습실 책상마다 하나씩 있다. 스탠드에 꽂아 두라고 몇 번을 말했는데.',
+    cost: 40, cooldown: 5,
+    hp: 150, atk: 9, range: 40, speed: 44, interval: 0.9,
+    burn: { dps: 6, dur: 3 },
+    unlock: {},
+    look: { kind: 'gear', variant: 'iron', color: '#ff7043', accent: '#90a4ae' },
+    en: { names: model('Soldering Iron'), role: 'Melee · Burn', desc: 'Sears with a 350°C tip. Enemies hit take burn damage for 3 seconds.', lore: 'One on every bench in the practice lab. Nobody ever puts it back in the stand.' },
+  },
+  {
+    id: 'scope',
+    rarity: 'rare',
+    names: model('오실로스코프'),
+    role: '원거리 · 둔화 관통',
+    desc: '파형 빔이 줄 위의 적을 모두 꿰뚫고, 파형에 묶인 적은 1.5초 동안 40% 느려진다. 공중 공격 가능.',
+    lore: '트리거를 잘 걸면 무엇이든 멈춰 세운다. 교수님 일정만 빼고.',
+    cost: 45, cooldown: 5,
+    hp: 80, atk: 8, range: 165, speed: 40, interval: 1.1,
+    slow: { mul: 0.6, dur: 1.5 }, pierce: 60,
+    unlock: {},
+    look: { kind: 'gear', variant: 'scope', color: '#cfd8dc', accent: '#76ff03' },
+    en: { names: model('Oscilloscope'), role: 'Ranged · Slow pierce', desc: 'Its waveform beam pierces every enemy in line and slows them 40% for 1.5 seconds. Can hit flying enemies.', lore: 'Set the trigger right and it freezes anything. Except the professor\'s schedule.' },
+  },
+  {
+    id: 'firewall',
+    rarity: 'rare',
+    names: model('방화벽'),
+    role: '탱커 · 보호막',
+    desc: '6초마다 자신과 주변 아군에게 피해 60을 막는 보호막을 친다.',
+    lore: '허용 목록에 없는 잡무는 들여보내지 않는다. 규칙은 2003년에 마지막으로 고쳤다.',
+    cost: 55, cooldown: 8,
+    hp: 360, atk: 8, range: 24, speed: 30, interval: 1.2,
+    shield: { amount: 60, every: 6, radius: 110 },
+    unlock: {},
+    look: { kind: 'gear', variant: 'firewall', color: '#e57373', accent: '#ffcc80' },
+    en: { names: model('Firewall'), role: 'Tank · Shield', desc: 'Every 6 seconds, shields itself and nearby allies against 60 damage.', lore: 'No busywork gets in unless it\'s on the allowlist. The rules were last edited in 2003.' },
+  },
+  {
+    id: 'cooler',
+    rarity: 'epic',
+    names: model('쿨링 타워'),
+    role: '범위 원거리 · 빙결',
+    desc: '냉각수를 터뜨려 범위 피해를 주고 25% 확률로 1.2초 얼린다. 쓰러지면 냉각수가 새어 주변을 얼린다. 공중 공격 가능.',
+    lore: '서버실 온도가 1도 오르면 누군가 이걸 껴안고 잔다.',
+    cost: 80, cooldown: 11,
+    hp: 200, atk: 13, range: 140, speed: 34, interval: 1.8, splash: 55,
+    freeze: { chance: 0.25, dur: 1.2 }, deathBurst: { dmg: 40, radius: 90 },
+    unlock: {},
+    look: { kind: 'gear', variant: 'cooler', color: '#4fc3f7', accent: '#e1f5fe' },
+    en: { names: model('Liquid Cooler'), role: 'Ranged splash · Freeze', desc: 'Bursts coolant for splash damage with a 25% chance to freeze for 1.2 seconds. Leaks coolant when destroyed, freezing nearby enemies. Can hit flying enemies.', lore: 'When the server room warms up by one degree, someone sleeps hugging this.' },
+  },
+  {
+    id: 'printer3d',
+    rarity: 'epic',
+    names: model('3D 프린터'),
+    role: '설치 · 포탑',
+    desc: '9초마다 작은 포탑을 뽑아 세운다 (최대 2대, 18초 유지). 포탑은 제자리에서 쏜다.',
+    lore: '출력이 끝나기 직전에 꼭 노즐이 막힌다. 그래도 포탑은 나온다.',
+    cost: 90, cooldown: 12,
+    hp: 220, atk: 10, range: 130, speed: 32, interval: 1.4,
+    turret: { every: 9, max: 2, life: 18, hp: 90, atk: 9, range: 150, interval: 0.9, look: { kind: 'gear', variant: 'turret', color: '#ffb74d', accent: '#5d4037', scale: 0.8 } },
+    unlock: {},
+    look: { kind: 'gear', variant: 'printer3d', color: '#eceff1', accent: '#ff7043' },
+    en: { names: model('3D Printer'), role: 'Builder · Turrets', desc: 'Prints a small turret every 9 seconds (up to 2, lasting 18 seconds). Turrets shoot in place.', lore: 'The nozzle always clogs right before the print finishes. The turret still comes out.' },
+  },
+  {
+    id: 'cluster',
+    rarity: 'legend',
+    names: model('슈퍼컴퓨터 클러스터'),
+    role: '전장 연산 · 재부팅',
+    desc: '10초마다 전장의 모든 적에게 연산 타격 45. 처음 쓰러지면 HP 40%로 재부팅한다. 비싸고 대기가 길다.',
+    lore: '연구실 전기 요금의 87%. 학과 사무실은 아직 모른다.',
+    cost: 200, cooldown: 30,
+    hp: 900, atk: 28, range: 150, speed: 18, interval: 2.0,
+    fieldStrike: { dmg: 45, every: 10 }, revive: { hpRatio: 0.4 },
+    unlock: {},
+    look: { kind: 'gear', variant: 'cluster', color: '#263238', accent: '#40c4ff' },
+    en: { names: model('Supercomputer Cluster'), role: 'Field compute · Reboot', desc: 'Every 10 seconds, a compute strike hits every enemy on the field for 45. Reboots once at 40% HP when destroyed. Expensive, long cooldown.', lore: '87% of the lab\'s power bill. The department office doesn\'t know yet.' },
+  },
 ];
 
 localizeAll(UNITS);
 
 export const UNIT_BY_ID: Record<string, UnitDef> = Object.fromEntries(UNITS.map((u) => [u.id, u]));
+
+/** 등급 (없으면 기본) */
+export const rarityOf = (u: UnitDef): UnitRarity => u.rarity ?? 'basic';
+/** 뽑기로만 얻는 유닛인지 */
+export const isGachaUnit = (u: UnitDef): boolean => rarityOf(u) !== 'basic';
+export const GACHA_UNITS: UnitDef[] = UNITS.filter(isGachaUnit);
+
+/** 등급 이름 (화면용, 언어를 바꾸면 다시 부른다) */
+export const RARITY_INFO: Record<UnitRarity, { ko: string; en: string; color: string }> = {
+  basic: { ko: '기본', en: 'Basic', color: '#90a4ae' },
+  rare: { ko: '레어', en: 'Rare', color: '#42a5f5' },
+  epic: { ko: '에픽', en: 'Epic', color: '#ab47bc' },
+  legend: { ko: '레전더리', en: 'Legendary', color: '#ffb300' },
+};
+export const UNIT_RARITIES: UnitRarity[] = ['basic', 'rare', 'epic', 'legend'];
+
+/** 등급 이름 (지금 언어) */
+export const rarityLabel = (r: UnitRarity): string => tr(RARITY_INFO[r].ko, RARITY_INFO[r].en);

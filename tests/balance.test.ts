@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { playOnce, runCampaign } from '../src/sim/bot';
+import { botSquad, playOnce, runCampaign } from '../src/sim/bot';
 import { newSave } from '../src/sim/progression';
 import { STAGES, STAGE_BY_ID } from '../src/data/stages';
 
@@ -15,6 +15,7 @@ describe('밸런스', () => {
   it('성장 없이 2챕터 보스는 이길 수 없다', () => {
     const s = newSave();
     for (const st of STAGES.filter((x) => x.order < STAGE_BY_ID['2-10']!.order)) s.stars[st.id] = 1;
+    s.loadout = botSquad(s);
     expect(playOnce(s, STAGE_BY_ID['2-10']!, 1, NO_CARDS).win).toBe(false);
   });
 
