@@ -1,6 +1,6 @@
 import type { CombatStats, UnitDef } from '../data/types';
 import { tr } from '../i18n';
-import { UNITS } from '../data/units';
+import { UNITS, UNIT_BY_ID, isGachaUnit } from '../data/units';
 import { FINAL_STAGE, SIDE_STAGES, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
 
 /** 0.8(7챕터×6)에는 없던, 챕터 사이에 새로 생긴 스테이지 */
@@ -8,8 +8,15 @@ const v2Gap = (s: StageDef): boolean => s.chapter <= 7 && [2, 4, 6, 8].includes(
 import { FACILITIES, SKILLS, facilityCost, type FacilityId, type SkillDef } from '../data/upgrades';
 import { COSMETIC_BY_ID, HERO_SLOT, PITY, type Outfit } from '../data/cosmetics';
 
-/** 2: 7챕터 캠페인 (0.8.0) */
-export const SAVE_VERSION = 4;
+/** 2: 7챕터 캠페인 (0.8.0) · 5: 유닛 뽑기·편성 9칸 (0.17.0) */
+export const SAVE_VERSION = 5;
+
+/** 전투에 데려가는 편성 칸 수 (단축키 1~9) */
+export const LOADOUT_MAX = 9;
+/** 편성 프리셋 수 */
+export const PRESET_COUNT = 3;
+/** 중복으로 오르는 열정 최대치 (열정 1 = 최종 단계 레벨 상한 +1) */
+export const MAX_PASSION = 5;
 
 export interface UnitProgress {
   level: number;
@@ -31,6 +38,18 @@ export interface CosmeticSave {
   draws: number;
 }
 
+/** 뽑기 장비(유닛) 기록 */
+export interface GearSave {
+  /** 유닛 id → 받은 장수 (1 = 보유, 2부터 중복 → 열정) */
+  owned: Record<string, number>;
+  /** 뽑기권 */
+  tickets: number;
+  /** 천장 카운터: 100이 차면 레전더리 하나를 골라 받는다 */
+  spark: number;
+  /** 지금까지 뽑은 수 */
+  draws: number;
+}
+
 export interface SaveData {
   v: number;
   money: number;
@@ -45,8 +64,15 @@ export interface SaveData {
   /** 이미 본 스토리 장면 id */
   seen: string[];
   cosmetics: CosmeticSave;
+  gear: GearSave;
+  /** 전투 편성 (유닛 id, 최대 LOADOUT_MAX, 순서 = 단축키) */
+  loadout: string[];
+  /** 편성 프리셋 (PRESET_COUNT개) */
+  presets: string[][];
   updatedAt: number;
 }
+
+export const newGear = (): GearSave => ({ owned: {}, tickets: 0, spark: 0, draws: 0 });
 
 export function newSave(): SaveData {
   return {
@@ -59,8 +85,30 @@ export function newSave(): SaveData {
     endless: 0,
     seen: [],
     cosmetics: newCosmetics(),
+    gear: newGear(),
+    loadout: ['grunt'],
+    presets: Array.from({ length: PRESET_COUNT }, () => []),
     updatedAt: Date.now(),
   };
+}
+
+/** 뽑기 기록 정리: 모르는 유닛·이상한 값은 버린다 */
+export function normalizeGear(raw: unknown): GearSave {
+  const out = newGear();
+  if (!raw || typeof raw !== 'object') return out;
+  const r = raw as Partial<Record<keyof GearSave, unknown>>;
+  const int = (x: unknown, max: number): number => (typeof x === 'number' && Number.isFinite(x) ? Math.min(max, Math.max(0, Math.floor(x))) : 0);
+  if (r.owned && typeof r.owned === 'object') {
+    for (const [id, n] of Object.entries(r.owned as Record<string, unknown>)) {
+      const def = UNIT_BY_ID[id];
+      const c = int(n, 1 + MAX_PASSION);
+      if (def && isGachaUnit(def) && c > 0) out.owned[id] = c;
+    }
+  }
+  out.tickets = int(r.tickets, 99999);
+  out.spark = int(r.spark, 1e6);
+  out.draws = int(r.draws, 1e7);
+  return out;
 }
 
 export const newCosmetics = (): CosmeticSave => ({ owned: [], outfits: {}, title: '', pity: 0, draws: 0 });
@@ -144,13 +192,14 @@ export function normalizeSave(raw: unknown): SaveData {
   }
   base.endless = Math.max(0, Math.floor(num(r.endless, 0)));
   base.cosmetics = normalizeCosmetics(r.cosmetics);
+  base.gear = normalizeGear(r.gear);
   if (Array.isArray(r.seen)) base.seen = r.seen.filter((x): x is string => typeof x === 'string').slice(0, 200);
   if (r.units && typeof r.units === 'object') {
     for (const u of UNITS) {
       const p = r.units[u.id];
       if (!p) continue;
       const tier = Math.min(3, Math.max(1, Math.floor(num(p.tier, 1))));
-      const level = Math.min(levelCap(tier), Math.max(1, Math.floor(num(p.level, 1))));
+      const level = Math.min(levelCap(tier) + (tier === 3 ? passionOf(base, u.id) : 0), Math.max(1, Math.floor(num(p.level, 1))));
       base.units[u.id] = { level, tier };
     }
   }
@@ -166,6 +215,19 @@ export function normalizeSave(raw: unknown): SaveData {
     base.money += refund;
     migrationNotes.push(tr(`🫖 머그컵 투척기가 사라져서 강화 비용 💰${refund.toLocaleString('ko-KR')}을 돌려드렸어요.`, `🫖 The Mug Launcher was removed, so we refunded its upgrade cost of 💰${refund.toLocaleString('en-US')}.`));
   }
+  if (num(r.v, 1) < 5) {
+    // 0.17.0 편성 9칸: 지금 가진 유닛 중 앞의 9명으로 편성하고, 이미 깬 보스·무한 기록만큼 뽑기권을 준다.
+    base.loadout = ownedUnits(base).slice(0, LOADOUT_MAX).map((u) => u.id);
+    const tickets = ticketsEarnedSoFar(base);
+    base.gear.tickets += tickets;
+    if (Object.values(base.stars).some((v) => v > 0) || base.endless > 0) {
+      migrationNotes.push(tr(`{ticket} 유닛 뽑기와 편성 9칸이 생겼어요. 지금 동료 중 앞의 9명으로 편성했고${tickets ? `, 지금까지 깬 보스·무한 기록만큼 뽑기권 ${tickets}장을 드렸어요` : ''}.`, `{ticket} Unit draws and a 9-slot squad are here. Your first 9 labmates are in the squad${tickets ? `, and you got ${tickets} ticket(s) for the bosses and endless records you've already cleared` : ''}.`));
+    }
+  } else {
+    base.loadout = cleanSquad(base, r.loadout);
+    if (!Array.isArray(r.loadout)) base.loadout = ownedUnits(base).slice(0, LOADOUT_MAX).map((u) => u.id);
+  }
+  if (Array.isArray(r.presets)) base.presets = base.presets.map((_, i) => cleanSquad(base, (r.presets as unknown[])[i]));
   base.updatedAt = num(r.updatedAt, 0);
   return base;
 }
@@ -198,6 +260,7 @@ export function isStageOpen(save: SaveData, stage: StageDef): boolean {
 }
 
 export function isUnitOwned(save: SaveData, def: UnitDef): boolean {
+  if (isGachaUnit(def)) return (save.gear?.owned[def.id] ?? 0) > 0;
   if (def.unlock.subscribe) return save.subs.includes(def.id);
   return !def.unlock.stage || isCleared(save, def.unlock.stage);
 }
@@ -215,6 +278,85 @@ export const REPLAY_MUL = 0.5;
 
 export const levelCap = (tier: number): number => tier * 5;
 
+/** 중복으로 쌓인 열정 (0~MAX_PASSION) */
+export const passionOf = (save: SaveData, id: string): number => Math.min(MAX_PASSION, Math.max(0, (save.gear?.owned[id] ?? 0) - 1));
+
+/** 지금 단계의 레벨 상한 (최종 단계는 열정만큼 더) */
+export function unitLevelCap(save: SaveData, def: UnitDef): number {
+  const p = unitProgress(save, def.id);
+  return levelCap(p.tier) + (p.tier === 3 ? passionOf(save, def.id) : 0);
+}
+
+// ── 편성 ──
+
+/** 가진 유닛 (도감 순서) */
+export const ownedUnits = (save: SaveData): UnitDef[] => UNITS.filter((u) => isUnitOwned(save, u));
+
+/** 편성 목록 정리: 가진 유닛만, 중복 없이, 최대 LOADOUT_MAX */
+export function cleanSquad(save: SaveData, raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const id of raw) {
+    if (typeof id !== 'string' || out.includes(id)) continue;
+    const def = UNIT_BY_ID[id];
+    if (def && isUnitOwned(save, def)) out.push(id);
+    if (out.length >= LOADOUT_MAX) break;
+  }
+  return out;
+}
+
+/** 새로 얻은 유닛은 편성에 빈칸이 있으면 바로 넣는다 */
+export function autoSlot(save: SaveData, id: string): void {
+  if (!save.loadout.includes(id) && save.loadout.length < LOADOUT_MAX) save.loadout.push(id);
+}
+
+/** 편성에 넣거나 뺀다. 가득 찼거나 가지지 않았으면 false. 마지막 한 명은 뺄 수 없다. */
+export function toggleSquad(save: SaveData, id: string): boolean {
+  const i = save.loadout.indexOf(id);
+  if (i >= 0) {
+    if (save.loadout.length <= 1) return false;
+    save.loadout.splice(i, 1);
+  } else {
+    const def = UNIT_BY_ID[id];
+    if (!def || !isUnitOwned(save, def) || save.loadout.length >= LOADOUT_MAX) return false;
+    save.loadout.push(id);
+  }
+  save.updatedAt = Date.now();
+  return true;
+}
+
+/** 편성 안에서 한 칸 앞(-1)이나 뒤(+1)로 옮긴다 */
+export function moveSquad(save: SaveData, id: string, dir: -1 | 1): boolean {
+  const i = save.loadout.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= save.loadout.length) return false;
+  [save.loadout[i], save.loadout[j]] = [save.loadout[j]!, save.loadout[i]!];
+  save.updatedAt = Date.now();
+  return true;
+}
+
+export function savePreset(save: SaveData, i: number): boolean {
+  if (i < 0 || i >= PRESET_COUNT) return false;
+  save.presets[i] = [...save.loadout];
+  save.updatedAt = Date.now();
+  return true;
+}
+
+/** 프리셋 불러오기 (비어 있거나 가진 유닛이 없으면 false) */
+export function loadPreset(save: SaveData, i: number): boolean {
+  const ids = cleanSquad(save, save.presets[i]);
+  if (!ids.length) return false;
+  save.loadout = ids;
+  save.updatedAt = Date.now();
+  return true;
+}
+
+/** 무료 뽑기권: 보스 스테이지 첫 클리어마다 1장, 무한 모드 10판마다 처음 도달 시 1장 */
+export function ticketsEarnedSoFar(save: SaveData): number {
+  const bosses = [...STAGES, ...SIDE_STAGES].filter((s) => s.boss && isCleared(save, s.id)).length;
+  return bosses + Math.floor(save.endless / 10);
+}
+
 export function unitProgress(save: SaveData, id: string): UnitProgress {
   return save.units[id] ?? { level: 1, tier: 1 };
 }
@@ -225,7 +367,7 @@ export const evolveCost = (def: UnitDef, tier: number): number => def.cost * (ti
 
 export function canLevelUp(save: SaveData, def: UnitDef): boolean {
   const p = unitProgress(save, def.id);
-  return isUnitOwned(save, def) && p.level < levelCap(p.tier) && save.money >= levelUpCost(def, p.level);
+  return isUnitOwned(save, def) && p.level < unitLevelCap(save, def) && save.money >= levelUpCost(def, p.level);
 }
 
 export function canEvolve(save: SaveData, def: UnitDef): boolean {
@@ -253,6 +395,7 @@ export function subscribe(save: SaveData, def: UnitDef): boolean {
   if (!canSubscribe(save, def) || save.money < (def.unlock.subscribe ?? 0)) return false;
   save.money -= def.unlock.subscribe ?? 0;
   save.subs.push(def.id);
+  autoSlot(save, def.id);
   return true;
 }
 
@@ -272,7 +415,15 @@ export function upgradeFacility(save: SaveData, id: FacilityId): boolean {
 export function unitStats(def: UnitDef, p: UnitProgress): CombatStats {
   const mul = 1.08 ** (p.level - 1) * 1.5 ** (p.tier - 1);
   const stats: CombatStats = { ...def, hp: Math.round(def.hp * mul), atk: Math.round(def.atk * mul * 10) / 10 };
+  const sc = (n: number): number => Math.round(n * mul * 10) / 10;
   if (def.heal) stats.heal = { ...def.heal, amount: Math.round(def.heal.amount * mul) };
+  // 장비 능력: 피해·회복·막는 양도 같은 배율로 자란다
+  if (def.burn) stats.burn = { ...def.burn, dps: sc(def.burn.dps) };
+  if (def.deathBurst) stats.deathBurst = { ...def.deathBurst, dmg: sc(def.deathBurst.dmg) };
+  if (def.shield) stats.shield = { ...def.shield, amount: Math.round(def.shield.amount * mul) };
+  if (def.healZone) stats.healZone = { ...def.healZone, hps: sc(def.healZone.hps) };
+  if (def.fieldStrike) stats.fieldStrike = { ...def.fieldStrike, dmg: sc(def.fieldStrike.dmg) };
+  if (def.turret) stats.turret = { ...def.turret, hp: Math.round(def.turret.hp * mul), atk: sc(def.turret.atk) };
   return stats;
 }
 
@@ -310,12 +461,18 @@ export function makeLoadout(save: SaveData): BattleLoadout {
     printerAtk: 20 * (1 + 0.2 * f.printer),
     printerRange: 300 + 25 * f.printerRange,
     cooldownMul: 1 - 0.04 * f.planner,
-    deck: UNITS.filter((u) => isUnitOwned(save, u)).map((def) => {
+    deck: squadDefs(save).map((def) => {
       const p = unitProgress(save, def.id);
       return { def, stats: unitStats(def, p), tier: p.tier, level: p.level };
     }),
     skills: SKILLS.filter((s) => isSkillOpen(save, s)),
   };
+}
+
+/** 전투에 나갈 유닛: 편성 순서대로 (편성이 비면 가진 유닛 앞 9명) */
+export function squadDefs(save: SaveData): UnitDef[] {
+  const ids = cleanSquad(save, save.loadout);
+  return ids.length ? ids.map((id) => UNIT_BY_ID[id]!) : ownedUnits(save).slice(0, LOADOUT_MAX);
 }
 
 export function starsFor(hpRatio: number): number {
@@ -330,11 +487,14 @@ export interface BattleOutcome {
   clearReward: number;
   killReward: number;
   firstClear: boolean;
+  /** 이번 판으로 받은 무료 뽑기권 */
+  tickets: number;
 }
 
 /** 전투 결과를 저장 데이터에 반영한다. */
 export function applyOutcome(save: SaveData, stage: StageDef, win: boolean, baseHpRatio: number, killReward: number): BattleOutcome {
   const prev = save.stars[stage.id] ?? 0;
+  const ownedBefore = new Set(ownedUnits(save).map((u) => u.id));
   let stars = 0;
   let clearReward = 0;
   if (win && stage.kind === 'endless') {
@@ -342,10 +502,12 @@ export function applyOutcome(save: SaveData, stage: StageDef, win: boolean, base
     stars = starsFor(baseHpRatio);
     const first = stage.index > save.endless;
     clearReward = Math.round(stage.reward * (first ? 1 : 0.4));
+    const tickets = first ? Math.floor(stage.index / 10) - Math.floor(save.endless / 10) : 0;
     save.endless = Math.max(save.endless, stage.index);
+    save.gear.tickets += tickets;
     save.money += clearReward + killReward;
     save.updatedAt = Date.now();
-    return { win, stars, clearReward, killReward, firstClear: first };
+    return { win, stars, clearReward, killReward, firstClear: first, tickets };
   }
   if (win) {
     stars = starsFor(baseHpRatio);
@@ -353,7 +515,12 @@ export function applyOutcome(save: SaveData, stage: StageDef, win: boolean, base
     clearReward = Math.round(prev === 0 ? full : full * REPLAY_MUL);
     save.stars[stage.id] = Math.max(prev, stars);
   }
+  const firstClear = win && prev === 0;
+  const tickets = firstClear && stage.boss ? 1 : 0;
+  save.gear.tickets += tickets;
+  // 이번 클리어로 합류한 동료는 편성에 빈칸이 있으면 바로 넣는다
+  for (const u of ownedUnits(save)) if (!ownedBefore.has(u.id)) autoSlot(save, u.id);
   save.money += clearReward + killReward;
   save.updatedAt = Date.now();
-  return { win, stars, clearReward, killReward, firstClear: win && prev === 0 };
+  return { win, stars, clearReward, killReward, firstClear, tickets };
 }

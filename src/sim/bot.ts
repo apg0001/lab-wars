@@ -6,7 +6,7 @@ import { RANGED_THRESHOLD } from '../data/types';
 import type { CardDef, CardRarity } from '../data/cards';
 import {
   applyOutcome, canEvolve, canLevelUp, evolve, evolveCost, levelUp, levelUpCost, makeLoadout, subscribe,
-  canSubscribe, unitProgress, upgradeFacility, type SaveData,
+  canSubscribe, unitProgress, upgradeFacility, ownedUnits, LOADOUT_MAX, type SaveData,
 } from './progression';
 
 /**
@@ -88,9 +88,30 @@ export function botShop(save: SaveData): void {
       if (lv < f.max && save.money >= facilityCost(f, lv)) options.push({ cost: facilityCost(f, lv), buy: () => upgradeFacility(save, f.id) });
     }
     const affordable = options.filter((o) => o.cost <= save.money).sort((a, b) => a.cost - b.cost);
-    if (!affordable.length) return;
+    if (!affordable.length) break;
     affordable[0]!.buy();
   }
+  save.loadout = botSquad(save);
+}
+
+/**
+ * 봇의 편성 9칸: 가장 싼 유닛(급할 때 막을 물량) 하나와 대공 가능한 유닛 하나를 남기고,
+ * 나머지는 비싼(= 센) 유닛부터 채운다. 순서는 도감 순서.
+ */
+export function botSquad(save: SaveData): string[] {
+  const owned = ownedUnits(save);
+  if (owned.length <= LOADOUT_MAX) return owned.map((u) => u.id);
+  const pick = new Set<string>();
+  const cheapest = [...owned].sort((a, b) => a.cost - b.cost)[0]!;
+  pick.add(cheapest.id);
+  const byCost = [...owned].sort((a, b) => b.cost - a.cost);
+  const aa = byCost.find((u) => u.range >= RANGED_THRESHOLD);
+  if (aa) pick.add(aa.id);
+  for (const u of byCost) {
+    if (pick.size >= LOADOUT_MAX) break;
+    pick.add(u.id);
+  }
+  return owned.filter((u) => pick.has(u.id)).map((u) => u.id);
 }
 
 export interface StageRun {
