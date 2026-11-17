@@ -32,6 +32,7 @@ export const PATCH_NOTES: PatchNote[] = [
       '{book} 간단히 보기로 카드를 한눈에, 자세히 보기로 능력치와 능력 설명까지 볼 수 있어요. 고른 방식은 기억해요',
       '{cap} 처음 하는 분을 위한 첫 전투 안내가 생겼어요. 편성을 아직 안 해 본 분께는 한 번 편성 화면을 안내해요',
       '{gift} 선물함이 생겼어요. 운영자가 보낸 연구비·장비 뽑기권을 선물함에서 받을 수 있어요 (계정 로그인)',
+      '{book} 기본 동료와 모든 적·보스에 도감 설정 글이 생겼어요. 리뷰어 2가 왜 그러는지 이제 알 수 있어요',
     ],
     en: {
       title: 'A Comfier Lab',
@@ -42,6 +43,7 @@ export const PATCH_NOTES: PatchNote[] = [
         '{book} Compact view shows more cards at once; detailed view adds stats and ability text. Your choice is remembered',
         '{cap} New players get a short guide in their first battle, and players who haven\'t set a squad get one pointer to it',
         '{gift} Gift box: claim funds and gear tickets sent by the dev (account login)',
+        '{book} Starter labmates and every enemy and boss now have Codex entries. Now you know why Reviewer 2 is like that',
       ],
     },
   },
