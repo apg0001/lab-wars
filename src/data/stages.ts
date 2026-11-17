@@ -56,18 +56,18 @@ const C = (name: string): [string, StageKind] => [name, 'conference'];
 const T = (name: string): [string, StageKind] => [name, 'thesis'];
 const B = (name: string): [string, StageKind] => [name, 'boss'];
 
-/** 챕터별 6개 스테이지: 이름과 종류 */
+/** 챕터별 10개 스테이지: 이름과 종류 */
 const PLAN: [string, StageKind][][] = [
-  [N('개강 첫 주'), N('조별 과제'), N('중간고사'), V('여름방학'), N('기말고사 폭탄'), B('전공 교수님 면담')],
-  [N('학부연구생 지원'), N('첫 랩 미팅'), C('춘계 학회 짐꾼'), N('실험 노가다'), V('겨울방학 출근'), B('지도교수님')],
-  [N('통합과정 입학'), N('주간 보고'), C('하계 학회 포스터'), V('여름방학은 없다'), N('첫 논문 투고'), B('리뷰어 2의 습격')],
-  [N('조교 업무'), N('과제 보고서'), C('추계 학회 구두 발표'), N('서류 지옥'), V('겨울방학 실험'), B('동계 학회 기조연설')],
-  [N('석박 통합 전환'), C('춘계 학회 세션장'), N('알림 지옥'), T('졸업논문 집필'), T('졸업논문 수정'), B('졸업논문 심사')],
-  [N('박사 자격시험'), C('하계 학회 초청'), N('과제 책임자'), N('끝없는 리비전'), C('추계 학회 좌장'), B('학과장실')],
-  [N('포닥 계약'), C('동계 국제 학회'), N('연구비 지옥'), V('방학 없는 포닥'), N('교수 임용 면접'), B('총장실')],
+  [N('개강 첫 주'), N('수강신청 전쟁'), N('조별 과제'), N('중간고사'), N('축제 주간'), V('여름방학'), N('계절학기'), N('기말고사 폭탄'), N('연구실 문 앞'), B('전공 교수님 면담')],
+  [N('학부연구생 지원'), N('첫 랩 미팅'), N('장비 세팅'), C('춘계 학회 짐꾼'), N('실험 노가다'), N('데이터 정리'), N('논문 스터디'), V('겨울방학 출근'), N('졸업 프로젝트'), B('지도교수님')],
+  [N('통합과정 입학'), N('대학원 수업'), N('주간 보고'), C('하계 학회 포스터'), V('여름방학은 없다'), N('실험 재현 실패'), N('첫 논문 초고'), N('교수님 첨삭'), N('첫 논문 투고'), B('리뷰어 2의 습격')],
+  [N('조교 업무'), N('채점 지옥'), N('과제 보고서'), C('추계 학회 구두 발표'), N('서류 지옥'), N('연구실 이사'), V('겨울방학 실험'), N('석사 논문 초안'), N('디펜스 리허설'), B('동계 학회 기조연설')],
+  [N('석박 통합 전환'), N('랩장 인수인계'), C('춘계 학회 세션장'), N('알림 지옥'), V('여름방학 집필'), N('졸업논문 주제 확정'), T('졸업논문 집필'), T('졸업논문 수정'), T('예비 심사'), B('졸업논문 심사')],
+  [N('박사 자격시험'), N('후배 사수'), C('하계 학회 초청'), N('과제 책임자'), N('연구실 정전'), N('끝없는 리비전'), C('추계 학회 좌장'), V('겨울방학 연구비 정산'), N('박사 학위 논문'), B('학과장실')],
+  [N('포닥 계약'), N('해외 연수'), C('동계 국제 학회'), N('연구비 지옥'), N('강의 대타'), V('방학 없는 포닥'), N('공동연구 미팅'), N('임용 서류 접수'), N('교수 임용 면접'), B('총장실')],
 ];
 
-export const STAGES_PER_CHAPTER = 6;
+export const STAGES_PER_CHAPTER = 10;
 const LAST_ORDER = CHAPTERS.length * STAGES_PER_CHAPTER - 1;
 /**
  * 난이도 곡선 좌표. 예전 20스테이지 캠페인(0~19)의 곡선을 그대로 늘려 쓴다.
@@ -134,13 +134,13 @@ function makeStage(chapter: number, index: number): StageDef {
     name,
     kind,
     scale: 1 + c * 0.1,
-    enemyBaseHp: Math.round((700 + c * 180) * (thesis ? 1.15 : 1)),
-    towerAtk: Math.round(10 * (1 + c * 0.12) * (conference ? 1.15 : 1)),
+    enemyBaseHp: Math.round((700 + c * 180) * (thesis ? 1.1 : 1)),
+    towerAtk: Math.round(10 * (1 + c * 0.12) * (conference ? 1.08 : 1)),
     spawnEvery: Math.max(1.75, 2.8 - c * 0.06) * (isBoss ? 1.6 : vacation ? 1.3 : 1),
     pool: poolAt(c, kind),
     rush: {
       first: 35,
-      every: Math.max(22, 40 - c) * (conference ? 0.85 : 1),
+      every: Math.max(22, 40 - c) * (conference ? 0.9 : 1),
       size: Math.round(baseRush * (isBoss ? 0.5 : vacation ? 1.5 : 1)),
     },
     boss,
@@ -154,13 +154,24 @@ function makeStage(chapter: number, index: number): StageDef {
 /** 스테이지가 두 배 넘게 늘어난 만큼 한 판 보상을 줄인다. */
 const REWARD_MUL = 0.45;
 /** 판 수가 늘어난 만큼 처치 연구비도 줄인다. */
-const KILL_MUL = 0.5;
+const KILL_MUL = 0.4;
 
 export const STAGES: StageDef[] = CHAPTERS.flatMap((c) => Array.from({ length: STAGES_PER_CHAPTER }, (_, i) => makeStage(c.id, i + 1)));
 
 export const STAGE_BY_ID: Record<string, StageDef> = Object.fromEntries(STAGES.map((s) => [s.id, s]));
 
 export const FINAL_STAGE = STAGES[STAGES.length - 1]!;
+
+/** 0.8 캠페인(7챕터×6) id → 지금 캠페인에서 같은 위치쯤의 순번. 저장 이전용. */
+export function v2Order(oldId: string): number | null {
+  const m = /^([1-7])-([1-6])$/.exec(oldId);
+  if (!m) return null;
+  const c = Number(m[1]);
+  const i = Number(m[2]);
+  // 보스(6번째)는 보스(10번째)로, 나머지는 챕터 안에서 비율대로
+  const idx = i === 6 ? STAGES_PER_CHAPTER : Math.round(((i - 1) * (STAGES_PER_CHAPTER - 2)) / 4) + 1;
+  return (c - 1) * STAGES_PER_CHAPTER + idx - 1;
+}
 
 /** 예전 캠페인(4챕터×5) id → 새 캠페인에서 같은 난이도쯤의 순번. 저장 이전용. */
 export function legacyOrder(oldId: string): number | null {

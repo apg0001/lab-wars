@@ -71,6 +71,10 @@ export interface CutsceneOptions {
   /** 건너뛰기 허용 (처음 보는 엔딩은 false) */
   skippable: boolean;
   onDone: () => void;
+  /** 몰아보기: '그만 보기' 버튼을 띄우고 누르면 호출 */
+  onStop?: () => void;
+  /** 몰아보기 진행 표시 (예: 3 / 40) */
+  progress?: string;
 }
 
 /** host 위에 컷신을 띄운다. 끝나면 onDone. */
@@ -85,7 +89,9 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   const box = h('div.cut-box', {}, nameTag, text, next);
   const title = scene.title ? h('div.cut-title', {}, scene.title) : null;
   const skip = opt.skippable ? h('button.btn.small.cut-skip', { onclick: (e: Event) => { e.stopPropagation(); finish(); } }, '건너뛰기 ⏭') : null;
-  root.append(canvas, box, ...(title ? [title] : []), ...(skip ? [skip] : []));
+  const stop = opt.onStop ? h('button.btn.small.cut-stop', { onclick: (e: Event) => { e.stopPropagation(); finish(true); } }, '그만 보기 ✕') : null;
+  const prog = opt.progress ? h('div.cut-progress', {}, opt.progress) : null;
+  root.append(canvas, box, ...[title, skip, stop, prog].filter((x): x is HTMLElement => !!x));
   host.append(root);
   if (scene.music) music.play(scene.music);
 
@@ -198,13 +204,13 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
     showLine(lineIdx + 1);
   }
 
-  function finish(): void {
+  function finish(stopAll = false): void {
     if (done) return;
     done = true;
     cancelAnimationFrame(raf);
     root.classList.add('out');
     window.removeEventListener('keydown', onKey);
-    window.setTimeout(() => { root.remove(); opt.onDone(); }, 250);
+    window.setTimeout(() => { root.remove(); (stopAll && opt.onStop ? opt.onStop : opt.onDone)(); }, 250);
   }
 
   // ── 소리: 대사 블립, 쿵, 반짝 ──
@@ -351,6 +357,34 @@ export function playScenes(host: Element, scenes: Scene[], opt: Omit<CutsceneOpt
   const [first, ...rest] = scenes;
   if (!first) return onDone();
   playCutscene(host, first, { ...opt, onDone: () => playScenes(host, rest, opt, onDone) });
+}
+
+export interface MarathonOptions {
+  heroName: string;
+  /** 장면별 챕터 (주인공 외형) */
+  chapterOf: (sc: Scene) => number;
+  /** 처음 보는 건너뛰기 금지 장면인가 */
+  locked: (sc: Scene) => boolean;
+  /** 한 장면을 다 봤을 때 (이어보기 위치 저장) */
+  onSeen: (sc: Scene, index: number) => void;
+  onEnd: () => void;
+}
+
+/** 몰아보기: start번째 장면부터 끝까지 차례로 보여준다. 장면마다 건너뛰기, 언제든 그만 보기. */
+export function playMarathon(host: Element, scenes: Scene[], start: number, opt: MarathonOptions): void {
+  const step = (i: number): void => {
+    const sc = scenes[i];
+    if (!sc) return opt.onEnd();
+    playCutscene(host, sc, {
+      heroName: opt.heroName,
+      chapter: opt.chapterOf(sc),
+      skippable: !opt.locked(sc),
+      progress: `${i + 1} / ${scenes.length}`,
+      onStop: opt.onEnd,
+      onDone: () => { opt.onSeen(sc, i); step(i + 1); },
+    });
+  };
+  step(Math.max(0, Math.min(start, scenes.length - 1)));
 }
 
 // ─────────────── 배경 ───────────────

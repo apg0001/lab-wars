@@ -54,7 +54,7 @@ describe('성장 시스템', () => {
     const c = UNIT_BY_ID.claudy!;
     s.money = 5000;
     expect(canSubscribe(s, c)).toBe(false);
-    s.stars['1-6'] = 1;
+    s.stars['1-10'] = 1;
     expect(isUnitOwned(s, c)).toBe(false);
     expect(subscribe(s, c)).toBe(true);
     expect(isUnitOwned(s, c)).toBe(true);
@@ -99,7 +99,7 @@ describe('성장 시스템', () => {
   });
 
   it('손상된 저장 데이터를 안전하게 정리한다', () => {
-    const s = normalizeSave({ v: 2, money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
+    const s = normalizeSave({ v: 3, money: -5, stars: { '1-1': 9 }, units: { grunt: { level: 99, tier: 7 }, nope: { level: 1, tier: 1 } }, subs: ['grunt', 'claudy'], facilities: { remodel: 99 } });
     expect(s.money).toBe(0);
     expect(s.stars['1-1']).toBe(3);
     expect(s.units.grunt).toEqual({ level: 15, tier: 3 });
@@ -114,11 +114,27 @@ describe('성장 시스템', () => {
     const all = normalizeSave({ v: 1, stars: { '1-1': 3, '4-5': 3 } });
     expect(STAGES.every((s) => all.stars[s.id] === 3)).toBe(true);
     const mid = normalizeSave({ v: 1, stars: { '1-1': 2, '2-5': 2 } });
-    expect(mid.stars['4-2']).toBe(2);
-    expect(mid.stars['4-3'] ?? 0).toBe(0);
+    expect(mid.stars['4-4']).toBe(2);
+    expect(mid.stars['4-5'] ?? 0).toBe(0);
     expect(takeMigrationNotes()).toHaveLength(2);
     const fresh = normalizeSave({ v: 1, stars: {} });
     expect(Object.values(fresh.stars).every((v) => v === 0)).toBe(true);
+  });
+
+  it('7챕터×6 저장은 깬 만큼 인정하고 사이에 생긴 스테이지도 채운다', () => {
+    takeMigrationNotes();
+    const old = normalizeSave({ v: 2, stars: { '1-1': 3, '1-2': 2, '1-3': 3, '1-4': 1, '1-5': 3, '1-6': 2, '2-1': 3 }, seen: ['ch1-intro'], endless: 0 });
+    expect(old.stars['1-10']).toBe(2); // 보스 → 보스
+    expect(old.stars['1-1']).toBe(3);
+    expect(old.stars['1-3']).toBe(2); // 예전 1-2 자리
+    expect(old.stars['1-2']).toBe(2); // 새로 생긴 칸은 다음 스테이지 별을 따른다
+    expect(old.stars['2-1']).toBe(3);
+    expect(old.stars['2-2'] ?? 0).toBe(0);
+    expect(old.seen).toEqual(['ch1-intro']);
+    expect(takeMigrationNotes()).toHaveLength(1);
+    const all = normalizeSave({ v: 2, stars: Object.fromEntries(Array.from({ length: 42 }, (_, i) => [`${Math.floor(i / 6) + 1}-${(i % 6) + 1}`, 3])) });
+    expect(STAGES.every((s) => all.stars[s.id] === 3)).toBe(true);
+    expect(STAGES).toHaveLength(70);
   });
 
   it('무한 모드는 캠페인 클리어 후 한 판씩 열리고 최고 기록을 남긴다', () => {
