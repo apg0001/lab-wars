@@ -1,4 +1,5 @@
 import type { CombatStats, UnitDef } from '../data/types';
+import { tr } from '../i18n';
 import { UNITS } from '../data/units';
 import { FINAL_STAGE, SIDE_STAGES, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
 
@@ -113,7 +114,7 @@ export function normalizeSave(raw: unknown): SaveData {
       if (reach >= 0) {
         const avg = Math.max(1, Math.round(oldStars.reduce((a, b) => a + b, 0) / oldStars.length));
         for (const s of STAGES) if (s.order <= reach) base.stars[s.id] = avg;
-        migrationNotes.push(`📚 캠페인이 학부생~포닥 7챕터로 늘어났어요. 예전 진행도에 맞춰 ${STAGES[reach]!.id}까지 클리어로 옮겼어요.`);
+        migrationNotes.push(tr(`📚 캠페인이 학부생~포닥 7챕터로 늘어났어요. 예전 진행도에 맞춰 ${STAGES[reach]!.id}까지 클리어로 옮겼어요.`, `📚 The campaign now has 7 chapters (Undergrad to Postdoc). Based on your old progress, stages up to ${STAGES[reach]!.id} are marked cleared.`));
       }
     } else if (num(r.v, 1) < 3) {
       // 7챕터×6 → 7챕터×10: 실제로 깬 스테이지만 옮긴다. 사이에 새로 생긴 스테이지는 열리기만 한다.
@@ -125,7 +126,7 @@ export function normalizeSave(raw: unknown): SaveData {
         reach = Math.max(reach, o);
         base.stars[STAGES[o]!.id] = st;
       }
-      if (reach >= 0) migrationNotes.push(`📚 챕터마다 스테이지가 10개로 늘었어요. 깬 스테이지는 그대로 옮겼고, 사이에 새로 생긴 스테이지는 열어 뒀어요.`);
+      if (reach >= 0) migrationNotes.push(tr('📚 챕터마다 스테이지가 10개로 늘었어요. 깬 스테이지는 그대로 옮겼고, 사이에 새로 생긴 스테이지는 열어 뒀어요.', '📚 Each chapter now has 10 stages. Your cleared stages carried over, and the new ones in between are unlocked.'));
     } else {
       for (const s of [...STAGES, ...SIDE_STAGES]) base.stars[s.id] = starOf(r.stars[s.id]);
       if (num(r.v, 1) < 4) {
@@ -137,7 +138,7 @@ export function normalizeSave(raw: unknown): SaveData {
           base.stars[s.id] = 0;
           fixed++;
         }
-        if (fixed) migrationNotes.push(`🔧 예전 진행도를 옮길 때 안 깬 스테이지 ${fixed}개가 클리어로 잘못 표시됐어요. 바로잡았고, 그 스테이지들은 열려 있어요.`);
+        if (fixed) migrationNotes.push(tr(`🔧 예전 진행도를 옮길 때 안 깬 스테이지 ${fixed}개가 클리어로 잘못 표시됐어요. 바로잡았고, 그 스테이지들은 열려 있어요.`, `🔧 ${fixed} uncleared stage(s) were wrongly marked as cleared during an old migration. Fixed — they're unlocked for you.`));
       }
     }
   }
@@ -163,7 +164,7 @@ export function normalizeSave(raw: unknown): SaveData {
     let refund = 0;
     for (let lv = 0; lv < mugLv; lv++) refund += Math.round(70 * 1.45 ** lv);
     base.money += refund;
-    migrationNotes.push(`🫖 머그컵 투척기가 사라져서 강화 비용 💰${refund.toLocaleString('ko-KR')}을 돌려드렸어요.`);
+    migrationNotes.push(tr(`🫖 머그컵 투척기가 사라져서 강화 비용 💰${refund.toLocaleString('ko-KR')}을 돌려드렸어요.`, `🫖 The Mug Launcher was removed, so we refunded its upgrade cost of 💰${refund.toLocaleString('en-US')}.`));
   }
   base.updatedAt = num(r.updatedAt, 0);
   return base;

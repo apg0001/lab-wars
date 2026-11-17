@@ -1,4 +1,5 @@
 import { normalizeSave, type SaveData } from '../sim/progression';
+import { tr } from '../i18n';
 
 /**
  * 저장소 추상화. 지금은 기기 내 저장(localStorage)만 있고,
@@ -134,7 +135,7 @@ export class ProfileManager {
 
 export function sanitizeName(name: string): string {
   const s = name.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 12);
-  return s || '대학원생';
+  return s || tr('대학원생', 'Grad Student');
 }
 
 function makeId(): string {

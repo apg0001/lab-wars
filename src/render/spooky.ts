@@ -3,6 +3,7 @@
  * 무작위 대신 시간 기반 해시를 써서 프레임마다 깜빡임이 일정하게 이어진다.
  */
 import type { Theme } from '../data/stages';
+import { getLang, tr } from '../i18n';
 import { INK } from './characters';
 
 type Ctx = CanvasRenderingContext2D;
@@ -137,7 +138,7 @@ function haunted(ctx: Ctx, w: number, ground: number, h: number, scroll: number,
       ctx.fillRect(x + 78, ground - 175, 40, 14);
       ctx.fillStyle = '#4e342e';
       ctx.font = '11px Jua, sans-serif';
-      ctx.fillText(['404호', '444호', '4호'][((i % 3) + 3) % 3]!, x + 84, ground - 164);
+      ctx.fillText(tr(['404호', '444호', '4호'][((i % 3) + 3) % 3]!, ['Rm 404', 'Rm 444', 'Rm 4'][((i % 3) + 3) % 3]!), x + 84, ground - 164);
       // 게시판의 찢어진 공지
       ctx.fillStyle = '#e0e0e0';
       ctx.save();
@@ -146,10 +147,10 @@ function haunted(ctx: Ctx, w: number, ground: number, h: number, scroll: number,
       ctx.fillRect(0, 0, 50, 62);
       ctx.fillStyle = '#b71c1c';
       ctx.font = '9px Jua, sans-serif';
-      ctx.fillText('야간 출입', 6, 18);
-      ctx.fillText('금지', 6, 32);
+      ctx.fillText(tr('야간 출입', 'NO ENTRY'), 6, 18);
+      ctx.fillText(tr('금지', 'AT NIGHT'), 6, 32);
       ctx.fillStyle = '#9e9e9e';
-      ctx.fillText('…왜?', 6, 50);
+      ctx.fillText(tr('…왜?', '…why?'), 6, 50);
       ctx.restore();
     } else {
       // 졸업 예정 액자: 눈동자가 따라온다
@@ -177,7 +178,7 @@ function haunted(ctx: Ctx, w: number, ground: number, h: number, scroll: number,
       ctx.fill();
       ctx.fillStyle = '#d7ccc8';
       ctx.font = '9px Jua, sans-serif';
-      ctx.fillText(kind === 1 ? '졸업 예정 (2011)' : '졸업 예정 (2009)', fx - 2, fy + 106);
+      ctx.fillText(tr(kind === 1 ? '졸업 예정 (2011)' : '졸업 예정 (2009)', kind === 1 ? 'Grad. exp. 2011' : 'Grad. exp. 2009'), fx - 2, fy + 106);
       // 거미줄
       ctx.strokeStyle = 'rgba(220,220,240,.25)';
       ctx.lineWidth = 1;
@@ -257,7 +258,7 @@ function tenure(ctx: Ctx, w: number, ground: number, h: number, scroll: number, 
     ctx.fillRect(px + 38, py + 32, 8, 5);
     ctx.fillStyle = '#c9a227';
     ctx.font = '9px Jua, sans-serif';
-    ctx.fillText(`명예교수 ${['김', '이', '박', '최'][((i % 4) + 4) % 4]}`, px + 8, py + 108);
+    ctx.fillText(tr(`명예교수 ${['김', '이', '박', '최'][((i % 4) + 4) % 4]}`, `Emeritus ${['Kim', 'Lee', 'Park', 'Choi'][((i % 4) + 4) % 4]}`), px + 8, py + 108);
     // 촛대 조명
     const fl = 0.75 + 0.25 * Math.sin(t * 9 + i * 3) * Math.sin(t * 5.3 + i);
     const cx = x + 30;
@@ -381,7 +382,7 @@ function gloom(ctx: Ctx, w: number, ground: number, h: number, scroll: number, t
     ctx.fillRect(cx, cy, 80, 14);
     ctx.fillStyle = '#fff';
     ctx.font = '9px Jua, sans-serif';
-    ctx.fillText('졸업 D-???', cx + 12, cy + 11);
+    ctx.fillText(tr('졸업 D-???', 'Grad in ??? d'), cx + 12, cy + 11);
     ctx.strokeStyle = '#e53935';
     ctx.lineWidth = 1.5;
     for (let d = 0; d < 15; d++) {
@@ -395,7 +396,7 @@ function gloom(ctx: Ctx, w: number, ground: number, h: number, scroll: number, t
       ctx.stroke();
     }
     // 포스트잇
-    const notes = ['언제 졸업해?', '결과 안 나옴', '리비전 3차', '나만 못하나'];
+    const notes = getLang() === 'en' ? ['Graduate when?', 'No results', 'Revision #3', 'Just me?'] : ['언제 졸업해?', '결과 안 나옴', '리비전 3차', '나만 못하나'];
     const note = notes[((i % 4) + 4) % 4]!;
     ctx.save();
     ctx.translate(cx + 6, cy + 100);

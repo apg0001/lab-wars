@@ -1,6 +1,7 @@
 import { normalizeSave, type SaveData } from '../sim/progression';
 import { GAME_VERSION } from '../data/patch-notes';
 import { kv, LocalSaveStore, type SaveStore } from './store';
+import { serverError } from '../i18n/server';
 
 /** 배포 시 VITE_API_URL로 계정 서버 주소를 넣는다. 비어 있으면 로그인 기능을 숨긴다. */
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
@@ -43,7 +44,7 @@ export class ApiError extends Error {
   status: number;
   body: Record<string, unknown>;
   constructor(status: number, body: Record<string, unknown>) {
-    super(typeof body.error === 'string' ? body.error : `요청 실패 (${status})`);
+    super(serverError(status, typeof body.error === 'string' ? body.error : undefined));
     this.status = status;
     this.body = body;
   }

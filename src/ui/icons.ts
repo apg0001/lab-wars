@@ -1,13 +1,14 @@
 import type { Look } from '../data/types';
 import type { Outfit } from '../data/cosmetics';
 import { drawCharacter, outfitKey } from '../render/characters';
+import { getLang } from '../i18n';
 
 const cache = new Map<string, string>();
 
 /** 캐릭터 초상을 작은 이미지(data URL)로 만들어 캐시한다. 옷장에 입힌 꾸미기도 반영한다 (outfit을 주면 그것으로). */
 export function portrait(look: Look, tier = 1, defId = '', facing: 1 | -1 = 1, outfit?: Outfit): string {
   const fitKey = outfitKey(defId, outfit);
-  const key = `${look.kind}|${look.color}|${look.prop}|${tier}|${defId}|${facing}|${fitKey}`;
+  const key = `${getLang()}|${look.kind}|${look.color}|${look.prop}|${tier}|${defId}|${facing}|${fitKey}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const size = 96;

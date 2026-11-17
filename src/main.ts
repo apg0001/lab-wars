@@ -3,6 +3,10 @@ import { App } from './ui/app';
 import { installAudioUnlock } from './audio/engine';
 import { sfx } from './audio/sfx';
 import { installOrientation } from './ui/orientation';
+import { applyDocument } from './i18n';
+
+// 언어(브라우저 설정 또는 저장된 선택)에 맞춰 문서 언어·제목을 정한다
+applyDocument();
 
 installOrientation();
 

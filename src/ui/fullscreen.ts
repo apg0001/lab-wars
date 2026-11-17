@@ -1,5 +1,6 @@
 import { h, setRich } from './dom';
 import { isPortrait } from './orientation';
+import { tr } from '../i18n';
 
 type FsElement = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
 type FsDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
@@ -64,20 +65,20 @@ function showInstallGuide(host: Element | null): void {
   if (!host) return;
   const overlay = h('div.overlay', { onclick: (e: Event) => { if (e.target === overlay) overlay.remove(); } });
   const steps = isIOS()
-    ? ['Safari 아래(또는 위)의 공유 버튼 ⬆️ 을 누르세요.', '“홈 화면에 추가”를 고르세요.', '홈 화면의 랩워즈 아이콘으로 실행하면 주소창 없이 전체 화면으로 열려요.']
-    : ['브라우저 메뉴(⋮)를 여세요.', '“홈 화면에 추가” 또는 “앱 설치”를 고르세요.', '설치한 랩워즈 아이콘으로 실행하면 전체 화면으로 열려요.'];
+    ? [tr('Safari 아래(또는 위)의 공유 버튼 ⬆️ 을 누르세요.', 'Tap the Share button ⬆️ at the bottom (or top) of Safari.'), tr('“홈 화면에 추가”를 고르세요.', 'Choose “Add to Home Screen”.'), tr('홈 화면의 랩워즈 아이콘으로 실행하면 주소창 없이 전체 화면으로 열려요.', 'Launch Lab Wars from the home screen icon to play fullscreen without the address bar.')]
+    : [tr('브라우저 메뉴(⋮)를 여세요.', 'Open the browser menu (⋮).'), tr('“홈 화면에 추가” 또는 “앱 설치”를 고르세요.', 'Choose “Add to Home screen” or “Install app”.'), tr('설치한 랩워즈 아이콘으로 실행하면 전체 화면으로 열려요.', 'Launch the installed Lab Wars icon to play fullscreen.')];
   overlay.append(h('div.panel.install-guide', {},
-    h('h2', {}, '{phone} 전체 화면으로 하려면'),
-    h('p.muted', {}, '이 브라우저는 웹페이지 전체 화면을 지원하지 않아요. 대신 홈 화면에 설치하면 앱처럼 전체 화면으로 열립니다.'),
+    h('h2', {}, tr('{phone} 전체 화면으로 하려면', '{phone} To play fullscreen')),
+    h('p.muted', {}, tr('이 브라우저는 웹페이지 전체 화면을 지원하지 않아요. 대신 홈 화면에 설치하면 앱처럼 전체 화면으로 열립니다.', 'This browser doesn\'t support fullscreen for web pages. Install it to your home screen and it opens fullscreen like an app.')),
     h('ol', {}, ...steps.map((s) => h('li', {}, s))),
-    h('button.btn.primary', { onclick: () => overlay.remove() }, '알겠어요'),
+    h('button.btn.primary', { onclick: () => overlay.remove() }, tr('알겠어요', 'Got it')),
   ));
   host.append(overlay);
 }
 
 function fsText(label: boolean): string {
-  if (isFullscreen()) return label ? '{fullscreen} 전체 화면 끄기' : '{fullscreen}';
-  return label ? '{fullscreen} 전체 화면' : '{fullscreen}';
+  if (isFullscreen()) return label ? tr('{fullscreen} 전체 화면 끄기', '{fullscreen} Exit fullscreen') : '{fullscreen}';
+  return label ? tr('{fullscreen} 전체 화면', '{fullscreen} Fullscreen') : '{fullscreen}';
 }
 
 /**
@@ -88,7 +89,7 @@ function fsText(label: boolean): string {
 export function fullscreenButton(host: () => Element | null, opt: { label?: boolean; cls?: string } = {}): HTMLElement | null {
   if (isStandalone()) return null;
   const btn = h(`button.icon-btn.fs-btn${opt.cls ? '.' + opt.cls : ''}`, {
-    title: '전체 화면',
+    title: tr('전체 화면', 'Fullscreen'),
     onclick: (e: Event) => { e.stopPropagation(); void toggleFullscreen(host()); },
   });
   if (opt.label) btn.dataset.label = '1';
@@ -99,7 +100,7 @@ export function fullscreenButton(host: () => Element | null, opt: { label?: bool
 onFullscreenChange(() => {
   document.querySelectorAll<HTMLElement>('.fs-btn').forEach((b) => {
     setRich(b, fsText(b.dataset.label === '1'));
-    b.title = isFullscreen() ? '전체 화면 끄기' : '전체 화면';
+    b.title = isFullscreen() ? tr('전체 화면 끄기', 'Exit fullscreen') : tr('전체 화면', 'Fullscreen');
   });
 });
 

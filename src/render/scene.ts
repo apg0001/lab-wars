@@ -1,4 +1,5 @@
 import { ALLY_FRONT, BASE_W, ENEMY_FRONT, GROUND_Y, WORLD_W, type Battle, type Base, type Fighter, type Projectile } from '../sim/battle';
+import { tr } from '../i18n';
 import { RANGED_THRESHOLD } from '../data/types';
 import { drawCharacter, INK } from './characters';
 import type { Juice } from './juice';
@@ -161,7 +162,7 @@ function drawBackdrop(ctx: Ctx, camX: number): void {
     ctx.fillRect(x + 18, 190, 34, 12);
     ctx.fillStyle = '#9e9e9e';
     ctx.font = '8px Jua, sans-serif';
-    ctx.fillText(`${301 + i}호`, x + 24, 199);
+    ctx.fillText(tr(`${301 + i}호`, `${301 + i}`), x + 24, 199);
     if (i % 2 === 0) {
       // 게시판
       ctx.fillStyle = '#a1887f';
@@ -271,7 +272,7 @@ function drawLab(ctx: Ctx, base: Base, time: number): void {
   ctx.stroke();
   ctx.fillStyle = INK;
   ctx.font = 'bold 13px Jua, sans-serif';
-  ctx.fillText('연구실', x + 25, top + 106);
+  ctx.fillText(tr('연구실', 'LAB'), x + 25, top + 106);
   // 지붕의 프린터 포탑
   ctx.fillStyle = '#eceff1';
   ctx.beginPath();
@@ -331,7 +332,7 @@ function drawOffice(ctx: Ctx, base: Base, time: number): void {
   ctx.stroke();
   ctx.fillStyle = INK;
   ctx.font = 'bold 14px Jua, sans-serif';
-  ctx.fillText('교수실', x + 53, top + 98);
+  ctx.fillText(tr('교수실', 'PROF'), x + 53, top + 98);
   // 창문: 의심스러운 눈빛
   ctx.fillStyle = '#ffecb3';
   ctx.fillRect(x + 82, top + 20, 50, 40);

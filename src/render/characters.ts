@@ -1,5 +1,6 @@
 import type { Look } from '../data/types';
 import { COSMETIC_BY_ID, type Outfit } from '../data/cosmetics';
+import { tr } from '../i18n';
 
 /** 낙서풍 외곽선 색 */
 export const INK = '#2b2430';
@@ -19,12 +20,24 @@ export interface Pose {
   moving: boolean;
 }
 
-/** 좌우 반전된 상태에서도 글자가 뒤집히지 않게 쓴다. x는 왼쪽 기준. */
-function label(ctx: Ctx, text: string, x: number, y: number): void {
+/**
+ * 좌우 반전된 상태에서도 글자가 뒤집히지 않게 쓴다. x는 왼쪽 기준.
+ * en을 주면 영어일 때 그 글자를 원문과 같은 가운데에, 원문 폭에 맞춰 (너무 길면 좁혀) 쓴다.
+ */
+function label(ctx: Ctx, text: string, x: number, y: number, en?: string): void {
   const w = ctx.measureText(text).width;
   const cx = x + w / 2;
+  const shown = en ? tr(text, en) : text;
+  const sw = ctx.measureText(shown).width;
+  const squeeze = sw > w * 1.2 ? (w * 1.2) / sw : 1;
   ctx.save();
   ctx.textAlign = 'center';
+  text = shown;
+  if (squeeze !== 1) {
+    ctx.translate(cx, y);
+    ctx.scale(squeeze, 1);
+    ctx.translate(-cx, -y);
+  }
   if (ctx.getTransform().a < 0) {
     ctx.scale(-1, 1);
     ctx.fillText(text, -cx, y);
@@ -452,7 +465,7 @@ function plane(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.stroke();
   ctx.fillStyle = look.accent ?? '#1e88e5';
   ctx.font = 'bold 7px Jua, sans-serif';
-  label(ctx, '공문', -8, 2);
+  label(ctx, '공문', -8, 2, 'MEMO');
   eyes(ctx, -12, -2, 2.5, true, 1.3);
 }
 
@@ -526,7 +539,7 @@ function paperwork(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.strokeRect(-9, -6, 18, 10);
   ctx.fillStyle = look.accent ?? '#c62828';
   ctx.font = 'bold 7px Jua, sans-serif';
-  label(ctx, '반려', -7, 2);
+  label(ctx, '반려', -7, 2, 'NO');
   ctx.restore();
 }
 
@@ -537,7 +550,7 @@ function binder(ctx: Ctx, look: Look, pose: Pose): void {
   rrect(ctx, -11, -40, 22, 12, 1, '#fff');
   ctx.fillStyle = INK;
   ctx.font = 'bold 7px Jua, sans-serif';
-  label(ctx, '보고서', -10, -31);
+  label(ctx, '보고서', -10, -31, 'REPORT');
   eyes(ctx, -2, -20, 6, true, 2.2);
   ctx.beginPath();
   ctx.moveTo(16, -30);
@@ -559,7 +572,7 @@ function revision(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.fill();
   ctx.fillStyle = look.accent ?? '#e53935';
   ctx.font = 'bold 8px Jua, sans-serif';
-  label(ctx, '수정', -8, -19);
+  label(ctx, '수정', -8, -19, 'FIX');
   eyes(ctx, -1, -27, 4, true, 1.6);
 }
 
@@ -667,7 +680,7 @@ function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
     rrect(ctx, -9, -32, 12, 9, 1, '#fff');
     ctx.fillStyle = '#00695c';
     ctx.font = 'bold 5px Jua, sans-serif';
-    label(ctx, '학회', -7, -26);
+    label(ctx, '학회', -7, -26, 'CONF');
     ctx.save();
     ctx.translate(15, -36);
     ctx.rotate(0.3 - pose.swing * 0.5);
@@ -683,7 +696,7 @@ function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
     rrect(ctx, -8, -12, 16, 20, 2, '#212121');
     ctx.fillStyle = '#ffd54f';
     ctx.font = 'bold 5px Jua, sans-serif';
-    label(ctx, '업적', -5, -1);
+    label(ctx, '업적', -5, -1, 'CV');
     ctx.restore();
     ctx.fillStyle = `rgba(255,235,59,${0.5 + 0.4 * Math.sin(pose.time * 4)})`;
     ctx.beginPath();
@@ -778,7 +791,7 @@ function ghost(ctx: Ctx, look: Look, pose: Pose, defId: string): void {
       rrect(ctx, -12, -16, 14, 8, 1, '#fff');
       ctx.fillStyle = '#c62828';
       ctx.font = 'bold 5px Jua, sans-serif';
-      label(ctx, '13년차', -11.5, -10.5);
+      label(ctx, '13년차', -11.5, -10.5, 'YR 13');
       line(ctx);
     }
   }

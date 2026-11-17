@@ -4,6 +4,7 @@
  */
 import { STAGE_SCENES } from './stage-scenes';
 import { SIDE_SCENES } from './side-scenes';
+import { localizeScenes } from './en';
 
 export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny' | 'haunted' | 'tenure' | 'rain';
 
@@ -283,4 +284,6 @@ const S: Scene[] = [
 ];
 
 /** 모든 장면 (챕터 장면 + 스테이지별 장면). 순서는 story/unlock.ts의 STORY_ORDER */
-export const SCENES: Record<string, Scene> = Object.fromEntries([...S, ...STAGE_SCENES, ...SIDE_SCENES].map((s) => [s.id, s]));
+const ALL = [...S, ...STAGE_SCENES, ...SIDE_SCENES];
+localizeScenes(ALL);
+export const SCENES: Record<string, Scene> = Object.fromEntries(ALL.map((s) => [s.id, s]));
