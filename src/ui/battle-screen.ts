@@ -14,6 +14,7 @@ import { music } from '../audio/music';
 import { playBattleSfx } from '../audio/sfx';
 import { showAudioSettings } from './audio-settings';
 import { isPortrait } from './orientation';
+import { RARITY_LABEL, type CardDef } from '../data/cards';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
@@ -138,12 +139,21 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   );
 
   const aimHint = h('div.aim-hint', {}, '{books} 폭격할 지점을 탭하세요');
+  // 적용 중인 카드 효과 칩 (학회 경품 추첨)
+  const chips = h('div.card-chips');
+  let chipKey = '';
+  // 추첨 창: 일시정지 창(overlay)보다 아래에 깔린다
+  const draftLayer = h('div.draft-layer');
+  draftLayer.hidden = true;
+  let draftCards: HTMLElement[] = [];
+  let draftReady = false;
+  let draftTimer = 0;
   const overlay = h('div.overlay');
   overlay.hidden = true;
 
   // 전장(캔버스와 그 위에 뜨는 보스 체력·조준 안내). 가로 화면에서는 화면 전체, 세로 화면에서는 위쪽 띠.
-  const field = h('div.battle-field', {}, canvas, bossBox, aimHint);
-  const screen = h('div.screen.battle', {}, field, top, mini, bottom, overlay);
+  const field = h('div.battle-field', {}, canvas, bossBox, aimHint, chips);
+  const screen = h('div.screen.battle', {}, field, top, mini, bottom, draftLayer, overlay);
   root.replaceChildren(screen);
 
   function setSpeed(s: number): void {
@@ -171,6 +181,64 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
         ),
       ));
     }
+  }
+
+  // ── 학회 경품 추첨 ──
+  /** 뒤집힌 봉투 3장을 깔고, 차례로 뒤집어 공개한다. 전투는 고를 때까지 멈춰 있다. */
+  function showDraft(hand: CardDef[]): void {
+    armed = null;
+    draftReady = false;
+    draftCards = hand.map((c, i) => h(`button.draft-card.r-${c.rarity}`, { style: `--i:${i}`, onclick: () => tapCard(i), title: c.name },
+      h('div.card-inner', {},
+        h('div.card-back', {}, h('span.card-seal', {}, '{envelope}'), h('span.card-q', {}, '?')),
+        h('div.card-front', {},
+          h('span.card-rarity', {}, RARITY_LABEL[c.rarity]),
+          h('span.card-icon', {}, `{${c.icon}}`),
+          h('b.card-name', {}, c.name),
+          h('span.card-desc', {}, c.desc),
+          h('i.card-flavor', {}, c.flavor),
+          c.rarity === 'legend' ? h('span.card-sparkle', {}, '{sparkle}', '{sparkle}', '{sparkle}') : null,
+        ),
+      ),
+      h('span.hotkey', {}, String(i + 1)),
+    ));
+    draftLayer.replaceChildren(h('div.draft-box', {},
+      h('h2', {}, '{envelope} 학회 경품 추첨!'),
+      h('p.muted', {}, `봉투 하나를 고르세요 · 이번 판에만 적용 (${battle.draws}/3)`),
+      h('div.draft-row', {}, ...draftCards),
+    ));
+    draftLayer.hidden = false;
+    draftLayer.classList.remove('done');
+    window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(revealAll, 1300);
+  }
+
+  function revealAll(): void {
+    window.clearTimeout(draftTimer);
+    draftReady = true;
+    draftLayer.classList.add('ready');
+  }
+
+  function tapCard(i: number): void {
+    if (paused || !battle.draft) return;
+    // 공개 연출 중에 누르면 바로 다 뒤집는다
+    if (!draftReady) return revealAll();
+    if (!battle.pickCard(i)) return;
+    draftCards.forEach((c, j) => c.classList.add(j === i ? 'chosen' : 'gone'));
+    draftLayer.classList.add('done');
+    draftTimer = window.setTimeout(() => {
+      draftLayer.hidden = true;
+      draftLayer.classList.remove('ready', 'done');
+    }, 650);
+  }
+
+  function updateChips(): void {
+    const act = battle.activeCards();
+    const key = act.map((a) => `${a.card.id}:${a.left === null ? '' : Math.ceil(a.left)}`).join(',');
+    if (key === chipKey) return;
+    chipKey = key;
+    chips.replaceChildren(...act.map((a) => h(`span.card-chip.r-${a.card.rarity}`, { title: `${a.card.name}: ${a.card.desc}` },
+      `{${a.card.icon}} ${a.card.chip}${a.left === null ? '' : ` ${Math.ceil(a.left)}s`}`)));
   }
 
   // ── 입력: 드래그로 시점 이동, 탭으로 투척 ──
@@ -217,6 +285,11 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const k = keyOf(e);
     if (k === 'escape' || k === 'p') return setPaused(!paused);
     if (paused) return;
+    if (battle.draft && !draftLayer.hidden) {
+      const di = ['1', '2', '3'].indexOf(k);
+      if (di >= 0) tapCard(di);
+      return;
+    }
     if (k === 'q') battle.brew();
     const si = SKILL_KEYS.indexOf(k);
     if (si >= 0 && skillBtns[si]) useSkill(skillBtns[si].skill);
@@ -300,7 +373,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       ctx.fillStyle = 'rgba(30,136,229,.12)';
       ctx.fillRect(0, 0, viewW, VIEW_H);
     }
+    if (battle.draft && draftLayer.hidden && !ended) showDraft(battle.draft);
     updateHud();
+    updateChips();
     if (battle.result && !ended) endBattle();
     raf = requestAnimationFrame(frame);
   }
@@ -347,6 +422,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   function endBattle(): void {
     ended = true;
+    draftLayer.hidden = true;
     const win = battle.result === 'win';
     const res = opt.onEnd({ win, baseHpRatio: battle.ally.hp / battle.ally.maxHp, killReward: battle.killReward, kills: battle.kills, seconds: battle.t, timeout: battle.timedOut });
     window.setTimeout(() => {
@@ -370,6 +446,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   function cleanup(): void {
     cancelAnimationFrame(raf);
+    window.clearTimeout(draftTimer);
     ro.disconnect();
     window.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVis);

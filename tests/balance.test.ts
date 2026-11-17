@@ -3,20 +3,23 @@ import { playOnce, runCampaign } from '../src/sim/bot';
 import { newSave } from '../src/sim/progression';
 import { STAGES, STAGE_BY_ID } from '../src/data/stages';
 
+// 카드 추첨은 운 요소라 끄고, 기본 난이도 곡선만 잰다 (카드는 tests/cards.test.ts에서 따로 검증)
+const NO_CARDS = { cards: false };
+
 // 밸런스 회귀 테스트: 자동 플레이 봇 기준의 난이도 곡선을 지킨다.
 describe('밸런스', () => {
   it('업그레이드 없이 1-1은 클리어할 수 있다', () => {
-    expect(playOnce(newSave(), STAGE_BY_ID['1-1']!, 1).win).toBe(true);
+    expect(playOnce(newSave(), STAGE_BY_ID['1-1']!, 1, NO_CARDS).win).toBe(true);
   });
 
   it('성장 없이 2챕터 보스는 이길 수 없다', () => {
     const s = newSave();
     for (const st of STAGES.filter((x) => x.order < STAGE_BY_ID['2-10']!.order)) s.stars[st.id] = 1;
-    expect(playOnce(s, STAGE_BY_ID['2-10']!, 1).win).toBe(false);
+    expect(playOnce(s, STAGE_BY_ID['2-10']!, 1, NO_CARDS).win).toBe(false);
   });
 
   it('성장하며 진행하면 캠페인을 끝까지 깰 수 있다', () => {
-    const { runs, stuckAt } = runCampaign(newSave(), 15, 7);
+    const { runs, stuckAt } = runCampaign(newSave(), 15, 7, STAGES, NO_CARDS);
     expect(stuckAt).toBeNull();
     expect(runs).toHaveLength(STAGES.length);
     // 1챕터는 튜토리얼 구간: 스테이지마다 2회 안에 깬다

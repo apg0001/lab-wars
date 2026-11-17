@@ -198,7 +198,9 @@ export class AccountApi {
 export function progressScore(s: SaveData): number {
   const stars = Object.values(s.stars).reduce((a, b) => a + b, 0);
   const growth = Object.values(s.units).reduce((a, u) => a + u.level + (u.tier - 1) * 15, 0)
-    + Object.values(s.facilities).reduce((a, b) => a + b, 0) + s.subs.length * 5;
+    + Object.values(s.facilities).reduce((a, b) => a + b, 0) + s.subs.length * 5
+    // 뽑기에 연구비를 써도 모은 꾸미기가 다른 기기 저장에 밀려 사라지지 않게
+    + (s.cosmetics?.owned.length ?? 0);
   return (stars + s.endless * 2) * 1e6 + growth * 1e3 + Math.min(999, Math.floor(s.money / 100));
 }
 

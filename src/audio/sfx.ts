@@ -1,5 +1,6 @@
 import type { BattleEvent } from '../sim/battle';
 import type { SkillId } from '../data/upgrades';
+import type { CardRarity } from '../data/cards';
 import { audio, mtof, type VoiceOut } from './engine';
 
 /**
@@ -198,6 +199,28 @@ export const sfx = {
     });
   },
 
+  /** 학회 경품 추첨: 봉투 바스락 + 딩동 */
+  draft(): void {
+    const o = audio.sfxOut({ vol: 0.9 }, 1);
+    if (!o) return;
+    audio.noise(o, { filter: 'bandpass', freq: 3200, q: 0.8, dur: 0.18, gain: 0.08 });
+    audio.tone(o, { type: 'triangle', f0: mtof(79), dur: 0.25, gain: 0.08, at: 0.12 });
+    audio.tone(o, { type: 'triangle', f0: mtof(76), dur: 0.35, gain: 0.08, at: 0.3 });
+  },
+
+  /** 카드 고름: 등급이 높을수록 화려하게, 저주는 낮게 */
+  card(rarity: CardRarity): void {
+    const o = audio.sfxOut({ vol: 1 }, 1.4);
+    if (!o) return;
+    if (rarity === 'curse') {
+      [64, 63, 58].forEach((m, i) => audio.tone(o, { type: 'sawtooth', f0: mtof(m - 12), dur: 0.3, gain: 0.07, lp: 900, at: i * 0.14 }));
+      return;
+    }
+    const notes = rarity === 'legend' ? [72, 76, 79, 84, 88] : rarity === 'rare' ? [72, 76, 79, 84] : [72, 79];
+    notes.forEach((m, i) => audio.tone(o, { type: 'triangle', f0: mtof(m), dur: 0.22, gain: 0.08, at: i * 0.07 }));
+    if (rarity === 'legend') for (let i = 0; i < 6; i++) audio.tone(o, { f0: mtof(96 + (i % 3) * 3), dur: 0.08, gain: 0.03, at: 0.35 + i * 0.06 });
+  },
+
   rush(): void {
     const o = audio.sfxOut({ vol: 0.9 }, 0.9);
     if (!o) return;
@@ -255,6 +278,8 @@ export function playBattleSfx(e: BattleEvent, camX: number, viewW: number): void
     case 'skill': sfx.skill(e.id); break;
     case 'bossSpawn': case 'alarm': sfx.bossSpawn(); break;
     case 'rush': sfx.rush(); break;
+    case 'draft': sfx.draft(); break;
+    case 'card': sfx.card(e.rarity); break;
     case 'rage': sfx.rage(); break;
     case 'timeWarn': sfx.timeWarn(); break;
     case 'end': if (e.result === 'win') sfx.win(); else sfx.lose(); break;
