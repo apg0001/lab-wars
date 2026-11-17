@@ -10,7 +10,7 @@ import { keyOf } from './keys';
 import { fullscreenButton, isFullscreen, isStandalone, toggleFullscreen } from './fullscreen';
 import { Juice } from '../render/juice';
 import { audio } from '../audio/engine';
-import { music } from '../audio/music';
+import { music, themeTracks } from '../audio/music';
 import { playBattleSfx } from '../audio/sfx';
 import { showAudioSettings } from './audio-settings';
 import { isPortrait } from './orientation';
@@ -82,7 +82,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   let raf = 0;
   let last = performance.now();
   const juice = new Juice();
-  music.play(opt.stage.theme ? 'spooky' : 'battle');
+  music.play(themeTracks(opt.stage.theme)[0]);
 
   // ── HUD ──
   const allyBar = h('div.hp-fill.ally');
@@ -90,6 +90,11 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const allyTxt = h('span.hp-txt');
   const enemyTxt = h('span.hp-txt');
   const timeTxt = h('span.time');
+  // 외전 4~7 특수 규칙의 지금 상태 (적 속도·카페인 충전·다음 정전·다음 복제)
+  const mods = opt.stage.mods;
+  const modIcon = mods?.countdown ? 'hourglass' : mods?.burnRate ? 'fire' : mods?.blip ? 'bolt' : mods?.copy ? 'robot' : null;
+  const modTxt = h('span.mod-val');
+  const modChip = modIcon ? h('span.mod-chip', {}, iconEl(modIcon), modTxt) : null;
   const speedBtn = h('button.icon-btn', { title: tr('배속', 'Speed'), onclick: () => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!) }, '');
   const pauseBtn = h('button.icon-btn', { title: tr('일시정지', 'Pause'), onclick: () => setPaused(true) }, '{pause}');
   const mini = h('div.minimap');
@@ -101,7 +106,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   const top = h('div.hud-top', {},
     h('div.hp-box', {}, h('span.hp-label', {}, iconEl('lab'), tr('연구실', 'Lab')), h('div.hp-track', {}, allyBar), allyTxt),
-    h('div.hud-mid', {}, h('div.stage-tag', {}, `${opt.stage.id} ${opt.stage.name}`), timeTxt),
+    h('div.hud-mid', {}, h('div.stage-tag', {}, `${opt.stage.id} ${opt.stage.name}`), timeTxt, modChip),
     h('div.hp-box.right', {}, h('span.hp-label', {}, tr('교수실', 'Prof'), iconEl('prof')), h('div.hp-track', {}, enemyBar), enemyTxt),
     h('div.hud-btns', {}, speedBtn, pauseBtn, fullscreenButton(() => screen)),
   );
@@ -414,7 +419,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     for (const e of battle.drainEvents()) {
       juice.onEvent(e);
       playBattleSfx(e, camX, viewW);
-      if (e.type === 'bossSpawn') music.play(opt.stage.theme ? 'spookyBoss' : 'boss');
+      if (e.type === 'bossSpawn') music.play(themeTracks(opt.stage.theme)[1]);
       if (e.type === 'end') music.stop(0.4);
     }
     const k = canvas.width / viewW;
@@ -460,6 +465,14 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const sec = left === null ? Math.floor(battle.t) : Math.ceil(left);
     setText(timeTxt, `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`);
     timeTxt.classList.toggle('low', left !== null && left <= 30 && !battle.result);
+    if (modChip) {
+      const soon = (at: number): string => `${Math.max(0, Math.ceil(at - battle.t))}`;
+      setText(modTxt, mods?.countdown ? tr(` 적 ×${battle.countdownMul.toFixed(2)}`, ` Foes ×${battle.countdownMul.toFixed(2)}`)
+        : mods?.burnRate ? tr(` 충전 ×${battle.burnMul.toFixed(2)}`, ` Charge ×${battle.burnMul.toFixed(2)}`)
+        : mods?.blip ? tr(` 정전 ${soon(battle.nextBlip)}초`, ` Blip in ${soon(battle.nextBlip)}s`)
+        : tr(` 복제 ${soon(battle.nextCopy)}초`, ` Copy in ${soon(battle.nextCopy)}s`));
+      modChip.classList.toggle('low', !!mods?.blip && battle.nextBlip - battle.t <= (mods.blip.warn ?? 2));
+    }
     setStyle(cafFill, 'width', pct(battle.caffeine / battle.caffeineMax));
     setText(cafNum, ` ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`);
     const bc = battle.brewCost();

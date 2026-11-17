@@ -1,11 +1,12 @@
 import { audio, mtof } from './engine';
+import type { Theme } from '../data/stages';
 
 /**
  * 절차적 배경음악. 16분음표 단위 스케줄러가 조금 앞서 음을 예약한다.
  * 몰입감은 살리되 귀가 피곤하지 않게: 부드러운 삼각파·저역 통과, 낮은 드럼.
  */
 
-export type TrackId = 'lobby' | 'battle' | 'boss' | 'spooky' | 'spookyBoss';
+export type TrackId = 'lobby' | 'battle' | 'boss' | 'spooky' | 'spookyBoss' | 'tense' | 'neon';
 
 interface Track {
   bpm: number;
@@ -91,7 +92,41 @@ const TRACKS: Record<TrackId, Track> = {
     arpOct: 24, swing: 0,
     padGain: 0.045, arpGain: 0.028, bassGain: 0.14, drumGain: 0.6, arpLp: 2400,
   },
+  // 외전 4·6·7: 마감에 쫓기는 빠른 8비트 느낌. Em – C – D – B7, 하이햇이 초침처럼 몰아친다
+  tense: {
+    bpm: 138,
+    chords: [[40, 55, 59, 64], [36, 55, 60, 64], [38, 54, 57, 62], [35, 54, 57, 63]],
+    bass: [1, 0, 3, 0, 1, 0, 3, 0, 1, 0, 3, 0, 1, 0, 2, 0],
+    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0],
+    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    hat: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    arp: [0, 1, 2, _, 0, 1, 2, _, 3, 2, 1, _, 3, 2, 1, _],
+    arpOct: 12, swing: 0,
+    padGain: 0.03, arpGain: 0.035, bassGain: 0.13, drumGain: 0.55, arpLp: 2800,
+  },
+  // 외전 5: 네온 신스웨이브. Am – F – C – G를 느긋한 16비트 아르페지오로
+  neon: {
+    bpm: 104,
+    chords: [[45, 57, 60, 64], [41, 57, 60, 65], [48, 55, 60, 64], [43, 55, 59, 62]],
+    bass: [1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 2, 1],
+    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    hat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+    arp: [0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3],
+    arpOct: 24, swing: 0,
+    padGain: 0.05, arpGain: 0.028, bassGain: 0.11, drumGain: 0.5, arpLp: 3600,
+  },
 };
+
+/** 전장 테마별 [전투, 보스] 배경음악 */
+export function themeTracks(theme?: Theme): [TrackId, TrackId] {
+  switch (theme) {
+    case 'tenure': case 'haunted': case 'gloom': return ['spooky', 'spookyBoss'];
+    case 'ai': return ['neon', 'boss'];
+    case 'deadline': case 'startup': case 'blackout': return ['tense', 'boss'];
+    default: return ['battle', 'boss'];
+  }
+}
 
 class MusicPlayer {
   private current: TrackId | null = null;

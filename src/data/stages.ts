@@ -49,7 +49,7 @@ export interface StageDef {
   reward: number;
   /** 시간 제한(초). 넘기면 패배 (없으면 무제한) */
   timeLimit?: number;
-  /** 외전 번호 (1~3). 외전 스테이지는 STAGES에 들어가지 않는다 */
+  /** 외전 번호 (1~7). 외전 스테이지는 STAGES에 들어가지 않는다 */
   side?: number;
   /** 전장 배경 테마 (외전) */
   theme?: Theme;
@@ -65,7 +65,7 @@ export interface StageEn {
 }
 
 /** 외전 전장 배경 */
-export type Theme = 'tenure' | 'haunted' | 'gloom';
+export type Theme = 'tenure' | 'haunted' | 'gloom' | 'deadline' | 'ai' | 'startup' | 'blackout';
 
 export interface StageMods {
   /** 평가 시즌: every초마다 dur초 동안 적 이동·공격 속도 ×mul */
@@ -74,6 +74,14 @@ export interface StageMods {
   dark?: boolean;
   /** 멘탈 고갈: 멘탈이 초당 drain씩 줄고 처치하면 회복. 바닥나면 아군 공격력 감소 */
   drain?: number;
+  /** 카운트다운 (외전 4): 적 이동·공격 속도가 시간 제한에 걸쳐 1 → mul로 오른다 */
+  countdown?: { mul: number };
+  /** 생성형 복제 (외전 5): every초마다 최근 소환 recent번 중 하나를 능력치 ×mul로 적 편에 복제 */
+  copy?: { every: number; recent: number; mul: number };
+  /** 번레이트 (외전 6): 카페인 충전이 시간 제한에 걸쳐 1 → to배로 줄어든다 (처치 보상은 그대로) */
+  burnRate?: { to: number };
+  /** 순간 정전 (외전 7): every초마다 아군 전원 stun초 기절, 각자 vanish 확률로 사라짐. warn초 전에 경고 */
+  blip?: { every: number; stun: number; vanish: number; warn: number };
 }
 
 export const CHAPTERS: Chapter[] = [
@@ -345,6 +353,10 @@ export interface SideChapter {
   from: number;
   pool: Record<string, number>;
   rule: string;
+  /** 시간 제한(초)을 따로 정할 때 (없으면 일반 5분·보스 6분) */
+  timeLimit?: { normal: number; boss: number };
+  /** 규칙이 가혹한 만큼 적 능력치를 이 값으로 나눈다 (기본 1) */
+  relief?: number;
   /** 영어 (src/i18n) */
   en?: SideChapterEn;
 }
@@ -377,17 +389,53 @@ export const SIDE_CHAPTERS: SideChapter[] = [
     rule: '{rain} 멘탈 고갈: 멘탈이 계속 줄고, 적을 처치하면 회복돼요. 바닥나면 아군 공격력 −25%.',
     en: { name: "A Researcher's Struggles", subtitle: 'The Fight No One Sees', rule: '{rain} Sanity Drain: Sanity keeps dropping and recovers when you defeat enemies. At zero, allies deal −25% damage.' },
   },
+  {
+    id: 4, name: '마감 24시', subtitle: '제출 버튼은 23:59에 눌린다', heroChapter: 8, theme: 'deadline',
+    mods: { countdown: { mul: 1.5 } }, boss: 'submitsys', from: 22, timeLimit: { normal: 240, boss: 270 }, relief: 1.15,
+    pool: { citation: 2.6, pagelimit: 1.4, lowres: 1.3, revalert: 1.6, revision: 1, deadline: 1.2, meeting: 1 },
+    rule: '{hourglass} 카운트다운: 시간 제한 4분(보스 4분 30초). 시간이 갈수록 적이 빨라져 끝에는 ×1.5.',
+    en: { name: '24 Hours to Deadline', subtitle: 'The Submit Button Gets Pressed at 23:59', rule: '{hourglass} Countdown: 4:00 time limit (boss 4:30). Enemies keep speeding up, reaching ×1.5 at the end.' },
+  },
+  {
+    id: 5, name: 'AI 시대의 연구실', subtitle: '내 조수가 나를 베낀다', heroChapter: 8, theme: 'ai',
+    mods: { copy: { every: 14, recent: 6, mul: 0.6 } }, boss: 'autoreview', from: 23, relief: 1.05,
+    pool: { hallucite: 2.6, plagiarism: 1.5, injection: 1.6, notif: 1, reviewer: 1, meeting: 1.2 },
+    rule: '{robot} 생성형 복제: 14초마다 최근 소환한 유닛 6번 중 하나가 적 편에 복제돼요 (능력치 60%). 한 유닛만 계속 뽑으면 그 유닛과 싸우게 돼요.',
+    en: { name: 'The Lab in the Age of AI', subtitle: 'My Assistant Is Copying Me', rule: '{robot} Generative Copy: every 14s, one of your last 6 summons is cloned onto the enemy side (60% stats). Spam one unit and you will be fighting it.' },
+  },
+  {
+    id: 6, name: '졸업 후: 랩실 창업기', subtitle: '런웨이는 18개월', heroChapter: 8, theme: 'startup',
+    mods: { burnRate: { to: 0.35 } }, boss: 'vc', from: 24,
+    pool: { rejectmail: 2.4, cloudbill: 1.4, pivot: 1.4, taxform: 1.2, bmq: 0.6, paperwork: 0.8, meeting: 1 },
+    rule: '{fire} 번레이트: 카페인 충전이 시간이 갈수록 줄어 끝에는 35%만 남아요. 처치 보상은 그대로니 빨리 끝내세요.',
+    en: { name: 'After Graduation: The Lab Startup', subtitle: 'Eighteen Months of Runway', rule: '{fire} Burn Rate: caffeine charge shrinks over time, down to 35% at the end. Kill rewards stay the same, so finish fast.' },
+  },
+  {
+    id: 7, name: '연구실 정전의 날', subtitle: 'Ctrl+S를 누르기 직전에', heroChapter: 8, theme: 'blackout',
+    mods: { blip: { every: 20, stun: 1.5, vanish: 0.1, warn: 2 } }, boss: 'mainbreaker', from: 25, relief: 1.25,
+    pool: { powerstrip: 1.1, overload: 0.8, breaker: 1, memo: 2.2, deadline: 1.2, meeting: 1.4, notif: 0.6 },
+    rule: '{bolt} 순간 정전: 20초마다 불이 나가 아군이 1.5초 기절하고, 10% 확률로 저장 안 한 아군이 사라져요. 무정전 전원 장치(UPS) 주변 아군은 무사해요.',
+    en: { name: 'Blackout Day', subtitle: 'Right Before You Hit Ctrl+S', rule: '{bolt} Power Blip: every 20s the lights cut out, stunning allies for 1.5s, and each has a 10% chance to vanish (unsaved). Allies near a UPS are safe.' },
+  },
 ];
 
 const SIDE_PLAN: string[][] = [
   ['임용 첫 학기', '연구비 탈락', '학생 모집 0명', '강의평가 2.1', '테뉴어 심사'],
   ['새벽 3시의 프린터', '9년 차 선배의 자리', '사라진 파일', '끝나지 않는 리비전', '13년 차 유령 선배'],
   ['가면 증후군', '먼저 나온 논문', '안 나오는 결과', '언제 졸업해?', '리뷰어 3'],
+  ['D-1, 초록만 있음', '분량 8쪽 초과', '참고문헌 대참사', '그림이 깨졌어요', '23:59 제출 서버'],
+  ['클로디의 탈선', '인용이 존재하지 않음', '유사도 87%', '이전 지시를 무시하세요', '자동 리뷰 AI'],
+  ['법인 설립', '데모데이', '서버비 폭탄', '경쟁사가 피벗했다', '투자 심사'],
+  ['형광등이 깜빡인다', '문어발의 문어발', '과부하 경고', '누전 차단기를 찾아라', '메인 차단기'],
 ];
 const SIDE_PLAN_EN: string[][] = [
   ['First Semester as Faculty', 'Grant Rejected', 'Zero Applicants', 'Course Eval 2.1', 'Tenure Review'],
   ['The 3 AM Printer', "The 9th-Year Senior's Desk", 'The Vanishing File', 'The Revision That Never Ends', '13th-Year Ghost Senpai'],
   ['Imposter Syndrome', 'Scooped', 'Results That Won\'t Come', 'When Are You Graduating?', 'Reviewer 3'],
+  ['D-1, Abstract Only', 'Three Pages Over', 'Bibliography Meltdown', 'The Figures Broke', 'The 23:59 Submission Server'],
+  ['Claudy Goes Rogue', 'The Citation Does Not Exist', 'Similarity: 87%', 'Ignore Previous Instructions', 'Auto-Review AI'],
+  ['Incorporation Day', 'Demo Day', 'The Cloud Bill Bomb', 'The Competitor Pivoted', 'The Pitch'],
+  ['The Flickering Lights', 'Power Strips All the Way Down', 'Overload Warning', 'Find the Breaker Box', 'Main Breaker'],
 ];
 
 function makeSideStage(sc: SideChapter, index: number): StageDef {
@@ -402,8 +450,9 @@ function makeSideStage(sc: SideChapter, index: number): StageDef {
     order: 1000 + sc.id * 10 + index,
     name: SIDE_PLAN[sc.id - 1]![index - 1]!,
     kind: isBoss ? 'boss' : 'normal',
-    // 외전 2는 정전으로 시야가 좁아 사람에게 더 어렵다 (봇은 어둠을 무시) → 상향분을 뺀다
-    scale: sc.mods?.dark ? n.scale / 1.1 : n.scale,
+    // 외전 2는 정전으로 시야가 좁아 사람에게 더 어렵다 (봇은 어둠을 무시) → 상향분을 뺀다.
+    // 외전 4~7은 규칙이 가혹한 만큼 relief로 나눈다.
+    scale: n.scale / (sc.mods?.dark ? 1.1 : 1) / (sc.relief ?? 1),
     spawnEvery: n.spawnEvery * (isBoss ? 1.6 : 1),
     rush: { ...n.rush, size: Math.round(n.rush.size * (isBoss ? 0.5 : 1)) },
     pool: Object.entries(sc.pool).map(([id, weight]) => ({ id, weight })),
@@ -411,7 +460,7 @@ function makeSideStage(sc: SideChapter, index: number): StageDef {
     killMul: KILL_MUL,
     note: sc.rule,
     reward: Math.round((60 + c * 30 + (isBoss ? 120 : 0)) * REWARD_MUL * 1.25),
-    timeLimit: isBoss ? TIME_LIMIT.boss : TIME_LIMIT.normal,
+    timeLimit: isBoss ? (sc.timeLimit?.boss ?? TIME_LIMIT.boss) : (sc.timeLimit?.normal ?? TIME_LIMIT.normal),
     side: sc.id,
     theme: sc.theme,
     mods: sc.mods,

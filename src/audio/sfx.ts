@@ -205,6 +205,15 @@ export const sfx = {
     audio.noise(o, { filter: 'lowpass', freq: 1400, freqEnd: 200, dur: 0.7, gain: 0.35 });
   },
 
+  /** 순간 정전: 전기가 꺼지며 낮아지는 웅— 소리와 딸깍 */
+  blip(): void {
+    const o = audio.sfxOut({ vol: 1 }, 1.4);
+    if (!o) return;
+    audio.noise(o, { filter: 'highpass', freq: 2500, dur: 0.03, gain: 0.2 });
+    audio.tone(o, { type: 'sawtooth', f0: 120, f1: 30, dur: 1.1, gain: 0.14, lp: 400 });
+    audio.tone(o, { type: 'square', f0: 60, f1: 20, dur: 0.9, gain: 0.06, lp: 300, detune: 6 });
+  },
+
   /** 남은 시간 경고: 똑딱 두 번 */
   timeWarn(): void {
     const o = audio.sfxOut({ vol: 0.9 }, 0.8);
@@ -299,7 +308,9 @@ export function playBattleSfx(e: BattleEvent, camX: number, viewW: number): void
     case 'draft': sfx.draft(); break;
     case 'card': sfx.card(e.rarity); break;
     case 'rage': sfx.rage(); break;
-    case 'timeWarn': sfx.timeWarn(); break;
+    case 'timeWarn': case 'blipWarn': sfx.timeWarn(); break;
+    case 'blip': sfx.blip(); break;
+    case 'copy': sfx.summon(); break;
     case 'end': if (e.result === 'win') sfx.win(); else sfx.lose(); break;
   }
 }

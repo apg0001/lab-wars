@@ -59,6 +59,7 @@ export function statTags(st: CombatStats): string {
   if (st.split) t.push(tr(`분열 ×${st.split.count}`, `Splits ×${st.split.count}`));
   if (st.grow) t.push(tr(`성장 ×${st.grow.max}`, `Grows ×${st.grow.max}`));
   if (st.respawn) t.push(tr('재출현', 'Respawns'));
+  if (st.blipGuard) t.push(tr(`{bolt} 정전 보호 ${st.blipGuard}`, `{bolt} Blip guard ${st.blipGuard}`));
   if (st.caffeineDrain) t.push(tr(`{coffee} −${st.caffeineDrain}/타`, `{coffee} −${st.caffeineDrain}/hit`));
   return t.join(' · ');
 }

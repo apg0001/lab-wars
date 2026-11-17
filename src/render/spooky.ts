@@ -1,14 +1,15 @@
 /**
- * 외전용 으스스한 배경. 전투(바닥 y=440, 가로 스크롤)와 컷신(바닥 y=345)에서 같이 쓴다.
+ * 외전 배경 (외전 1~3은 여기, 4~7은 side-backdrops.ts). 전투(바닥 y=440, 가로 스크롤)와 컷신(바닥 y=345)에서 같이 쓴다.
  * 무작위 대신 시간 기반 해시를 써서 프레임마다 깜빡임이 일정하게 이어진다.
  */
 import type { Theme } from '../data/stages';
 import { getLang, tr } from '../i18n';
 import { INK } from './characters';
+import { drawSideBackdrop } from './side-backdrops';
 
 type Ctx = CanvasRenderingContext2D;
 
-const hash = (n: number): number => {
+export const hash = (n: number): number => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
@@ -34,13 +35,16 @@ export function flicker(t: number, seed = 0): number {
  * 테마 배경을 그린다.
  * @param w 화면 너비, @param ground 바닥 y, @param h 화면 높이, @param scroll 원경 스크롤(px), @param t 시간(초)
  */
-export function drawThemeBackdrop(ctx: Ctx, theme: Theme, w: number, ground: number, h: number, scroll: number, t: number): void {
-  if (theme === 'haunted') haunted(ctx, w, ground, h, scroll, t);
-  else if (theme === 'tenure') tenure(ctx, w, ground, h, scroll, t);
-  else gloom(ctx, w, ground, h, scroll, t);
+export function drawThemeBackdrop(ctx: Ctx, theme: Theme, w: number, ground: number, h: number, scroll: number, t: number, progress = 0.35): void {
+  switch (theme) {
+    case 'haunted': haunted(ctx, w, ground, h, scroll, t); break;
+    case 'tenure': tenure(ctx, w, ground, h, scroll, t); break;
+    case 'gloom': gloom(ctx, w, ground, h, scroll, t); break;
+    default: drawSideBackdrop(ctx, theme, w, ground, h, scroll, t, progress);
+  }
 }
 
-function sky(ctx: Ctx, w: number, ground: number, c0: string, c1: string): void {
+export function sky(ctx: Ctx, w: number, ground: number, c0: string, c1: string): void {
   const g = ctx.createLinearGradient(0, 0, 0, ground);
   g.addColorStop(0, c0);
   g.addColorStop(1, c1);
@@ -48,7 +52,7 @@ function sky(ctx: Ctx, w: number, ground: number, c0: string, c1: string): void 
   ctx.fillRect(-20, -20, w + 40, ground + 20);
 }
 
-function floor(ctx: Ctx, w: number, ground: number, h: number, scroll: number, top: string, bottom: string, line = 'rgba(255,255,255,.05)'): void {
+export function floor(ctx: Ctx, w: number, ground: number, h: number, scroll: number, top: string, bottom: string, line = 'rgba(255,255,255,.05)'): void {
   const fg = ctx.createLinearGradient(0, ground, 0, h);
   fg.addColorStop(0, top);
   fg.addColorStop(1, bottom);
