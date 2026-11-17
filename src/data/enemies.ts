@@ -35,6 +35,23 @@ export const ENEMIES: EnemyDef[] = [
     knockback: { chance: 0.15, dist: 30 },
     look: { kind: 'notif', color: '#ffeb3b', accent: '#f44336' } },
 
+  // 외전 전용
+  { id: 'evalform', name: '강의평가 2.1점', role: '공중 원거리', reward: 11,
+    hp: 75, atk: 13, range: 120, speed: 55, interval: 1.2, flying: true,
+    look: { kind: 'plane', color: '#ffcdd2', accent: '#b71c1c' } },
+  { id: 'ghost', name: '졸업 못 한 선배 유령', role: '돌격', reward: 12,
+    hp: 170, atk: 17, range: 22, speed: 58, interval: 0.9,
+    look: { kind: 'ghost', color: '#e8eaf6', accent: '#7986cb' } },
+  { id: 'printer3am', name: '새벽 3시의 프린터', role: '범위 원거리', reward: 14,
+    hp: 160, atk: 17, range: 140, speed: 30, interval: 1.7, splash: 30,
+    look: { kind: 'printer', color: '#cfd8dc', accent: '#ff1744' } },
+  { id: 'imposter', name: '가면 증후군', role: '표준 근접', reward: 12,
+    hp: 230, atk: 20, range: 22, speed: 46, interval: 1.0,
+    look: { kind: 'ghost', color: '#37474f', accent: '#eceff1', scale: 1.1 } },
+  { id: 'scooped', name: '먼저 나온 논문', role: '탱커', reward: 22,
+    hp: 560, atk: 30, range: 26, speed: 30, interval: 1.4,
+    look: { kind: 'binder', color: '#c62828', scale: 1.2 } },
+
   // 보스: 챕터 마지막 스테이지에 등장한다. 능력치는 스테이지 배율을 받지 않는다.
   { id: 'prof1', name: '랩미팅 교수님', role: '보스', reward: 120,
     hp: 2000, atk: 36, range: 30, speed: 20, interval: 1.6,
@@ -64,6 +81,19 @@ export const ENEMIES: EnemyDef[] = [
     hp: 9500, atk: 80, range: 36, speed: 16, interval: 1.6,
     boss: { summon: { id: 'meeting', every: 10, count: 3 }, stomp: { dmg: 55, radius: 140, every: 7 } },
     look: { kind: 'professor', color: '#212121', accent: '#ffd54f', scale: 2.3 } },
+  // 외전 보스
+  { id: 'tenure', name: '테뉴어 심사위원회', role: '외전 보스', reward: 450,
+    hp: 6200, atk: 70, range: 34, speed: 17, interval: 1.6,
+    boss: { summon: { id: 'evalform', every: 9, count: 3 }, stomp: { dmg: 55, radius: 130, every: 7 } },
+    look: { kind: 'professor', color: '#3e2723', accent: '#ffd54f', scale: 2.3 } },
+  { id: 'ghost13', name: '13년 차 유령 선배', role: '외전 보스', reward: 480,
+    hp: 6600, atk: 72, range: 34, speed: 20, interval: 1.5,
+    boss: { summon: { id: 'ghost', every: 8, count: 3 }, stomp: { dmg: 55, radius: 130, every: 7 } },
+    look: { kind: 'ghost', color: '#e8eaf6', accent: '#5c6bc0', scale: 2.6 } },
+  { id: 'reviewer3', name: '리뷰어 3', role: '외전 보스', reward: 520,
+    hp: 7200, atk: 76, range: 36, speed: 18, interval: 1.6,
+    boss: { summon: { id: 'revision', every: 9, count: 2 }, stomp: { dmg: 60, radius: 135, every: 7 } },
+    look: { kind: 'reviewer', color: '#4a148c', accent: '#ffd54f', scale: 2.3 } },
 ];
 
 export const ENEMY_BY_ID: Record<string, EnemyDef> = Object.fromEntries(ENEMIES.map((e) => [e.id, e]));

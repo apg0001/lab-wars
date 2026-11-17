@@ -1,7 +1,8 @@
-import { ALLY_FRONT, ENEMY_FRONT, GROUND_Y, WORLD_W, type Battle, type Base, type Fighter, type Projectile } from '../sim/battle';
+import { ALLY_FRONT, BASE_W, ENEMY_FRONT, GROUND_Y, WORLD_W, type Battle, type Base, type Fighter, type Projectile } from '../sim/battle';
 import { RANGED_THRESHOLD } from '../data/types';
 import { drawCharacter, INK } from './characters';
 import type { Juice } from './juice';
+import { drawDarkness, drawThemeBackdrop, type Light } from './spooky';
 
 /** 기준 화면 크기 (16:9). 더 넓은 화면에서는 세로를 고정하고 가로로 더 보여준다. */
 export const VIEW_W = 960;
@@ -21,7 +22,8 @@ type Ctx = CanvasRenderingContext2D;
 
 export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juice?: Juice): void {
   ctx.save();
-  drawBackdrop(ctx, camX);
+  if (b.stage.theme) drawThemeBackdrop(ctx, b.stage.theme, viewW, GROUND_Y, VIEW_H, camX * 0.5, time);
+  else drawBackdrop(ctx, camX);
   ctx.translate(-camX, 0);
   drawPrinterRange(ctx, ALLY_FRONT + b.loadout.printerRange);
   withBaseShake(ctx, b.ally, () => drawLab(ctx, b.ally, time));
@@ -34,8 +36,27 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   juice?.draw(ctx);
   drawFx(ctx, b, false);
   ctx.restore();
+  if (b.stage.mods?.dark) drawDarkness(ctx, viewW, VIEW_H, battleLights(b, camX), time);
   drawMood(ctx, b, time, juice);
   drawFx(ctx, b, true);
+}
+
+/** 정전 외전: 아군, 아군 투사체, 연구실, 교수실 주변만 보인다 */
+function battleLights(b: Battle, camX: number): Light[] {
+  const lights: Light[] = [
+    { x: ALLY_FRONT - BASE_W / 2 - camX, y: GROUND_Y - 110, r: 300 },
+    { x: ENEMY_FRONT + BASE_W / 2 - camX, y: GROUND_Y - 120, r: 170 },
+  ];
+  for (const f of b.fighters) {
+    if (f.side !== 'ally' || f.dead) continue;
+    lights.push({ x: f.x - camX, y: b.fy(f) - 30, r: 135 * (f.look.scale ?? 1) });
+  }
+  for (const p of b.projectiles) {
+    if (p.side !== 'ally') continue;
+    const k = Math.min(1, p.t / p.dur);
+    lights.push({ x: p.x0 + (p.x1 - p.x0) * k - camX, y: p.y0 + (p.y1 - p.y0) * k, r: 45 });
+  }
+  return lights;
 }
 
 /** 건물이 맞으면 잠깐 흔들린다. */
@@ -51,6 +72,20 @@ function withBaseShake(ctx: Ctx, base: Base, draw: () => void): void {
 function drawMood(ctx: Ctx, b: Battle, time: number, juice?: Juice): void {
   if (b.freezeT > 0) {
     ctx.fillStyle = `rgba(129,212,250,${0.1 * Math.min(1, b.freezeT)})`;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
+  if (b.frenzyT > 0) {
+    // 평가 시즌: 붉은 테두리가 맥박친다
+    const a = 0.18 + 0.12 * Math.sin(time * 8);
+    const g = ctx.createRadialGradient(viewW / 2, VIEW_H / 2, VIEW_H * 0.4, viewW / 2, VIEW_H / 2, viewW * 0.7);
+    g.addColorStop(0, 'rgba(183,28,28,0)');
+    g.addColorStop(1, `rgba(183,28,28,${a * Math.min(1, b.frenzyT)})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
+  if (b.broken) {
+    // 멘탈 붕괴: 화면이 잿빛으로 가라앉는다
+    ctx.fillStyle = 'rgba(55,71,79,.28)';
     ctx.fillRect(0, 0, viewW, VIEW_H);
   }
   if (b.hasteT > 0) {
@@ -130,7 +165,7 @@ function drawBackdrop(ctx: Ctx, camX: number): void {
     ctx.lineTo(x - 30, VIEW_H);
     ctx.stroke();
   }
-  for (const y of [470, 505]) {
+  for (const y of [GROUND_Y + 30, GROUND_Y + 65]) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(viewW, y);

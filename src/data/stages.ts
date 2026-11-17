@@ -38,6 +38,24 @@ export interface StageDef {
   /** 스테이지 특징 한 줄 설명 */
   note?: string;
   reward: number;
+  /** 외전 번호 (1~3). 외전 스테이지는 STAGES에 들어가지 않는다 */
+  side?: number;
+  /** 전장 배경 테마 (외전) */
+  theme?: Theme;
+  /** 특수 규칙 (외전) */
+  mods?: StageMods;
+}
+
+/** 외전 전장 배경 */
+export type Theme = 'tenure' | 'haunted' | 'gloom';
+
+export interface StageMods {
+  /** 평가 시즌: every초마다 dur초 동안 적 이동·공격 속도 ×mul */
+  frenzy?: { every: number; dur: number; mul: number };
+  /** 정전: 아군 주변만 보인다 (그리기 전용) */
+  dark?: boolean;
+  /** 멘탈 고갈: 멘탈이 초당 drain씩 줄고 처치하면 회복. 바닥나면 아군 공격력 감소 */
+  drain?: number;
 }
 
 export const CHAPTERS: Chapter[] = [
@@ -116,6 +134,17 @@ function poolAt(c: number, kind: StageKind): { id: string; weight: number }[] {
     });
 }
 
+/** 곡선 위치 c에서의 기본 수치 (외전·무한 모드도 같이 쓴다) */
+export function numbersAt(c: number): Pick<StageDef, 'scale' | 'enemyBaseHp' | 'towerAtk' | 'spawnEvery' | 'rush'> {
+  return {
+    scale: 1 + c * 0.1,
+    enemyBaseHp: Math.round(700 + c * 180),
+    towerAtk: Math.round(10 * (1 + c * 0.12)),
+    spawnEvery: Math.max(1.75, 2.8 - c * 0.06),
+    rush: { first: 35, every: Math.max(22, 40 - c), size: 3 + Math.floor(c / 3) },
+  };
+}
+
 function makeStage(chapter: number, index: number): StageDef {
   const order = (chapter - 1) * STAGES_PER_CHAPTER + (index - 1);
   const [name, kind] = PLAN[chapter - 1]![index - 1]!;
@@ -152,13 +181,12 @@ function makeStage(chapter: number, index: number): StageDef {
 }
 
 /** 스테이지가 두 배 넘게 늘어난 만큼 한 판 보상을 줄인다. */
-const REWARD_MUL = 0.45;
+export const REWARD_MUL = 0.45;
 /** 판 수가 늘어난 만큼 처치 연구비도 줄인다. */
-const KILL_MUL = 0.4;
+export const KILL_MUL = 0.4;
 
 export const STAGES: StageDef[] = CHAPTERS.flatMap((c) => Array.from({ length: STAGES_PER_CHAPTER }, (_, i) => makeStage(c.id, i + 1)));
 
-export const STAGE_BY_ID: Record<string, StageDef> = Object.fromEntries(STAGES.map((s) => [s.id, s]));
 
 export const FINAL_STAGE = STAGES[STAGES.length - 1]!;
 
@@ -214,3 +242,77 @@ export function endlessStage(n: number): StageDef {
     reward: Math.round(80 + c * 12),
   };
 }
+
+// ───────────── 외전 ─────────────
+
+export interface SideChapter {
+  id: number;
+  name: string;
+  subtitle: string;
+  /** 스토리 장면에서 주인공 모습 (8 = 교수) */
+  heroChapter: number;
+  theme: Theme;
+  mods: StageMods;
+  boss: string;
+  /** 시작 곡선 위치 (스테이지마다 +1.2) */
+  from: number;
+  pool: Record<string, number>;
+  rule: string;
+}
+
+export const SIDE_CHAPTERS: SideChapter[] = [
+  {
+    id: 1, name: '조교수 생존기', subtitle: '테뉴어라는 이름의 공포', heroChapter: 8, theme: 'tenure',
+    mods: { frenzy: { every: 38, dur: 9, mul: 1.35 } }, boss: 'tenure', from: 17,
+    pool: { meeting: 3, paperwork: 2.2, evalform: 2.4, grant: 1, ta: 1, notif: 1, revision: 0.8, memo: 2 },
+    rule: '📋 평가 시즌: 주기적으로 적이 빨라지고 공격이 거세져요.',
+  },
+  {
+    id: 2, name: '대학원 괴담', subtitle: '새벽 3시의 연구실', heroChapter: 5, theme: 'haunted',
+    mods: { dark: true }, boss: 'ghost13', from: 17,
+    pool: { ghost: 3.2, printer3am: 1.6, memo: 2, deadline: 1.6, notif: 1, revision: 0.8, paperwork: 1 },
+    rule: '🕯️ 정전: 아군과 연구실 주변만 보여요. 유령은 깜빡이며 다가와요.',
+  },
+  {
+    id: 3, name: '연구자의 고충', subtitle: '아무도 모르는 싸움', heroChapter: 6, theme: 'gloom',
+    mods: { drain: 2.4 }, boss: 'reviewer3', from: 19,
+    pool: { imposter: 2.6, scooped: 1.1, revision: 1.4, reviewer: 1.5, deadline: 1.5, notif: 1, meeting: 1.2 },
+    rule: '🌧️ 멘탈 고갈: 멘탈이 계속 줄고, 적을 처치하면 회복돼요. 바닥나면 아군 공격력 −25%.',
+  },
+];
+
+const SIDE_PLAN: string[][] = [
+  ['임용 첫 학기', '연구비 탈락', '학생 모집 0명', '강의평가 2.1', '테뉴어 심사'],
+  ['새벽 3시의 프린터', '9년 차 선배의 자리', '사라진 파일', '끝나지 않는 리비전', '13년 차 유령 선배'],
+  ['가면 증후군', '먼저 나온 논문', '안 나오는 결과', '언제 졸업해?', '리뷰어 3'],
+];
+
+function makeSideStage(sc: SideChapter, index: number): StageDef {
+  const c = sc.from + (index - 1) * 1.2;
+  const isBoss = index === 5;
+  const n = numbersAt(c);
+  return {
+    ...n,
+    id: `S${sc.id}-${index}`,
+    chapter: 9,
+    index,
+    order: 1000 + sc.id * 10 + index,
+    name: SIDE_PLAN[sc.id - 1]![index - 1]!,
+    kind: isBoss ? 'boss' : 'normal',
+    spawnEvery: n.spawnEvery * (isBoss ? 1.6 : 1),
+    rush: { ...n.rush, size: Math.round(n.rush.size * (isBoss ? 0.5 : 1)) },
+    pool: Object.entries(sc.pool).map(([id, weight]) => ({ id, weight })),
+    boss: isBoss ? sc.boss : undefined,
+    killMul: KILL_MUL,
+    note: sc.rule,
+    reward: Math.round((60 + c * 30 + (isBoss ? 120 : 0)) * REWARD_MUL * 1.25),
+    side: sc.id,
+    theme: sc.theme,
+    mods: sc.mods,
+  };
+}
+
+export const SIDE_STAGES: StageDef[] = SIDE_CHAPTERS.flatMap((sc) => Array.from({ length: 5 }, (_, i) => makeSideStage(sc, i + 1)));
+
+/** 캠페인과 외전 스테이지 id → 정의 */
+export const STAGE_BY_ID: Record<string, StageDef> = Object.fromEntries([...STAGES, ...SIDE_STAGES].map((s) => [s.id, s]));

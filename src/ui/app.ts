@@ -1,4 +1,9 @@
-import { CHAPTERS, STAGES, STAGE_BY_ID, endlessStage, type StageDef, type StageKind } from '../data/stages';
+import { CHAPTERS, SIDE_CHAPTERS, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessStage, type StageDef, type StageKind } from '../data/stages';
+
+/** 지도 탭 번호: 1~7 챕터, 8 무한, 9 외전 */
+const SIDE_TAB = CHAPTERS.length + 2;
+/** 스토리 장면 속 주인공 모습 (외전은 시절이 다르다) */
+const heroChapter = (s: StageDef): number => (s.side ? SIDE_CHAPTERS[s.side - 1]!.heroChapter : s.chapter);
 import { ENEMY_BY_ID } from '../data/enemies';
 import { UNITS } from '../data/units';
 import { FACILITIES, SKILLS, facilityCost } from '../data/upgrades';
@@ -290,27 +295,18 @@ export class App {
         disabled: open ? undefined : 'true',
         onclick: () => { this.chapter = c.id; this.showMap(); },
       }, open ? c.name : `🔒 ${c.name}`);
-    }), h(`button.chapter-tab.endless-tab${this.chapter > CHAPTERS.length ? '.on' : ''}`, {
+    }), h(`button.chapter-tab.endless-tab${this.chapter === CHAPTERS.length + 1 ? '.on' : ''}`, {
       disabled: endlessOpen ? undefined : 'true',
       onclick: () => { this.chapter = CHAPTERS.length + 1; this.showMap(); },
-    }, endlessOpen ? '♾️ 무한' : '🔒 ♾️'));
+    }, endlessOpen ? '♾️ 무한' : '🔒 ♾️'), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
+      disabled: endlessOpen ? undefined : 'true',
+      onclick: () => { this.chapter = SIDE_TAB; this.showMap(); },
+    }, endlessOpen ? '📕 외전' : '🔒 📕'));
+    if (this.chapter === SIDE_TAB) return this.showSideMap(tabs);
     if (this.chapter > CHAPTERS.length) return this.showEndlessMap(tabs);
     const ch = CHAPTERS[this.chapter - 1]!;
     const stages = STAGES.filter((s) => s.chapter === ch.id);
-    const nodes = h('div.stage-path', {}, ...stages.map((s) => {
-      const open = isStageOpen(this.save, s);
-      const stars = this.save.stars[s.id] ?? 0;
-      return h(`button.stage-node${s.boss ? '.boss' : ''}${open ? '' : '.locked'}${stars ? '.cleared' : ''}`, {
-        disabled: open ? undefined : 'true',
-        onclick: () => this.showStageInfo(s),
-      },
-      s.boss ? h('img', { src: portrait(ENEMY_BY_ID[s.boss]!.look, 1, s.boss, -1), alt: '' }) : null,
-      KIND_ICON[s.kind] ? h('span.node-kind', {}, KIND_ICON[s.kind]!) : null,
-      h('span.node-id', {}, open ? s.id : '🔒'),
-      h('span.node-name', {}, s.name),
-      h('span.node-stars', {}, open ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : ''),
-      );
-    }));
+    const nodes = h('div.stage-path', {}, ...stages.map((s) => this.stageNode(s)));
     const totalStars = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
     const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
     this.notice = '';
@@ -334,6 +330,40 @@ export class App {
   }
 
   /** 무한 모드: 다음 판 도전과 최고 기록 */
+  /** 외전: 엔딩 뒤에 열리는 세 가지 이야기 */
+  private showSideMap(tabs: HTMLElement): void {
+    const rows = SIDE_CHAPTERS.map((sc) => {
+      const stages = SIDE_STAGES.filter((s) => s.side === sc.id);
+      const done = stages.filter((s) => isCleared(this.save, s.id)).length;
+      return h(`div.side-row.theme-${sc.theme}`, {},
+        h('div.side-head', {}, h('b', {}, `외전 ${sc.id} · ${sc.name}`), h('span', {}, sc.subtitle), h('small', {}, `${done}/5 · ${sc.rule.split(':')[0]}`)),
+        h('div.side-nodes', {}, ...stages.map((s) => this.stageNode(s))),
+      );
+    });
+    this.swap(h('div.screen.map.side-map', {},
+      this.topBar('스테이지'),
+      tabs,
+      h('div.chapter-title', {}, h('b', {}, '📕 외전: 아무도 말해 주지 않은 이야기'), h('span.muted', {}, ' · 으스스한 특수 규칙')),
+      h('div.side-list', {}, ...rows),
+      this.mapActions(),
+    ));
+  }
+
+  private stageNode(s: StageDef): HTMLElement {
+    const open = isStageOpen(this.save, s);
+    const stars = this.save.stars[s.id] ?? 0;
+    return h(`button.stage-node${s.boss ? '.boss' : ''}${open ? '' : '.locked'}${stars ? '.cleared' : ''}`, {
+      disabled: open ? undefined : 'true',
+      onclick: () => this.showStageInfo(s),
+    },
+    s.boss ? h('img', { src: portrait(ENEMY_BY_ID[s.boss]!.look, 1, s.boss, -1), alt: '' }) : null,
+    KIND_ICON[s.kind] ? h('span.node-kind', {}, KIND_ICON[s.kind]!) : null,
+    h('span.node-id', {}, open ? s.id : '🔒'),
+    h('span.node-name', {}, s.name),
+    h('span.node-stars', {}, open ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : ''),
+    );
+  }
+
   private showEndlessMap(tabs: HTMLElement): void {
     const best = this.save.endless;
     const next = endlessStage(best + 1);
@@ -407,14 +437,26 @@ export class App {
     const close = (): void => overlay.remove();
     const open = unlockedScenes(this.save);
     const at = this.settings.storyAt ? open.indexOf(this.settings.storyAt) : -1;
-    const chapterOf = (id: string): number => (id === 'ending' ? 7 : Number(/^(?:ch|st-)(\d)/.exec(id)?.[1] ?? 1));
+    /** 묶음: 1~7 챕터, 외전은 'S1'~'S3' */
+    const groupOf = (id: string): string => {
+      const side = /^(?:side|st-S)(\d)/.exec(id);
+      if (side) return `S${side[1]}`;
+      return id === 'ending' ? '7' : (/^(?:ch|st-)(\d)/.exec(id)?.[1] ?? '1');
+    };
+    /** 장면 속 주인공 모습을 정하는 챕터 */
+    const chapterOf = (id: string): number => {
+      const g = groupOf(id);
+      return g.startsWith('S') ? SIDE_CHAPTERS[Number(g[1]) - 1]!.heroChapter : Number(g);
+    };
     const label = (id: string): string => {
       const sc = SCENES[id]!;
+      if (id.startsWith('side') && id.endsWith('-clear')) return '🎉 외전 클리어';
+      if (id.startsWith('side') && id.endsWith('-boss')) return `👻 ${STAGE_BY_ID[`S${id[4]}-5`]?.name ?? '보스'}`;
       if (id.startsWith('st-')) return `${id.slice(3)} ${STAGE_BY_ID[id.slice(3)]?.name ?? ''}`;
       if (id.endsWith('-intro')) return `📖 ${sc.title ?? id}`;
       if (id.endsWith('-boss')) return `👔 ${sc.title ?? id}`;
       if (id === 'ending') return '🎓 엔딩';
-      return `🎉 ${chapterOf(id)}장 클리어`;
+      return `🎉 ${groupOf(id)}장 클리어`;
     };
     const run = (start: number): void => {
       close();
@@ -433,7 +475,10 @@ export class App {
         onEnd: () => { this.showMap(); this.showStory(); },
       });
     };
-    const groups = CHAPTERS.map((c) => ({ c, ids: open.filter((id) => chapterOf(id) === c.id) })).filter((g) => g.ids.length);
+    const groups = [
+      ...CHAPTERS.map((c) => ({ key: String(c.id), name: `${c.id}장 · ${c.name}` })),
+      ...SIDE_CHAPTERS.map((c) => ({ key: `S${c.id}`, name: `📕 외전 ${c.id} · ${c.name}` })),
+    ].map((g) => ({ ...g, ids: open.filter((id) => groupOf(id) === g.key) })).filter((g) => g.ids.length);
     overlay.append(h('div.panel.story-list', {},
       h('h2', {}, '📜 스토리 다시 보기'),
       open.length
@@ -444,7 +489,7 @@ export class App {
             h('button.btn', { onclick: () => run(0) }, '▶ 처음부터 몰아보기'),
           ),
           h('div.story-grid', {}, ...groups.flatMap((g) => [
-            h('div.story-ch', {}, `${g.c.id}장 · ${g.c.name}`),
+            h('div.story-ch', {}, g.name),
             ...g.ids.map((id) => h(`button.btn.small${open.indexOf(id) === at ? '.here' : ''}`, { onclick: () => run(open.indexOf(id)) }, label(id))),
           ])),
         )
@@ -458,7 +503,7 @@ export class App {
     const intro = this.scenesBefore(stage);
     if (intro.length) {
       this.swap(h('div.screen.story-backdrop'));
-      return this.play(intro, () => this.startBattle(stage), stage.chapter);
+      return this.play(intro, () => this.startBattle(stage), heroChapter(stage));
     }
     const holder = h('div.screen');
     this.swap(holder);
@@ -479,7 +524,7 @@ export class App {
         return { title: e.win ? '🎉 교수실 함락!' : '😵 연구실이 망가졌다…', lines, stars: out.stars };
       },
       actions: (win) => {
-        const next = stage.kind === 'endless' ? endlessStage(stage.index + 1) : STAGES[stage.order + 1];
+        const next = stage.kind === 'endless' ? endlessStage(stage.index + 1) : stage.side ? STAGE_BY_ID[`S${stage.side}-${stage.index + 1}`] : STAGES[stage.order + 1];
         // 보스를 처음 이기면 챕터 마무리 장면, 마지막 보스면 엔딩
         const clearId = scenesOfStage(stage).after[0] ?? '';
         const clearScene = win && clearId && !this.save.seen.includes(clearId) ? SCENES[clearId] : undefined;
@@ -488,12 +533,12 @@ export class App {
             this.swap(h('div.screen.story-backdrop'));
             this.play([clearScene], () => {
               this.chapter = CHAPTERS.length + 1;
-              this.notice = '♾️ 무한 모드가 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
+              this.notice = '♾️ 무한 모드와 📕 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
               this.showMap();
             }, 7);
           } }];
         }
-        const wrap = (run: () => void) => (clearScene ? () => { this.swap(h('div.screen.story-backdrop')); this.play([clearScene], run, stage.chapter); } : run);
+        const wrap = (run: () => void) => (clearScene ? () => { this.swap(h('div.screen.story-backdrop')); this.play([clearScene], run, heroChapter(stage)); } : run);
         if (win) {
           return [
             ...(next ? [{ label: `다음: ${next.kind === 'endless' ? next.name : `${next.id} ${next.name}`}`, primary: true, run: wrap(() => { this.chapter = next.chapter; this.startBattle(next); }) }] : []),

@@ -674,6 +674,22 @@ function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
     blob(ctx, 0, -5, 5, 5, '#9e9e9e');
     ctx.restore();
   }
+  if (variant === 'tenure') {
+    // 테뉴어 심사: 두꺼운 업적 평가 파일과 빛나는 안경
+    ctx.save();
+    ctx.translate(17, -34);
+    ctx.rotate(0.15 - pose.swing * 0.7);
+    rrect(ctx, -8, -12, 16, 20, 2, '#212121');
+    ctx.fillStyle = '#ffd54f';
+    ctx.font = 'bold 5px Jua, sans-serif';
+    label(ctx, '업적', -5, -1);
+    ctx.restore();
+    ctx.fillStyle = `rgba(255,235,59,${0.5 + 0.4 * Math.sin(pose.time * 4)})`;
+    ctx.beginPath();
+    ctx.arc(-3, -63, 3.2, 0, Math.PI * 2);
+    ctx.arc(7, -63, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
   if (variant === 'committee') {
     // 심사위원장: 빨간 '불합격' 도장
     ctx.save();
@@ -695,6 +711,115 @@ function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
     ctx.fill();
     ctx.stroke();
   }
+}
+
+/** 유령: 둥둥 떠다니고 깜빡인다. 가면 증후군은 하얀 가면, 13년 차 선배는 안경과 학번 명찰. */
+function ghost(ctx: Ctx, look: Look, pose: Pose, defId: string): void {
+  const t = pose.time;
+  const bob = Math.sin(t * 3 + pose.walk) * 3;
+  const flicker = defId === 'imposter' ? 0.92 : 0.62 + 0.3 * Math.abs(Math.sin(t * 2.3 + pose.walk * 0.7)) * (Math.sin(t * 17) > -0.85 ? 1 : 0.3);
+  ctx.save();
+  ctx.globalAlpha *= flicker;
+  ctx.translate(0, -8 + bob);
+  line(ctx);
+  // 몸통: 위는 둥글고 아래는 물결
+  ctx.beginPath();
+  ctx.moveTo(-16, -6);
+  ctx.bezierCurveTo(-18, -52, 18, -52, 16, -6);
+  for (let i = 0; i < 4; i++) {
+    const x0 = 16 - i * 8;
+    ctx.quadraticCurveTo(x0 - 4, 2 + Math.sin(t * 6 + i) * 3, x0 - 8, -6);
+  }
+  ctx.closePath();
+  ctx.fillStyle = look.color;
+  ctx.fill();
+  ctx.stroke();
+  // 팔 (흐느적)
+  ctx.beginPath();
+  ctx.moveTo(10, -26);
+  ctx.quadraticCurveTo(22, -24 - pose.swing * 8, 24, -14 + Math.sin(t * 4) * 3);
+  ctx.stroke();
+  if (defId === 'imposter') {
+    // 하얀 가면과 웃는 입
+    blob(ctx, 3, -32, 9, 11, look.accent ?? '#fff');
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.ellipse(0, -35, 1.6, 2.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(7, -35, 1.6, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(3.5, -29, 4, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  } else {
+    // 퀭한 눈
+    ctx.fillStyle = look.accent ?? '#3949ab';
+    ctx.beginPath();
+    ctx.ellipse(-1, -32, 3.2, 4.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(9, -32, 3.2, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(4, -21, 3, 4 + Math.sin(t * 5) * 1.2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = INK;
+    ctx.fill();
+    if (defId === 'ghost13' || defId === 'ghost') {
+      // 다 깨진 안경
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(-6, -37, 10, 9);
+      ctx.strokeRect(5, -37, 10, 9);
+      ctx.beginPath();
+      ctx.moveTo(-4, -36);
+      ctx.lineTo(1, -30);
+      ctx.stroke();
+      line(ctx);
+    }
+    if (defId === 'ghost13') {
+      ctx.lineWidth = 1.5;
+      rrect(ctx, -12, -16, 14, 8, 1, '#fff');
+      ctx.fillStyle = '#c62828';
+      ctx.font = 'bold 5px Jua, sans-serif';
+      label(ctx, '13년차', -11.5, -10.5);
+      line(ctx);
+    }
+  }
+  ctx.restore();
+  // 바닥 그림자
+  ctx.save();
+  ctx.globalAlpha *= 0.25;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 12 - bob, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** 새벽 3시에 혼자 켜지는 프린터: 빨간 눈, 혀처럼 나오는 종이 */
+function printer(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  line(ctx);
+  legs(ctx, pose, 18, 6, '#37474f');
+  ctx.save();
+  ctx.translate(0, -6 + (pose.moving ? Math.abs(Math.sin(pose.walk * 2)) * -2 : 0));
+  rrect(ctx, -20, -34, 40, 28, 4, look.color);
+  rrect(ctx, -14, -42, 28, 9, 2, '#90a4ae');
+  // 빨간 눈 (깜빡)
+  const on = Math.sin(t * 3) > -0.7;
+  ctx.fillStyle = on ? (look.accent ?? '#ff1744') : '#5d4037';
+  ctx.beginPath();
+  ctx.arc(-7, -24, 3, 0, Math.PI * 2);
+  ctx.arc(7, -24, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // 종이 혀
+  const out = 6 + Math.abs(Math.sin(t * 2.5)) * 8 + pose.swing * 6;
+  rrect(ctx, -9, -12, 18, out, 1, '#fafafa');
+  ctx.strokeStyle = 'rgba(0,0,0,.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-5, -8);
+  ctx.lineTo(5, -8);
+  ctx.moveTo(-5, -4);
+  ctx.lineTo(3, -4);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /**
@@ -724,6 +849,8 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'revision': revision(ctx, look, pose); break;
     case 'notif': notif(ctx, look, pose); break;
     case 'professor': professor(ctx, look, pose, defId); break;
+    case 'ghost': ghost(ctx, look, pose, defId); break;
+    case 'printer': printer(ctx, look, pose); break;
   }
   ctx.restore();
 }

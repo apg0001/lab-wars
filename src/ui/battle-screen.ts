@@ -55,7 +55,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   let raf = 0;
   let last = performance.now();
   const juice = new Juice();
-  music.play('battle');
+  music.play(opt.stage.theme ? 'spooky' : 'battle');
 
   // ── HUD ──
   const allyBar = h('div.hp-fill.ally');
@@ -243,7 +243,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     for (const e of battle.drainEvents()) {
       juice.onEvent(e);
       playBattleSfx(e, camX, viewW);
-      if (e.type === 'bossSpawn') music.play('boss');
+      if (e.type === 'bossSpawn') music.play(opt.stage.theme ? 'spookyBoss' : 'boss');
       if (e.type === 'end') music.stop(0.4);
     }
     const k = canvas.width / viewW;

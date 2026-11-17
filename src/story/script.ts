@@ -3,12 +3,14 @@
  * {name}은 플레이어 이름으로 바뀐다.
  */
 import { STAGE_SCENES } from './stage-scenes';
+import { SIDE_SCENES } from './side-scenes';
 
-export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny';
+export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny' | 'haunted' | 'tenure' | 'rain';
 
 export type ActorId =
   | 'hero' | 'senior' | 'claudy' | 'codexy' | 'jaeminai' | 'newbie'
-  | 'prof1' | 'prof2' | 'reviewer2' | 'chair' | 'committee' | 'dean' | 'president';
+  | 'prof1' | 'prof2' | 'reviewer2' | 'chair' | 'committee' | 'dean' | 'president'
+  | 'tenure' | 'ghost' | 'ghost13' | 'printer3am' | 'imposter' | 'reviewer3' | 'mom';
 
 export type Action =
   | { a: 'enter'; id: ActorId; from: 'left' | 'right'; to: number }
@@ -43,7 +45,7 @@ export interface Scene {
   lines: Line[];
   /** 엔딩처럼 건너뛸 수 없는 장면 */
   noSkip?: boolean;
-  music?: 'lobby' | 'battle' | 'boss';
+  music?: 'lobby' | 'battle' | 'boss' | 'spooky' | 'spookyBoss';
 }
 
 const S: Scene[] = [
@@ -279,4 +281,4 @@ const S: Scene[] = [
 ];
 
 /** 모든 장면 (챕터 장면 + 스테이지별 장면). 순서는 story/unlock.ts의 STORY_ORDER */
-export const SCENES: Record<string, Scene> = Object.fromEntries([...S, ...STAGE_SCENES].map((s) => [s.id, s]));
+export const SCENES: Record<string, Scene> = Object.fromEntries([...S, ...STAGE_SCENES, ...SIDE_SCENES].map((s) => [s.id, s]));

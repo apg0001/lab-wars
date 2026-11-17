@@ -1,6 +1,6 @@
 import type { CombatStats, UnitDef } from '../data/types';
 import { UNITS } from '../data/units';
-import { FINAL_STAGE, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
+import { FINAL_STAGE, SIDE_STAGES, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
 
 /** 0.8(7챕터×6)에는 없던, 챕터 사이에 새로 생긴 스테이지 */
 const v2Gap = (s: StageDef): boolean => s.chapter <= 7 && [2, 4, 6, 8].includes(s.index);
@@ -83,7 +83,7 @@ export function normalizeSave(raw: unknown): SaveData {
       }
       if (reach >= 0) migrationNotes.push(`📚 챕터마다 스테이지가 10개로 늘었어요. 깬 스테이지는 그대로 옮겼고, 사이에 새로 생긴 스테이지는 열어 뒀어요.`);
     } else {
-      for (const s of STAGES) base.stars[s.id] = starOf(r.stars[s.id]);
+      for (const s of [...STAGES, ...SIDE_STAGES]) base.stars[s.id] = starOf(r.stars[s.id]);
       if (num(r.v, 1) < 4) {
         // 0.9.0 이전 버그: 사이 스테이지를 깬 것으로 채웠다. 실제로 들어가 본 기록(장면)이 없으면 되돌린다.
         const seen = new Set(Array.isArray(r.seen) ? r.seen : []);
@@ -138,6 +138,12 @@ export const isEndlessOpen = (save: SaveData): boolean => isCleared(save, FINAL_
 
 export function isStageOpen(save: SaveData, stage: StageDef): boolean {
   if (stage.kind === 'endless') return isEndlessOpen(save) && stage.index <= save.endless + 1;
+  if (stage.side) {
+    // 외전: 엔딩을 본 뒤 외전마다 첫 판부터 차례로
+    if (!isCleared(save, FINAL_STAGE.id)) return false;
+    if (stage.index === 1 || isCleared(save, stage.id)) return true;
+    return isCleared(save, `S${stage.side}-${stage.index - 1}`);
+  }
   if (stage.order === 0 || isCleared(save, stage.id)) return true;
   const prev = STAGES[stage.order - 1];
   return !!prev && isCleared(save, prev.id);
