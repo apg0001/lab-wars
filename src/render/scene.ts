@@ -103,6 +103,16 @@ function drawMood(ctx: Ctx, b: Battle, time: number, juice?: Juice): void {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, viewW, VIEW_H);
   }
+  if (juice && juice.rage > 0) {
+    // 보스 호통: 붉게 번쩍이며 가장자리가 물든다 (흔들림 없음)
+    ctx.fillStyle = `rgba(229,57,53,${juice.rage * 0.28})`;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+    const g = ctx.createRadialGradient(viewW / 2, VIEW_H / 2, VIEW_H * 0.35, viewW / 2, VIEW_H / 2, viewW * 0.7);
+    g.addColorStop(0, 'rgba(183,28,28,0)');
+    g.addColorStop(1, `rgba(183,28,28,${juice.rage * 0.5})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, viewW, VIEW_H);
+  }
   if (juice && juice.flash > 0) {
     ctx.fillStyle = `rgba(255,255,255,${juice.flash * 0.6})`;
     ctx.fillRect(0, 0, viewW, VIEW_H);
@@ -362,6 +372,9 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
     ctx.globalAlpha = Math.max(0, 1 - k * k);
   } else if (f.kbT > 0) {
     rot = -facing * 0.18;
+  } else if (f.stunT > 0) {
+    // 기절: 비틀비틀
+    rot = Math.sin(time * 9 + f.uid) * 0.12;
   } else if (f.hitFlash > 0) {
     // 맞으면 찌그러진다
     const k = f.hitFlash / 0.12;
@@ -382,6 +395,25 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
   if (f.hitFlash > 0 && !f.dead) ctx.filter = 'brightness(1.9) saturate(0.5)';
   drawCharacter(ctx, f.look, { walk: f.walk, swing: f.swing, tier: f.tier, time, moving: !f.attacking && !f.dead }, 0, 0, facing as 1 | -1, f.defId);
   ctx.restore();
+
+  // 기절 표시: 머리 위에서 빙글빙글
+  if (!f.dead && f.stunT > 0) {
+    const s = f.look.scale ?? 1;
+    const top = y - 62 * s - (f.tier >= 3 ? 8 : 0) - 14;
+    const img = iconImg('dizzy');
+    const sz = 18;
+    ctx.save();
+    ctx.translate(f.x, top + Math.sin(time * 6 + f.uid) * 2);
+    if (img) ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+    ctx.fillStyle = '#ffd54f';
+    for (let i = 0; i < 3; i++) {
+      const a = time * 5 + (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 15, Math.sin(a) * 5 - 2, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 
   // 체력바 (다쳤을 때만, 보스는 상단 HUD에서 표시)
   if (!f.dead && !f.isBoss && f.hp < f.maxHp) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Battle, ENEMY_FRONT, GROUND_Y, killCaffeine } from '../src/sim/battle';
-import { STAGE_BY_ID } from '../src/data/stages';
+import { BOSS_RAGE, Battle, ENEMY_FRONT, GROUND_Y, killCaffeine } from '../src/sim/battle';
+import { STAGE_BY_ID, STAGES, TIME_LIMIT, endlessStage } from '../src/data/stages';
 import { makeLoadout, newSave } from '../src/sim/progression';
 import { playBot } from '../src/sim/bot';
 
@@ -112,6 +112,111 @@ describe('전투 시뮬레이션', () => {
     b.step(1 / 60);
     expect(b.result).toBe('win');
     expect(GROUND_Y).toBeGreaterThan(0);
+  });
+
+  it('스테이지마다 시간 제한이 있다: 일반 5분, 보스 6분, 무한 모드는 넉넉하게', () => {
+    expect(STAGE_BY_ID['1-1']!.timeLimit).toBe(300);
+    expect(STAGE_BY_ID['1-10']!.timeLimit).toBe(360);
+    expect(STAGE_BY_ID['S1-5']!.timeLimit).toBe(360);
+    for (const st of STAGES) expect(st.timeLimit).toBe(st.kind === 'boss' ? TIME_LIMIT.boss : TIME_LIMIT.normal);
+    expect(endlessStage(3).timeLimit).toBe(TIME_LIMIT.endless);
+  });
+
+  it('시간이 다 되면 시간 초과로 패배하고, 1분 전에 한 번 경고한다', () => {
+    const b = new Battle({ ...STAGE_BY_ID['1-1']!, timeLimit: 70 }, makeLoadout(newSave()), 1);
+    b.ally.hp = b.ally.maxHp = 1e9; // 연구실이 먼저 무너지지 않게
+    b.enemy.hp = b.enemy.maxHp = 1e9;
+    expect(b.timeLeft).toBe(70);
+    const events: string[] = [];
+    while (!b.result) {
+      b.step(1 / 60);
+      for (const e of b.drainEvents()) events.push(e.type);
+    }
+    expect(b.result).toBe('lose');
+    expect(b.timedOut).toBe(true);
+    expect(b.t).toBeCloseTo(70, 1);
+    expect(b.timeLeft).toBe(0);
+    expect(events.filter((t) => t === 'timeWarn')).toHaveLength(1);
+    expect(events.indexOf('timeWarn')).toBeLessThan(events.indexOf('end'));
+  });
+
+  it('연구실이 무너져 지면 시간 초과가 아니다', () => {
+    const b = fresh();
+    b.ally.hp = 0;
+    b.step(1 / 60);
+    expect(b.result).toBe('lose');
+    expect(b.timedOut).toBe(false);
+  });
+
+  it('보스 HP가 기준선 아래로 처음 떨어질 때마다 호통: 모든 아군을 기절시키고 밀어낸다', () => {
+    const b = new Battle(STAGE_BY_ID['1-10']!, makeLoadout(newSave()), 1);
+    type Priv = { spawnEnemy: (id: string, boss: boolean, x: number) => { hp: number; maxHp: number; rageN: number }; damageFighter: (f: unknown, d: number, s: string) => void };
+    const p = b as unknown as Priv;
+    const boss = p.spawnEnemy.call(b, 'prof1', true, 1200);
+    b.caffeine = 999;
+    b.summon('grunt');
+    const ally = b.fighters.find((f) => f.side === 'ally')!;
+    ally.x = 900;
+    const rages = (): number => b.drainEvents().filter((e) => e.type === 'rage').length;
+    b.drainEvents();
+    p.damageFighter.call(b, boss, boss.maxHp * 0.2, 'ally'); // 80%
+    expect(rages()).toBe(0);
+    expect(ally.stunT).toBe(0);
+    p.damageFighter.call(b, boss, boss.maxHp * 0.2, 'ally'); // 60%: 첫 호통
+    expect(rages()).toBe(1);
+    expect(ally.stunT).toBeCloseTo(BOSS_RAGE.stun);
+    expect(ally.kbT).toBeGreaterThan(0);
+    expect(ally.hp).toBe(ally.maxHp); // 피해는 없다
+    expect(b.fx.some((e) => e.x < 0 && e.text?.includes('호통'))).toBe(true);
+    // 기절이 풀릴 때까지 지켜본다: 밀려나고, 그동안 아무것도 못 한다
+    for (let i = 0; i < 60; i++) b.step(1 / 60);
+    expect(ally.x).toBeLessThan(900 - BOSS_RAGE.push * 0.8);
+    expect(ally.stunT).toBeGreaterThan(0);
+    for (let i = 0; i < 60; i++) b.step(1 / 60);
+    expect(ally.stunT).toBe(0);
+    b.drainEvents();
+    p.damageFighter.call(b, boss, boss.maxHp * 0.05, 'ally'); // 55%: 다시 안 함
+    expect(rages()).toBe(0);
+    p.damageFighter.call(b, boss, boss.maxHp * 0.3, 'ally'); // 25%: 두 번째
+    expect(rages()).toBe(1);
+    expect(boss.rageN).toBe(2);
+    p.damageFighter.call(b, boss, boss.maxHp * 0.2, 'ally'); // 5%: 기준선 끝
+    expect(rages()).toBe(0);
+  });
+
+  it('최종 보스는 호통이 더 잦고 길다', () => {
+    const b = new Battle(STAGE_BY_ID['7-10']!, makeLoadout(newSave()), 1);
+    type Priv = { spawnEnemy: (id: string, boss: boolean, x: number) => { maxHp: number }; damageFighter: (f: unknown, d: number, s: string) => void };
+    const p = b as unknown as Priv;
+    const boss = p.spawnEnemy.call(b, 'president', true, 1200);
+    b.caffeine = 999;
+    b.summon('grunt');
+    b.drainEvents();
+    for (let i = 0; i < 9; i++) p.damageFighter.call(b, boss, boss.maxHp * 0.1, 'ally');
+    expect(b.drainEvents().filter((e) => e.type === 'rage')).toHaveLength(3);
+    expect(b.fighters.find((f) => f.side === 'ally')!.stunT).toBeGreaterThan(BOSS_RAGE.stun);
+  });
+
+  it('기절한 유닛은 이동도 공격도 하지 않는다', () => {
+    const b = fresh();
+    const spawn = (b as unknown as { spawnEnemy: (id: string, boss: boolean, x: number) => { hp: number; maxHp: number } }).spawnEnemy;
+    b.summon('grunt');
+    const ally = b.fighters.find((f) => f.side === 'ally')!;
+    ally.x = 600;
+    const foe = spawn.call(b, 'paperwork', false, 615);
+    foe.hp = foe.maxHp = 1e6;
+    ally.stunT = 1.5;
+    ally.cd = 0;
+    const hits = (): number => b.drainEvents().filter((e) => e.type === 'hit' && e.to === 'enemy').length;
+    b.drainEvents();
+    for (let i = 0; i < 80; i++) b.step(1 / 60);
+    expect(hits()).toBe(0);
+    expect(foe.hp).toBe(foe.maxHp);
+    expect(ally.attacking).toBe(false);
+    expect(ally.x).toBeLessThanOrEqual(600);
+    for (let i = 0; i < 60; i++) b.step(1 / 60);
+    expect(ally.stunT).toBe(0);
+    expect(foe.hp).toBeLessThan(foe.maxHp); // 풀리면 다시 싸운다
   });
 
   it('같은 시드면 같은 결과가 나온다', () => {
