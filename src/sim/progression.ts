@@ -162,15 +162,18 @@ export function isSkillOpen(save: SaveData, skill: SkillDef): boolean {
   return !skill.unlockStage || isCleared(save, skill.unlockStage);
 }
 
+/** 이미 깬 스테이지를 다시 깰 때 클리어 보상 비율 */
+export const REPLAY_MUL = 0.5;
+
 export const levelCap = (tier: number): number => tier * 5;
 
 export function unitProgress(save: SaveData, id: string): UnitProgress {
   return save.units[id] ?? { level: 1, tier: 1 };
 }
 
-export const levelUpCost = (def: UnitDef, level: number): number => Math.round(def.cost * 5 * 1.3 ** (level - 1));
+export const levelUpCost = (def: UnitDef, level: number): number => Math.round(def.cost * 6 * 1.33 ** (level - 1));
 
-export const evolveCost = (def: UnitDef, tier: number): number => def.cost * (tier === 1 ? 40 : 120);
+export const evolveCost = (def: UnitDef, tier: number): number => def.cost * (tier === 1 ? 45 : 135);
 
 export function canLevelUp(save: SaveData, def: UnitDef): boolean {
   const p = unitProgress(save, def.id);
@@ -257,7 +260,7 @@ export function makeLoadout(save: SaveData): BattleLoadout {
     mentalMax: 100,
     mentalRegen: 1.5 + 0.25 * f.meditate,
     printerAtk: 20 * (1 + 0.2 * f.printer),
-    printerRange: 300 + 20 * f.printerRange,
+    printerRange: 300 + 25 * f.printerRange,
     cooldownMul: 1 - 0.04 * f.planner,
     deck: UNITS.filter((u) => isUnitOwned(save, u)).map((def) => {
       const p = unitProgress(save, def.id);
@@ -299,7 +302,7 @@ export function applyOutcome(save: SaveData, stage: StageDef, win: boolean, base
   if (win) {
     stars = starsFor(baseHpRatio);
     const full = stage.reward * (0.6 + 0.2 * stars);
-    clearReward = Math.round(prev === 0 ? full : full * 0.4);
+    clearReward = Math.round(prev === 0 ? full : full * REPLAY_MUL);
     save.stars[stage.id] = Math.max(prev, stars);
   }
   save.money += clearReward + killReward;
