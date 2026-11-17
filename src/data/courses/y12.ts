@@ -7,7 +7,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '포인터가 처음 나오는 주. 실습실 모니터마다 Segmentation fault가 떠 있고, 조교는 "malloc 했으면 free 하세요"만 반복한다. 오늘 실습은 연결 리스트 뒤집기.',
     quote: '"배열은 거짓말을 하지 않습니다. 인덱스를 틀리는 건 언제나 여러분이죠."',
     mods: { rules: [{ kind: 'lifo' }] },
-    pool: { memo: 2, segfault: 1.4, leak: 0.8, deadline: 1, meeting: 1 },
+    pool: { memo: 2, deadline: 2.4, paperwork: 0.8, meeting: 1 },
     foe: {
       name: '널 포인터',
       role: '돌격',
@@ -30,7 +30,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '입학 첫 주의 개론 수업. 클라우드, 사물인터넷, 5G, 메타버스가 한 시간 만에 다 지나간다. 출석은 QR 코드로 부르는데, 강의실 와이파이가 안 잡혀서 절반이 결석 처리됐다.',
     quote: '"자, 다 같이 따라 해 봅시다. Hello, World! …세미콜론은요? 세미콜론!"',
     mods: { rules: [{ kind: 'edge', near: 1.2, far: 0.85 }] },
-    pool: { memo: 2.5, meeting: 1.2, deadline: 0.8, plane: 0.8, citation: 1 },
+    pool: { memo: 3.5, meeting: 1.2, deadline: 0.8, plane: 0.8 },
     foe: {
       name: '무한 로딩',
       role: '표준 근접',
@@ -53,7 +53,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '첫 실습 시간. 반은 printf를 print로 쓰고, 나머지 반은 main을 mian으로 쓴다. 에러 메시지 37줄 중 진짜 원인은 맨 위 한 줄인데, 아무도 맨 위를 안 읽는다.',
     quote: '"세미콜론 하나가 여러분의 한 학기를 바꿉니다. …작년에 그걸 보고 울었어요."',
     mods: { rules: [{ kind: 'latency', delay: 1.0 }] },
-    pool: { memo: 2, meeting: 1, deadline: 0.8, segfault: 0.6, loop: 0.5 },
+    pool: { memo: 2.5, meeting: 1, deadline: 1.4 },
     foe: {
       name: '빠진 세미콜론',
       role: '빠른 물량',
@@ -76,7 +76,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '파이썬 첫 시간. 엑셀 파일을 읽었더니 열 이름이 "Unnamed: 0"이고, 나이 칸에는 "스물셋"이 들어 있다. 과제 데이터의 절반은 결측치, 나머지 절반은 이상치다.',
     quote: '"결측치를 0으로 채운 사람, 손 들어 보세요. …아니, 들지 마세요. 제 손이 떨려서요."',
     mods: { rules: [{ kind: 'index', mul: 1.4 }], view: 'nan' },
-    pool: { memo: 2, meeting: 1, citation: 1, deadline: 0.8, plane: 0.6 },
+    pool: { memo: 3, meeting: 1, deadline: 0.8, plane: 0.6 },
     foe: {
       name: '이상치',
       role: '탱커',
@@ -95,24 +95,24 @@ export const Y12: Record<string, CourseContent> = {
     },
   },
   adventure: {
-    rule: '{user} 무임승차: 소환한 동료가 25% 확률로 무임승차해서 공격을 하나도 안 해요. 그래도 자리는 지키고 서서 적을 막아 줘요.',
+    rule: '{user} 무임승차: 소환한 동료가 15% 확률로 무임승차해서 공격을 하나도 안 해요. 그래도 자리는 지키고 서서 적을 막아 줘요.',
     desc: '첫 설계 과목이자 첫 팀플. 단톡방 인원은 넷인데 답장은 늘 한 명뿐이고, 발표 전날 밤에야 "제가 PPT 표지 할게요!"가 나타난다. 동료 평가는 익명이라는데 다들 누가 썼는지 안다.',
     quote: '"팀플은 인생입니다. 무임승차는 제가 귀신같이 잡아요. …그럼 오늘 회의는 짧게, 세 시간만 합시다."',
-    mods: { rules: [{ kind: 'freeRider', p: 0.25 }] },
+    mods: { rules: [{ kind: 'freeRider', p: 0.15 }] },
     pool: { meeting: 2, memo: 1.5, deadline: 1, plane: 0.8, notif: 0.5 },
     foe: {
       name: '잠수 탄 팀원',
       role: '탱커',
       desc: '단톡방에서 사라졌다가 발표 날에만 나타난다. 공격은 거의 안 하지만 정말 질기다. 이름은 발표 자료 맨 앞에 있다.',
       look: { kind: 'ghost', color: '#ce93d8', accent: '#6a1b9a' },
-      stats: { hp: 230, atk: 8, range: 22, speed: 35, interval: 1.4 },
+      stats: { hp: 170, atk: 8, range: 22, speed: 35, interval: 1.4 },
       reward: 11,
       weight: 1.8,
       en: { name: 'Ghosting Teammate', role: 'Tank', desc: 'Vanishes from the group chat and only shows up on presentation day. Barely attacks, but very hard to take down. Their name is first on the slides.' },
     },
-    boss: { summon: 10, count: 3, stomp: false, say: ['자, 동료 평가 시간입니다.', 'Okay, time for peer evaluations.'] },
+    boss: { summon: 10, count: 2, stomp: false, say: ['자, 동료 평가 시간입니다.', 'Okay, time for peer evaluations.'] },
     en: {
-      rule: '{user} Free Riders: each summoned labmate has a 25% chance to free-ride and never attack. They still hold their spot and block enemies.',
+      rule: '{user} Free Riders: each summoned labmate has a 15% chance to free-ride and never attack. They still hold their spot and block enemies.',
       desc: 'Your first design course and your first team project. The group chat has four people but only one ever replies, and "I\'ll do the title slide!" appears the night before the presentation. Peer reviews are "anonymous," yet everyone knows who wrote what.',
       quote: '"Team projects are life. I catch free riders like a ghost hunter. ...Now, let\'s keep today\'s meeting short. Three hours, tops."',
     },
@@ -122,7 +122,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '두 번째 프로그래밍 수업. 지난 학기 코드를 열어 봤더니 변수 이름이 a, aa, aaa, a2다. 이번 과제는 소켓 채팅 프로그램인데, 내 컴퓨터끼리만 대화가 된다.',
     quote: '"goto는 쓰지 마세요. 쓰면… 제가 울 거예요. 이번엔 진짜로요."',
     mods: { rules: [{ kind: 'hop', every: 9, hop: 70 }] },
-    pool: { memo: 1.5, meeting: 1, deadline: 1, segfault: 1, loop: 0.8 },
+    pool: { memo: 2.3, meeting: 1, deadline: 2 },
     foe: {
       name: '스파게티 코드',
       role: '분열',
@@ -145,7 +145,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '첫 인공지능 수업. 훈련 정확도 100%에 신나서 캡처까지 했는데, 테스트 정확도는 12%다. 조교는 "데이터를 더 모으세요"라고 했지만 모은 데이터는 고양이 사진 40장이 전부다.',
     quote: '"모델이 시험 문제를 외웠다고요? 여러분도 그러잖아요. 그래서 정규화가 필요한 겁니다."',
     mods: { rules: [{ kind: 'overfit', max: 0.3 }] },
-    pool: { memo: 1.5, meeting: 1, deadline: 1, plane: 0.8, hallucite: 0.5 },
+    pool: { memo: 1.5, meeting: 1, deadline: 1, plane: 0.8, reviewer: 0.5 },
     foe: {
       name: '과적합 모델',
       role: '원거리',
@@ -164,11 +164,11 @@ export const Y12: Record<string, CourseContent> = {
     },
   },
   webprog: {
-    rule: '{lock} CORS: 전장의 60% 지점보다 멀리 있는 적은 출처가 달라서 원거리 공격이 전부 막혀요. 가까이 들어오면 그때 쏘세요.',
+    rule: '{lock} CORS: 전장의 70% 지점보다 멀리 있는 적은 출처가 달라서 원거리 공격이 전부 막혀요. 가까이 들어오면 그때 쏘세요.',
     desc: '첫 웹 수업. HTML로 자기소개 페이지를 만드는데 가운데 정렬 하나에 두 시간이 걸렸다. 과제 제출 링크가 localhost:3000이라 교수님 화면에서는 열리지 않는다.',
     quote: '"제 브라우저에선 됩니다. 그럼 여러분 브라우저가 틀린 거죠. 자, 금요일 오후 6시에 배포해 봅시다."',
-    mods: { rules: [{ kind: 'cors', line: 0.6 }] },
-    pool: { memo: 1.5, meeting: 1, plane: 1, citation: 0.8, notif: 0.6 },
+    mods: { rules: [{ kind: 'cors', line: 0.7 }] },
+    pool: { memo: 2.3, meeting: 1, plane: 1, notif: 0.6 },
     foe: {
       name: '말 안 듣는 div',
       role: '탱커',
@@ -181,7 +181,7 @@ export const Y12: Record<string, CourseContent> = {
     },
     boss: { summon: 10, count: 3, stomp: true, say: ['캐시 지우고 새로고침 해 보세요.', 'Clear your cache and refresh.'] },
     en: {
-      rule: '{lock} CORS: enemies beyond the 60% mark of the field are a different origin, so ranged attacks against them are all blocked. Shoot once they come closer.',
+      rule: '{lock} CORS: enemies beyond the 70% mark of the field are a different origin, so ranged attacks against them are all blocked. Shoot once they come closer.',
       desc: 'First web class. You build an About Me page in HTML, and centering one thing takes two hours. Your submission link is localhost:3000, so it never opens on the professor\'s screen.',
       quote: '"It works in my browser. So your browser is wrong. Now, let\'s deploy at 6 PM on Friday."',
     },
@@ -191,7 +191,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '복소수, 오일러 공식, 라플라스 변환이 한 학기에 다 나온다. 실습은 MATLAB인데 라이선스 서버가 수업 시간마다 터진다. 칠판에 j를 쓰면 허수인지 전류인지 매번 물어봐야 한다.',
     quote: '"e의 iπ승 더하기 1은 0입니다. 자명하죠? …그럼 증명해 봅시다. 칠판 지우겠습니다."',
     mods: { rules: [{ kind: 'imaginary', p: 0.35 }] },
-    pool: { memo: 1.5, plane: 1.2, meeting: 1, paperwork: 0.6, evalform: 0.4 },
+    pool: { memo: 1.5, plane: 1.6, meeting: 1, paperwork: 0.6 },
     foe: {
       name: '허수 i',
       role: '공중 원거리',
@@ -237,7 +237,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '첫 수업부터 동전을 백 번 던진다. 앞면이 일곱 번 연속 나온 학생은 조작을 의심받았다. 중간고사 평균은 42점, 표준편차는 41점이다.',
     quote: '"이 과목 학점이요? 경우에 따라 다르죠. 출석은 오늘 30% 확률로 부르겠습니다."',
     mods: { rules: [{ kind: 'dice', spread: 0.5 }] },
-    pool: { memo: 1.5, meeting: 1, deadline: 1, segfault: 0.6, ghost: 0.5, revision: 0.5 },
+    pool: { memo: 1.5, meeting: 1, deadline: 2.1, revision: 0.5 },
     foe: {
       name: 'p = 0.051',
       role: '돌격 · 부활',
@@ -260,7 +260,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '0과 1로 시작해서 0과 1로 끝나는 과목. 덧셈기를 손으로 그리다 보면 내가 덧셈기가 된 것 같다. 기말 범위는 "MIPS 전부"이고, 질문은 2진수로 해야 받아 준다.',
     quote: '"01001000 01101001." (조교 통역: "안녕하세요"라고 하십니다.)',
     mods: { rules: [{ kind: 'cache', off: 0.35 }, { kind: 'pipeline', gap: 22 }] },
-    pool: { memo: 1.5, meeting: 1, segfault: 1, loop: 0.6, bsod: 0.5, outage: 0.5 },
+    pool: { memo: 2.1, meeting: 1, deadline: 1, ta: 0.5, notif: 0.5 },
     foe: {
       name: '캐시 미스',
       role: '탱커',
@@ -283,7 +283,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '클래스, 상속, 다형성을 배우는 과목. Animal을 상속한 Dog와 Cat이 짖고 우는 예제만 짜다가 한 학기가 간다. 실습 과제는 extends를 다섯 번 거쳐야 겨우 출력되는 학사 관리 시스템.',
     quote: '"부모 클래스를 존중하세요. override 하기 전에 부모님께 먼저 여쭤보는 겁니다."',
     mods: { rules: [{ kind: 'inherit', hpRatio: 0.4 }] },
-    pool: { memo: 1.5, meeting: 1, segfault: 0.8, conflict: 0.6, leak: 0.5, ta: 0.5 },
+    pool: { memo: 1.5, meeting: 1, deadline: 0.8, revision: 0.6, paperwork: 0.5, ta: 0.5 },
     foe: {
       name: '갓 클래스',
       role: '탱커 · 오라',
@@ -306,7 +306,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '정렬만 일곱 가지를 배우는 과목. 버블 정렬로 과제를 냈더니 채점 서버가 시간 초과를 뱉었다. 동적 계획법은 점화식만 세우면 쉽다는데, 점화식을 세우는 게 문제다.',
     quote: '"이 코드, 돌아가긴 하네요. 그런데 n이 백만이면요?"',
     mods: { rules: [{ kind: 'bigO', k: 0.004 }] },
-    pool: { memo: 2, meeting: 1, deadline: 1, segfault: 0.8, loop: 0.8, ta: 0.5 },
+    pool: { memo: 2.8, meeting: 1, deadline: 1.8, ta: 0.5 },
     foe: {
       name: '버블 정렬',
       role: '성장 탱커',
@@ -329,7 +329,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '확률에 시간 축이 붙었다. 정상성, 자기상관 함수, 마르코프 체인이 쏟아지는데 확실한 건 과제 마감뿐이다. 버스는 평균 10분 간격이라는데 왜 늘 세 대가 같이 오는지, 드디어 수식으로 이해했다.',
     quote: '"버스가 세 대씩 몰려오는 이유, 오늘 배웁니다. 출석이요? 포아송 분포로 부르겠습니다."',
     mods: { rules: [{ kind: 'poisson', rate: 0.07, size: 3 }] },
-    pool: { memo: 1.5, meeting: 1, deadline: 1, revalert: 0.8, notif: 0.8, ghost: 0.6 },
+    pool: { memo: 1.5, meeting: 1, deadline: 1.6, revision: 0.8, notif: 0.8 },
     foe: {
       name: '백색 잡음',
       role: '공중 범위',
@@ -352,7 +352,7 @@ export const Y12: Record<string, CourseContent> = {
     desc: '모든 것이 신호이고, 모든 것이 시스템이다. 손으로 컨볼루션을 하다가 "한쪽을 뒤집으세요"라는 말에 진짜로 종이를 뒤집었다. 푸리에 변환 쌍은 외우라는데, 외운 건 학식 메뉴뿐이다.',
     quote: '"오늘 점심은 푸리에 변환으로 정했습니다. 저주파 성분이 강하니 국밥이네요."',
     mods: { rules: [], view: 'strobe' },
-    pool: { memo: 1.5, meeting: 1, plane: 1, notif: 0.8, bsod: 0.5, overload: 0.5 },
+    pool: { memo: 1.5, meeting: 1, plane: 1, notif: 0.8, ta: 0.5, deadline: 0.5 },
     foe: {
       name: '앨리어싱',
       role: '돌격',

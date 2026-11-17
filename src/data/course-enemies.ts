@@ -44,7 +44,8 @@ export function courseEnemies(): EnemyDef[] {
       desc: prof.trait,
       reward: 150 + co.year * 60,
       boss: {
-        summon: { id: `ce-${co.id}`, every: ct.boss.summon, count: ct.boss.count },
+        // 1학년 교수님은 대표 적을 덜 자주, 적게 부른다 (부른 적이 쌓이면 초반에 감당이 안 된다)
+        summon: { id: `ce-${co.id}`, every: Math.max(ct.boss.summon, co.year === 1 ? 12 : 8), count: Math.min(ct.boss.count, co.year === 1 ? 2 : 4) },
         ...(ct.boss.stomp ? { stomp: { dmg: Math.round(atk * 1.1), radius: 120, every: 8 } } : {}),
         say: ct.boss.say,
       },
