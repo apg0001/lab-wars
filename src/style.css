@@ -308,8 +308,13 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .title-actions { display: flex; flex-direction: column; align-items: center; gap: calc(0.8 * var(--u)); }
 .btn.big { font-size: calc(2.4 * var(--u)); padding: calc(1 * var(--u)) calc(3.5 * var(--u)); }
 .title-foot { margin: 0; font-size: calc(1.2 * var(--u)); opacity: 0.6; }
+.title-credits { position: absolute; right: calc(1.4 * var(--u)); bottom: calc(1 * var(--u)); display: flex; gap: calc(0.6 * var(--u)); align-items: center; }
+.donate-link {
+  font-size: calc(1.2 * var(--u)); font-weight: 700; color: #3e2723; text-decoration: none; white-space: nowrap;
+  padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)); border: calc(0.2 * var(--u)) solid var(--ink); border-radius: 999px; background: #ffe812;
+}
+.donate-link.patch-donate { align-self: center; margin-bottom: calc(1 * var(--u)); font-size: calc(1.4 * var(--u)); }
 .title-credit {
-  position: absolute; right: calc(1.4 * var(--u)); bottom: calc(1 * var(--u));
   font-size: calc(1.2 * var(--u)); font-weight: 700; color: var(--ink); opacity: 0.75; text-decoration: none;
   padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)); border: calc(0.2 * var(--u)) solid var(--ink); border-radius: 999px; background: #fffbe8;
 }
@@ -730,8 +735,11 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .u-rare { --uc: #42a5f5; --ub: #e3f2fd; }
 .u-epic { --uc: #ab47bc; --ub: #f3e5f5; }
 .u-legend { --uc: #ffb300; --ub: #fff8e1; }
-.unit-btn.u-rare, .unit-btn.u-epic, .unit-btn.u-legend { border-color: var(--uc); background: linear-gradient(180deg, #fff 55%, var(--ub)); box-shadow: 0 calc(0.3 * var(--u)) 0 var(--ink), inset 0 0 0 calc(0.18 * var(--u)) var(--ink); }
-.unit-btn.u-legend { background: radial-gradient(circle at 50% 35%, #fffde7, #ffe082); }
+/* 소환 버튼: 테두리·그림자는 모든 등급이 같고, 등급은 위쪽 색 띠와 은은한 배경으로만 구분한다 */
+.unit-btn.u-rare, .unit-btn.u-epic, .unit-btn.u-legend { background: linear-gradient(180deg, #fff 55%, var(--ub)); }
+.unit-btn.u-rare::before, .unit-btn.u-epic::before, .unit-btn.u-legend::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: calc(0.55 * var(--u)); background: var(--uc); pointer-events: none;
+}
 .rarity-chip { display: inline-block; background: var(--uc); color: #fff; border: calc(0.15 * var(--u)) solid var(--ink); border-radius: calc(0.6 * var(--u)); padding: 0 calc(0.6 * var(--u)); font-size: calc(1.4 * var(--u)); -webkit-text-stroke: calc(0.05 * var(--u)) var(--ink); white-space: nowrap; }
 .rarity-chip.mini { font-size: calc(1.15 * var(--u)); padding: 0 calc(0.35 * var(--u)); -webkit-text-stroke: 0; text-shadow: 0 0 calc(0.2 * var(--u)) var(--ink); }
 .card.u-rare, .card.u-epic, .card.u-legend { border-color: var(--uc); box-shadow: inset 0 0 0 calc(0.2 * var(--u)) var(--ub); }
@@ -885,6 +893,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
  * 무대가 화면 전체를 채우고, --u는 화면 폭을 56칸으로 나눈 크기라 가로 화면과 글자 크기가 비슷하다.
  * 전투는 위쪽에 가로 레인 띠, 아래쪽에 조작 버튼을 둔다.
  */
+/* 세로: 상태 표시줄·홈 바 영역도 게임 배경색으로 칠해 위아래 검은 띠가 생기지 않게 */
+html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 .portrait #app { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
 .portrait .stage { width: 100cqw; height: 100cqh; border-radius: 0; }
 .portrait .stage > * { --u: min(1cqw * 100 / 56, 1cqh); }
@@ -950,7 +960,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .portrait .title-actions .btn.big { max-width: 100%; }
 .portrait .name-input { width: min(calc(34 * var(--u)), 100%); }
 .portrait .title-foot { text-align: center; padding: 0 calc(1 * var(--u)); }
-.portrait .title-credit { right: 50%; transform: translateX(50%); bottom: calc(1.4 * var(--u)); white-space: nowrap; }
+.portrait .title-credits { right: 50%; transform: translateX(50%); bottom: calc(1.4 * var(--u)); white-space: nowrap; }
 
 /* ── 공용 상단 바: 뒤로 · 오른쪽 버튼 / 제목 두 줄 ── */
 .portrait .topbar { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'back right' 'title title'; row-gap: calc(0.4 * var(--u)); padding: calc(1 * var(--u)) calc(1.2 * var(--u)) calc(0.6 * var(--u)); }
@@ -965,12 +975,12 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .portrait .chapter-tabs .chapter-tab { flex: 1 0 calc(15 * var(--u)); border-radius: calc(1 * var(--u)); padding: calc(0.7 * var(--u)); font-size: calc(1.6 * var(--u)); }
 .portrait .chapter-title { padding: calc(1.2 * var(--u)) calc(1.5 * var(--u)) calc(0.6 * var(--u)); font-size: calc(1.8 * var(--u)); }
 .portrait .chapter-title .muted { display: block; }
-.portrait .stage-path { grid-template-columns: repeat(3, auto); column-gap: calc(3 * var(--u)); row-gap: calc(2.2 * var(--u)); align-content: center; }
+.portrait .stage-path { grid-template-columns: repeat(3, auto); column-gap: calc(3 * var(--u)); row-gap: calc(1.6 * var(--u)); align-content: center; }
 .portrait .stage-path::before, .portrait .stage-path::after { display: none; }
-.portrait .stage-path .stage-node { width: calc(12.5 * var(--u)); height: calc(12.5 * var(--u)); }
+.portrait .stage-path .stage-node { width: calc(11.5 * var(--u)); height: calc(11.5 * var(--u)); }
 .portrait .stage-path .stage-node:nth-child(even) { transform: none; }
 .portrait .stage-path .stage-node:nth-child(3n+2) { transform: translateY(calc(1.6 * var(--u))); }
-.portrait .stage-path .stage-node.boss { width: calc(15 * var(--u)); height: calc(15 * var(--u)); }
+.portrait .stage-path .stage-node.boss { width: calc(13.5 * var(--u)); height: calc(13.5 * var(--u)); }
 .portrait .stage-path .stage-node.boss:last-child { grid-column: 1 / -1; transform: none; }
 .portrait .map-actions { flex-wrap: wrap; gap: calc(1 * var(--u)); padding: calc(1 * var(--u)) calc(1.4 * var(--u)) calc(1.6 * var(--u)); }
 .portrait .map-actions .btn { flex: 1 0 40%; }
@@ -1065,3 +1075,18 @@ html[lang='en'] body { font-weight: 500; }
 .rank-avatar { width: calc(3.4 * var(--u)); height: calc(3.4 * var(--u)); object-fit: contain; flex: none; }
 .rank-badge { display: block; font-size: calc(1.1 * var(--u)); color: #8e5bd0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .portrait .rank-avatar { grid-area: avatar; }
+
+/* ── 장비 지원: 열정 설명 ── */
+.grant { overflow-y: auto; touch-action: pan-y; }
+.passion-help { background: #fff3e0; border: calc(0.2 * var(--u)) dashed #ef6c00; border-radius: calc(0.8 * var(--u)); padding: calc(0.5 * var(--u)) calc(0.8 * var(--u)); line-height: 1.35; }
+.donate-panel { max-width: calc(52 * var(--u)); text-align: left; }
+.donate-panel h2 { text-align: center; }
+.donate-steps { margin: calc(0.6 * var(--u)) 0; padding-left: calc(2.4 * var(--u)); font-size: calc(1.6 * var(--u)); }
+.donate-url { display: block; text-align: center; font-size: calc(1.4 * var(--u)); background: #fff8e1; border: calc(0.2 * var(--u)) dashed #ffb300; border-radius: calc(0.8 * var(--u)); padding: calc(0.4 * var(--u)); user-select: all; -webkit-user-select: all; word-break: break-all; }
+.donate-status { min-height: calc(2 * var(--u)); text-align: center; font-size: calc(1.4 * var(--u)); }
+.donate-panel .btn-row { justify-content: center; }
+
+/* ── 세로 지도: 덜 길쭉한 화면에서도 아래 버튼이 보이게 스테이지 영역만 스크롤 ── */
+.portrait .stage-path { min-height: 0; overflow-y: auto; touch-action: pan-y; align-content: safe center; padding-top: calc(1.4 * var(--u)); padding-bottom: calc(1.4 * var(--u)); }
+.chapter-title .muted { margin-left: calc(0.8 * var(--u)); }
+.portrait .chapter-title .muted { display: block; margin-left: 0; }
