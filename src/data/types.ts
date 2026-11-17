@@ -72,6 +72,14 @@ export interface UnitDef extends CombatStats {
   /** 해금 조건: 스테이지 클리어 또는 구독 */
   unlock: { stage?: string; subscribe?: number };
   look: Look;
+  /** 영어 (src/i18n) */
+  en?: UnitEn;
+}
+
+export interface UnitEn {
+  names: [string, string, string];
+  role: string;
+  desc: string;
 }
 
 export interface BossPattern {
@@ -88,4 +96,11 @@ export interface EnemyDef extends CombatStats {
   reward: number;
   boss?: BossPattern;
   look: Look;
+  /** 영어 (src/i18n) */
+  en?: EnemyEn;
+}
+
+export interface EnemyEn {
+  name: string;
+  role: string;
 }

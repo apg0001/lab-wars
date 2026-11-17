@@ -11,6 +11,7 @@ import { music } from '../audio/music';
 import { h } from '../ui/dom';
 import { isPortrait } from '../ui/orientation';
 import type { Action, ActorId, Bg, Line, Scene } from './script';
+import { tr } from '../i18n';
 
 /**
  * 애니메이션 컷신 재생기.
@@ -42,16 +43,16 @@ function actorDef(id: ActorId, heroName: string, chapter: number, heroIsProf: bo
   const boss = (eid: string, voice: number): ActorDef => ({ name: ENEMY_BY_ID[eid]!.name, look: { ...ENEMY_BY_ID[eid]!.look, scale: 1.25 }, tier: 1, defId: eid, voice });
   switch (id) {
     case 'hero': {
-      if (heroIsProf) return { name: `${heroName} 교수`, look: { kind: 'professor', color: '#1565c0', accent: '#7cc4ff', scale: 1.25 }, tier: 1, defId: 'hero-prof', voice: 0.85 };
+      if (heroIsProf) return { name: tr(`${heroName} 교수`, `Prof. ${heroName}`), look: { kind: 'professor', color: '#1565c0', accent: '#7cc4ff', scale: 1.25 }, tier: 1, defId: 'hero-prof', voice: 0.85 };
       const hl = heroLook(chapter);
       return { name: heroName, look: hl.look, tier: hl.tier, defId: 'hero', voice: 1.1 };
     }
-    case 'senior': return unit('labchief', 3, '랩장 선배', 1);
-    case 'claudy': return unit('claudy', 2, '클로디', 1.3);
-    case 'codexy': return unit('codexy', 2, '코덱시', 1.2);
-    case 'jaeminai': return unit('jaeminai', 2, '재미나이', 1.35);
-    case 'newbie': return unit('grunt', 1, '신입 학부생', 1.25);
-    case 'mom': return { name: '엄마', look: { kind: 'student', color: '#f48fb1', prop: 'none' }, tier: 3, defId: 'mom', voice: 1.15 };
+    case 'senior': return unit('labchief', 3, tr('랩장 선배', 'Lab Chief'), 1);
+    case 'claudy': return unit('claudy', 2, tr('클로디', 'Claudy'), 1.3);
+    case 'codexy': return unit('codexy', 2, tr('코덱시', 'Codexy'), 1.2);
+    case 'jaeminai': return unit('jaeminai', 2, tr('재미나이', 'Jaeminai'), 1.35);
+    case 'newbie': return unit('grunt', 1, tr('신입 학부생', 'New Undergrad'), 1.25);
+    case 'mom': return { name: tr('엄마', 'Mom'), look: { kind: 'student', color: '#f48fb1', prop: 'none' }, tier: 3, defId: 'mom', voice: 1.15 };
     default: return boss(id, id === 'president' ? 0.6 : 0.75);
   }
 }
@@ -94,8 +95,8 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   const next = h('div.cut-next', {}, '▼');
   const box = h('div.cut-box', {}, nameTag, text, next);
   const title = scene.title ? h('div.cut-title', {}, scene.title) : null;
-  const skip = opt.skippable ? h('button.btn.small.cut-skip', { onclick: (e: Event) => { e.stopPropagation(); finish(); } }, '건너뛰기 ⏭') : null;
-  const stop = opt.onStop ? h('button.btn.small.cut-stop', { onclick: (e: Event) => { e.stopPropagation(); finish(true); } }, '그만 보기 ✕') : null;
+  const skip = opt.skippable ? h('button.btn.small.cut-skip', { onclick: (e: Event) => { e.stopPropagation(); finish(); } }, tr('건너뛰기 ⏭', 'Skip ⏭')) : null;
+  const stop = opt.onStop ? h('button.btn.small.cut-stop', { onclick: (e: Event) => { e.stopPropagation(); finish(true); } }, tr('그만 보기 ✕', 'Stop ✕')) : null;
   const prog = opt.progress ? h('div.cut-progress', {}, opt.progress) : null;
   const corner = h('div.cut-corner', {}, fullscreenButton(() => host), stop, skip);
   root.append(canvas, box, corner, ...[title, prog].filter((x): x is HTMLElement => !!x));
@@ -429,8 +430,8 @@ function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sig
       ctx.strokeRect(w * 0.2, 30, w * 0.6, 150);
       ctx.fillStyle = 'rgba(255,255,255,.75)';
       ctx.font = '26px Jua, sans-serif';
-      ctx.fillText('연구실 인턴 모집 (경력 우대 X)', w * 0.24, 85);
-      ctx.fillText('∫ 커피 dt = 졸업', w * 0.24, 135);
+      ctx.fillText(tr('연구실 인턴 모집 (경력 우대 X)', 'LAB INTERNS WANTED (no pay, lots of exp)'), w * 0.24, 85);
+      ctx.fillText(tr('∫ 커피 dt = 졸업', '∫ coffee dt = graduation'), w * 0.24, 135);
       break;
     }
     case 'lab':
@@ -501,7 +502,7 @@ function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sig
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 40px Jua, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(sign ?? '학술대회', w / 2, 67);
+      ctx.fillText(sign ?? tr('학술대회', 'Conference'), w / 2, 67);
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(255,253,200,.12)';
       for (const sx of [0.3, 0.7]) {
@@ -534,7 +535,7 @@ function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sig
       ctx.fillStyle = '#ffd54f';
       ctx.font = 'bold 34px Jua, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('학위 수여식 · 임용식', w / 2, 72);
+      ctx.fillText(tr('학위 수여식 · 임용식', 'Commencement · Faculty Appointment'), w / 2, 72);
       ctx.textAlign = 'left';
       break;
     }

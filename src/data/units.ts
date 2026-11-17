@@ -1,6 +1,9 @@
 import type { UnitDef } from './types';
+import { localizeAll } from '../i18n';
 
 const degree = (role: string): [string, string, string] => [`학부 ${role}`, `석사 ${role}`, `박사 ${role}`];
+/** 영어 학위 단계: Undergrad / Master's / PhD */
+const degreeEn = (role: string): [string, string, string] => [`Undergrad ${role}`, `Master's ${role}`, `PhD ${role}`];
 
 export const UNITS: UnitDef[] = [
   {
@@ -12,6 +15,7 @@ export const UNITS: UnitDef[] = [
     hp: 55, atk: 7, range: 20, speed: 58, interval: 0.8,
     unlock: {},
     look: { kind: 'student', color: '#7cc4ff', prop: 'none' },
+    en: { names: degreeEn('Rookie'), role: 'Cheap melee', desc: 'Fast and cheap. The lab rookie who wins by sheer numbers.' },
   },
   {
     id: 'keyboard',
@@ -22,6 +26,7 @@ export const UNITS: UnitDef[] = [
     hp: 130, atk: 14, range: 22, speed: 45, interval: 0.9,
     unlock: { stage: '1-3' },
     look: { kind: 'student', color: '#8fd18b', prop: 'keyboard' },
+    en: { names: degreeEn('Keyboard Warrior'), role: 'Standard melee', desc: 'Smacks things with a mechanical keyboard. The clacking is the weapon.' },
   },
   {
     id: 'coder',
@@ -32,6 +37,7 @@ export const UNITS: UnitDef[] = [
     hp: 70, atk: 13, range: 160, speed: 42, interval: 1.1,
     unlock: { stage: '1-6' },
     look: { kind: 'student', color: '#b59cff', prop: 'laptop' },
+    en: { names: degreeEn('Coder'), role: 'Ranged', desc: 'Fires bugs from a laptop. Can hit flying enemies.' },
   },
   {
     id: 'shield',
@@ -42,6 +48,7 @@ export const UNITS: UnitDef[] = [
     hp: 450, atk: 9, range: 22, speed: 30, interval: 1.2,
     unlock: { stage: '2-8' },
     look: { kind: 'student', color: '#c9a27a', prop: 'shield' },
+    en: { names: degreeEn('Paper Shield'), role: 'Tank', desc: 'Blocks everything with a pile of papers nobody has read.' },
   },
   {
     id: 'chemist',
@@ -53,6 +60,7 @@ export const UNITS: UnitDef[] = [
     knockback: { chance: 0.3, dist: 45 },
     unlock: { stage: '3-5' },
     look: { kind: 'student', color: '#f4f4f4', accent: '#5fd3b0', prop: 'flask' },
+    en: { names: degreeEn('Experimenter'), role: 'Ranged splash', desc: 'Lobs suspicious flasks. Splash damage, 30% knockback chance, can hit flying enemies.' },
   },
   {
     id: 'allnighter',
@@ -64,6 +72,7 @@ export const UNITS: UnitDef[] = [
     knockback: { chance: 0.25, dist: 40 },
     unlock: { stage: '4-6' },
     look: { kind: 'student', color: '#ff8a65', prop: 'headband' },
+    en: { names: degreeEn('All-Nighter'), role: 'Heavy melee', desc: "Hasn't slept in three days. Slow, but hits hard with a 25% chance to knock back." },
   },
   {
     id: 'labchief',
@@ -75,6 +84,7 @@ export const UNITS: UnitDef[] = [
     aura: { atkMul: 1.25, radius: 140 },
     unlock: { stage: '5-3' },
     look: { kind: 'student', color: '#ffd54f', prop: 'clipboard' },
+    en: { names: degreeEn('Lab Chief'), role: 'Support', desc: "Raises nearby allies' attack by 25%. The real power in the lab." },
   },
   {
     id: 'drone',
@@ -85,6 +95,7 @@ export const UNITS: UnitDef[] = [
     hp: 90, atk: 11, range: 120, speed: 60, interval: 1.0, flying: true,
     unlock: { stage: '1-10' },
     look: { kind: 'drone', color: '#90a4ae', accent: '#4fc3f7' },
+    en: { names: ['Research Drone', 'Quadcopter', 'Autonomous Drone'], role: 'Flying ranged', desc: 'Flies over ground enemies and attacks without being blocked.' },
   },
   {
     id: 'gpu',
@@ -96,6 +107,7 @@ export const UNITS: UnitDef[] = [
     knockback: { chance: 0.2, dist: 50 },
     unlock: { stage: '6-3' },
     look: { kind: 'gpu', color: '#37474f', accent: '#76ff03' },
+    en: { names: ['GPU Server', 'GPU Cluster', 'Supercomputer'], role: 'Siege', desc: 'Advances menacingly with roaring fans. 3x damage to buildings, 20% knockback chance.' },
   },
   {
     id: 'claudy',
@@ -107,6 +119,7 @@ export const UNITS: UnitDef[] = [
     heal: { amount: 12, every: 2, radius: 120 },
     unlock: { stage: '1-10', subscribe: 600 },
     look: { kind: 'claudy', color: '#f4a261', accent: '#fff3e0' },
+    en: { names: ['Claudy', 'Claudy Pro', 'Claudy Max'], role: 'AI assistant · Support', desc: 'Proofreads papers and heals nearby allies. (Parody character)' },
   },
   {
     id: 'codexy',
@@ -117,6 +130,7 @@ export const UNITS: UnitDef[] = [
     hp: 85, atk: 7, range: 170, speed: 40, interval: 0.35,
     unlock: { stage: '3-1', subscribe: 900 },
     look: { kind: 'codexy', color: '#263238', accent: '#69f0ae' },
+    en: { names: ['Codexy', 'Codexy Turbo', 'Codexy Ultra'], role: 'AI assistant · Rapid fire', desc: 'Pours out code from the terminal nonstop. (Parody character)' },
   },
   {
     id: 'jaeminai',
@@ -127,7 +141,10 @@ export const UNITS: UnitDef[] = [
     hp: 120, atk: 15, range: 22, speed: 48, interval: 0.9,
     unlock: { stage: '3-10', subscribe: 1200 },
     look: { kind: 'jaeminai', color: '#7986cb', accent: '#b39ddb' },
+    en: { names: ['Jaeminai', 'Jaeminai Plus', 'Jaeminai Ultra'], role: 'AI assistant · Twins', desc: 'Call one and two show up. Twice the fun. (Parody character)' },
   },
 ];
+
+localizeAll(UNITS);
 
 export const UNIT_BY_ID: Record<string, UnitDef> = Object.fromEntries(UNITS.map((u) => [u.id, u]));

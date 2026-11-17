@@ -8,6 +8,7 @@ import { SKILLS } from '../data/upgrades';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { iconEl } from '../render/doodle';
+import { tr } from '../i18n';
 
 type Tab = 'ally' | 'skill' | 'enemy' | 'boss';
 
@@ -26,14 +27,14 @@ function seenEnemies(save: SaveData): Set<string> {
 
 function tags(st: CombatStats): string {
   const t: string[] = [];
-  if (st.flying) t.push('공중');
-  if (st.range >= RANGED_THRESHOLD) t.push('원거리·대공');
-  else t.push('근접');
-  if (st.splash) t.push('범위');
-  if (st.aura) t.push(`오라 +${Math.round((st.aura.atkMul - 1) * 100)}%`);
-  if (st.heal) t.push('회복');
-  if (st.buildingMul) t.push(`건물 ×${st.buildingMul}`);
-  if (st.knockback) t.push(`넉백 ${Math.round(st.knockback.chance * 100)}%`);
+  if (st.flying) t.push(tr('공중', 'Air'));
+  if (st.range >= RANGED_THRESHOLD) t.push(tr('원거리·대공', 'Ranged · Anti-air'));
+  else t.push(tr('근접', 'Melee'));
+  if (st.splash) t.push(tr('범위', 'Splash'));
+  if (st.aura) t.push(tr(`오라 +${Math.round((st.aura.atkMul - 1) * 100)}%`, `Aura +${Math.round((st.aura.atkMul - 1) * 100)}%`));
+  if (st.heal) t.push(tr('회복', 'Heal'));
+  if (st.buildingMul) t.push(tr(`건물 ×${st.buildingMul}`, `Building ×${st.buildingMul}`));
+  if (st.knockback) t.push(tr(`넉백 ${Math.round(st.knockback.chance * 100)}%`, `Knockback ${Math.round(st.knockback.chance * 100)}%`));
   return t.join(' · ');
 }
 
@@ -48,9 +49,9 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       for (const u of UNITS) {
         const owned = isUnitOwned(save, u);
         grid.append(h('div.dex-ally', {},
-          h('div.dex-ally-head', {}, h('b', {}, u.names[0]), h('span.muted', {}, ` ${u.role}`), owned ? null : h('span.dex-lock', {}, u.unlock.subscribe ? '구독 필요' : `${u.unlock.stage} 클리어 시 합류`)),
+          h('div.dex-ally-head', {}, h('b', {}, u.names[0]), h('span.muted', {}, ` ${u.role}`), owned ? null : h('span.dex-lock', {}, u.unlock.subscribe ? tr('구독 필요', 'Subscription') : tr(`${u.unlock.stage} 클리어 시 합류`, `Joins after ${u.unlock.stage}`))),
           h('div.dex-tiers', {}, ...[1, 2, 3].map((tier) => h('button.dex-cell', {
-            onclick: () => preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: u.desc, stats: unitStats(u, { level: tier * 5, tier }), extra: `{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}` }),
+            onclick: () => preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: u.desc, stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }),
           }, h('img', { src: portrait(u.look, tier, u.id), alt: '' }), h('span', {}, u.names[tier - 1]!)))),
         ));
       }
@@ -59,31 +60,31 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       SKILLS.forEach((sk, i) => {
         const open = isSkillOpen(save, sk);
         grid.append(h(`div.dex-ally.dex-skill${open ? '' : '.locked'}`, {},
-          h('div.dex-ally-head', {}, h('span.dex-skill-icon', {}, iconEl(sk.icon)), h('b', {}, sk.name), open ? null : h('span.dex-lock', {}, `${sk.unlockStage} 클리어 시 사용`)),
+          h('div.dex-ally-head', {}, h('span.dex-skill-icon', {}, iconEl(sk.icon)), h('b', {}, sk.name), open ? null : h('span.dex-lock', {}, tr(`${sk.unlockStage} 클리어 시 사용`, `Unlocks after ${sk.unlockStage}`))),
           h('p.dex-skill-desc', {}, sk.desc),
-          h('div.stats', {}, `{brain} 멘탈 ${sk.cost} · 단축키 ${SKILL_KEYS[i] ?? '-'}${sk.targeted ? ' · 전장을 탭해 위치 지정' : ''}`),
+          h('div.stats', {}, tr(`{brain} 멘탈 ${sk.cost} · 단축키 ${SKILL_KEYS[i] ?? '-'}${sk.targeted ? ' · 전장을 탭해 위치 지정' : ''}`, `{brain} Sanity ${sk.cost} · key ${(SKILL_KEYS[i] ?? '-').toUpperCase()}${sk.targeted ? ' · tap the field to aim' : ''}`)),
           h('p.muted.dex-skill-lore', {}, sk.lore),
         ));
       });
-      grid.append(h('p.muted.dex-skill-tip', {}, '스킬은 멘탈을 써요. {remodel} 시설의 {meditate} 명상 앱으로 멘탈 충전을 늘리면 스킬을 더 자주 쓸 수 있어요.'));
+      grid.append(h('p.muted.dex-skill-tip', {}, tr('스킬은 멘탈을 써요. {remodel} 시설의 {meditate} 명상 앱으로 멘탈 충전을 늘리면 스킬을 더 자주 쓸 수 있어요.', 'Skills cost Sanity. Upgrade the {meditate} Meditation App in {remodel} Facilities to charge Sanity faster and use skills more often.')));
     } else {
       const list = ENEMIES.filter((e) => (tab === 'boss') === !!e.boss);
       for (const e of list) {
         const known = seen.has(e.id);
         grid.append(h(`button.dex-cell.enemy${known ? '' : '.unknown'}${e.boss ? '.boss' : ''}`, {
-          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: bossDesc(e.boss), stats: e, extra: `처치 연구비 {coin}${e.reward}` }),
-        }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'), h('small.muted', {}, known ? e.role : '아직 만나지 않음')));
+          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: bossDesc(e.boss), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
+        }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'), h('small.muted', {}, known ? e.role : tr('아직 만나지 않음', 'Not met yet'))));
       }
     }
     const owned = UNITS.filter((u) => isUnitOwned(save, u)).length;
     root.replaceChildren(h('div.screen.dex', {},
       h('div.topbar', {},
-        h('button.btn.small', { onclick: () => { stopPreview?.(); onBack(); } }, '← 뒤로'),
-        h('h2.top-title', {}, '캐릭터 도감'),
-        h('div.money', {}, `동료 ${owned}/${UNITS.length} · 적 ${[...seen].length}/${ENEMIES.length}`),
+        h('button.btn.small', { onclick: () => { stopPreview?.(); onBack(); } }, tr('← 뒤로', '← Back')),
+        h('h2.top-title', {}, tr('캐릭터 도감', 'Codex')),
+        h('div.money', {}, tr(`동료 ${owned}/${UNITS.length} · 적 ${[...seen].length}/${ENEMIES.length}`, `Labmates ${owned}/${UNITS.length} · Enemies ${[...seen].length}/${ENEMIES.length}`)),
       ),
       h('div.lab-tabs', {},
-        ...(['ally', 'skill', 'enemy', 'boss'] as Tab[]).map((t) => h(`button.chapter-tab${t === tab ? '.on' : ''}`, { onclick: () => render(t) }, { ally: '{student} 연구실 동료', skill: '{sparkle} 스킬', enemy: '{paper} 잡무 군단', boss: '{prof} 보스' }[t])),
+        ...(['ally', 'skill', 'enemy', 'boss'] as Tab[]).map((t) => h(`button.chapter-tab${t === tab ? '.on' : ''}`, { onclick: () => render(t) }, { ally: tr('{student} 연구실 동료', '{student} Labmates'), skill: tr('{sparkle} 스킬', '{sparkle} Skills'), enemy: tr('{paper} 잡무 군단', '{paper} Busywork Army'), boss: tr('{prof} 보스', '{prof} Bosses') }[t])),
       ),
       grid,
     ));
@@ -136,10 +137,10 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       h('div.dex-info', {},
         h('h2', {}, p.name),
         h('p.muted', {}, `${p.role} · ${tags(p.stats)}`),
-        h('div.stats', {}, `{heart} ${fmt(p.stats.hp)}  {sword} ${Math.round(p.stats.atk)}  {target} ${p.stats.range}  {boot} ${p.stats.speed}  {clock} ${p.stats.interval}초`),
+        h('div.stats', {}, `{heart} ${fmt(p.stats.hp)}  {sword} ${Math.round(p.stats.atk)}  {target} ${p.stats.range}  {boot} ${p.stats.speed}  {clock} ${p.stats.interval}${tr('초', 's')}`),
         h('p.muted', {}, p.extra),
         p.desc ? h('p', {}, p.desc) : null,
-        h('button.btn', { onclick: close }, '닫기'),
+        h('button.btn', { onclick: close }, tr('닫기', 'Close')),
       ),
     ));
     root.firstElementChild?.append(overlay);
@@ -154,8 +155,8 @@ function bossDesc(b?: { summon?: { id: string; every: number; count: number }; s
   const parts: string[] = [];
   if (b.summon) {
     const name = ENEMIES.find((e) => e.id === b.summon!.id)?.name ?? b.summon.id;
-    parts.push(`${b.summon.every}초마다 ${name} ${b.summon.count}마리 소환`);
+    parts.push(tr(`${b.summon.every}초마다 ${name} ${b.summon.count}마리 소환`, `Summons ${b.summon.count} ${name} every ${b.summon.every}s`));
   }
-  if (b.stomp) parts.push(`${b.stomp.every}초마다 버럭 (주변 ${b.stomp.dmg} 피해)`);
+  if (b.stomp) parts.push(tr(`${b.stomp.every}초마다 버럭 (주변 ${b.stomp.dmg} 피해)`, `Yells every ${b.stomp.every}s (${b.stomp.dmg} area damage)`));
   return parts.join(', ');
 }

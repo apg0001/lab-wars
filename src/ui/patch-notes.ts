@@ -1,6 +1,7 @@
 import { GAME_VERSION, PATCH_NOTES, unseenNotes, type PatchNote } from '../data/patch-notes';
 import { kv } from '../save/store';
 import { h } from './dom';
+import { tr } from '../i18n';
 
 /** 마지막으로 본 패치노트 버전을 담는 키 (App 설정과 따로 둬서 서로 덮어쓰지 않게) */
 const SEEN_KEY = 'patchSeen';
@@ -19,7 +20,7 @@ function openPanel(host: Element, title: string, notes: PatchNote[], extra?: HTM
   overlay.append(h('div.panel.patch-panel', {},
     h('h2', {}, title),
     h('div.patch-list', {}, ...notes.map(noteCard)),
-    h('div.btn-row', {}, extra ?? null, h('button.btn.primary', { onclick: () => overlay.remove() }, '확인')),
+    h('div.btn-row', {}, extra ?? null, h('button.btn.primary', { onclick: () => overlay.remove() }, tr('확인', 'OK'))),
   ));
   host.append(overlay);
   return overlay;
@@ -27,7 +28,7 @@ function openPanel(host: Element, title: string, notes: PatchNote[], extra?: HTM
 
 /** 모든 버전의 패치노트 */
 export function showPatchNotes(host: Element | null): void {
-  if (host) openPanel(host, '{scroll} 패치노트', PATCH_NOTES);
+  if (host) openPanel(host, tr('{scroll} 패치노트', '{scroll} Patch notes'), PATCH_NOTES);
 }
 
 /**
@@ -44,6 +45,6 @@ export function maybeShowUpdates(host: Element | null, returning: boolean): void
   if (!notes.length) return;
   const more = notes.length > POPUP_MAX || PATCH_NOTES.length > notes.length;
   let overlay: HTMLElement | null = null;
-  const all = more ? h('button.btn', { onclick: () => { overlay?.remove(); showPatchNotes(host); } }, '전체 보기') : null;
-  overlay = openPanel(host, '{sparkle} 업데이트 소식', notes.slice(0, POPUP_MAX), all);
+  const all = more ? h('button.btn', { onclick: () => { overlay?.remove(); showPatchNotes(host); } }, tr('전체 보기', 'See all')) : null;
+  overlay = openPanel(host, tr('{sparkle} 업데이트 소식', '{sparkle} What\'s new'), notes.slice(0, POPUP_MAX), all);
 }

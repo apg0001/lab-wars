@@ -8,6 +8,7 @@ import { heroLook } from '../story/player';
 import { sfx } from '../audio/sfx';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
+import { tr } from '../i18n';
 
 /**
  * "심사 결과" 화면: 논문을 투고(뽑기)하면 심사 결과 메일과 함께 꾸미기 아이템이 온다.
@@ -36,12 +37,12 @@ function itemPic(item: CosmeticDef | undefined): HTMLElement {
   return h('div.item-pic', {}, h('img', { src: preview(item.kind === 'hat' ? { hat: item.id } : { color: item.id }), alt: '' }));
 }
 
-const KIND_LABEL = { hat: '모자·소품', color: '옷 색', title: '칭호' } as const;
+const KIND_LABEL = (k: 'hat' | 'color' | 'title'): string => ({ hat: tr('모자·소품', 'hat'), color: tr('옷 색', 'outfit color'), title: tr('칭호', 'title') })[k];
 
 function resultLine(r: DrawResult): string {
-  if (!r.item) return `위로 칭호를 다 모아서 투고료 {coin}${r.refund}을 돌려받았어요.`;
-  if (!r.fresh) return `이미 가진 아이템이라 {coin}${r.refund}으로 돌려받았어요.`;
-  return `새 ${KIND_LABEL[r.item.kind]} 획득!`;
+  if (!r.item) return tr(`위로 칭호를 다 모아서 투고료 {coin}${r.refund}을 돌려받았어요.`, `You have every consolation title, so {coin}${r.refund} of the fee was refunded.`);
+  if (!r.fresh) return tr(`이미 가진 아이템이라 {coin}${r.refund}으로 돌려받았어요.`, `Duplicate item — refunded as {coin}${r.refund}.`);
+  return tr(`새 ${KIND_LABEL(r.item.kind)} 획득!`, `New ${KIND_LABEL(r.item.kind)}!`);
 }
 
 let manuscript = 147;
@@ -55,23 +56,23 @@ function showResults(ctx: GachaCtx, results: DrawResult[], again: () => void): v
   const fresh = results.filter((r) => r.fresh).length;
   manuscript += results.length;
   const head = h('div.mail-head', {},
-    h('b', {}, '{mail} 심사 결과 통보'),
-    h('small', {}, `From: 편집장 <editor@labwars.journal> · 원고 LW-2026-${String(manuscript).padStart(4, '0')}`),
+    h('b', {}, tr('{mail} 심사 결과 통보', '{mail} Decision on your manuscript')),
+    h('small', {}, tr(`From: 편집장 <editor@labwars.journal> · 원고 LW-2026-${String(manuscript).padStart(4, '0')}`, `From: Editor-in-Chief <editor@labwars.journal> · Manuscript LW-2026-${String(manuscript).padStart(4, '0')}`)),
   );
   let body: HTMLElement;
   if (results.length === 1) {
     const r = results[0]!;
     body = h(`div.review-single.g-${r.grade}`, {},
       h('div.envelope', {}, h('div.env-back'), h('div.letter', {},
-        h('p.letter-hi', {}, `${ctx.heroName} 님께,`),
-        h('p.letter-txt', {}, '귀하의 원고에 대한 심사 결과를 알려 드립니다.'),
+        h('p.letter-hi', {}, tr(`${ctx.heroName} 님께,`, `Dear ${ctx.heroName},`)),
+        h('p.letter-txt', {}, tr('귀하의 원고에 대한 심사 결과를 알려 드립니다.', 'We are writing to inform you of the decision on your manuscript.')),
         stamp(r.grade, '.slam'),
         h('div.letter-item', {},
           itemPic(r.item),
           h('div', {},
-            h('b', {}, r.item ? r.item.name : '투고료 일부 환급'),
-            h('p.muted', {}, r.item ? `"${r.item.desc}"` : '"리뷰어 2: 다음 기회에."'),
-            h('p.result-line', {}, (r.pity ? '{sparkle} 천장 보장! ' : '') + resultLine(r)),
+            h('b', {}, r.item ? r.item.name : tr('투고료 일부 환급', 'Partial fee refund')),
+            h('p.muted', {}, r.item ? `"${r.item.desc}"` : tr('"리뷰어 2: 다음 기회에."', '"Reviewer 2: Maybe next time."')),
+            h('p.result-line', {}, (r.pity ? tr('{sparkle} 천장 보장! ', '{sparkle} Pity guarantee! ') : '') + resultLine(r)),
           ),
         ),
       ), h('div.env-front'), h('div.env-flap')),
@@ -86,15 +87,15 @@ function showResults(ctx: GachaCtx, results: DrawResult[], again: () => void): v
     )));
   }
   const summary = h('p.review-sum', {}, results.length > 1
-    ? `최고 결과 ${GRADE_INFO[best].label} · 새 아이템 ${fresh}개${refund ? ` · 환급 {coin}${fmt(refund)}` : ''}`
+    ? tr(`최고 결과 ${GRADE_INFO[best].label} · 새 아이템 ${fresh}개${refund ? ` · 환급 {coin}${fmt(refund)}` : ''}`, `Best: ${GRADE_INFO[best].label} · ${fresh} new item(s)${refund ? ` · refund {coin}${fmt(refund)}` : ''}`)
     : '');
   const canAgain = ctx.save.money >= (results.length > 1 ? DRAW10_PRICE : DRAW_PRICE);
   const panel = h(`div.panel.review-panel.best-${best}`, { onclick: () => panel.classList.add('skip') },
     head, body, summary,
     h('div.btn-row', {},
-      h('button.btn', { onclick: () => { close(); ctx.redraw('closet'); } }, '{hanger} 옷장'),
-      h('button.btn', { disabled: canAgain ? undefined : 'true', onclick: () => { close(); again(); } }, results.length > 1 ? '10편 더' : '한 편 더'),
-      h('button.btn.primary', { onclick: () => { close(); ctx.redraw('draw'); } }, '확인'),
+      h('button.btn', { onclick: () => { close(); ctx.redraw('closet'); } }, tr('{hanger} 옷장', '{hanger} Wardrobe')),
+      h('button.btn', { disabled: canAgain ? undefined : 'true', onclick: () => { close(); again(); } }, results.length > 1 ? tr('10편 더', '10 more') : tr('한 편 더', 'One more')),
+      h('button.btn.primary', { onclick: () => { close(); ctx.redraw('draw'); } }, tr('확인', 'OK')),
     ),
   );
   overlay.append(panel);
@@ -124,27 +125,27 @@ export function drawTab(ctx: GachaCtx): HTMLElement {
   return h('div.gacha-draw', {},
     h('div.journal', {},
       h('div.journal-cover', {},
-        h('small', {}, 'VOL. 26 · 연구비로 투고하는 저널'),
+        h('small', {}, tr('VOL. 26 · 연구비로 투고하는 저널', 'VOL. 26 · The journal you pay to submit to')),
         h('b', {}, 'Journal of Lab Wars'),
         h('img', { src: portrait(heroLook(1).look, 1, HERO_SLOT), alt: '' }),
       ),
       h('div.journal-info', {},
-        h('p', {}, '논문을 투고하면 심사 결과와 함께 꾸미기 아이템이 와요. {sparkle} 겉모습만 바뀌고 능력치는 그대로예요.'),
+        h('p', {}, tr('논문을 투고하면 심사 결과와 함께 꾸미기 아이템이 와요. {sparkle} 겉모습만 바뀌고 능력치는 그대로예요.', 'Submit a paper and the decision comes with a cosmetic item. {sparkle} Looks only — stats stay the same.')),
         h('div.rate-list', {}, ...GRADES.map((g) => h(`div.rate.g-${g}`, {},
           h('b', {}, GRADE_INFO[g].label),
           h('span', {}, `${Math.round(GRADE_INFO[g].rate * 100)}%`),
-          h('small', {}, g === 'reject' ? '위로 칭호 / 환급' : GRADE_INFO[g].rarity),
+          h('small', {}, g === 'reject' ? tr('위로 칭호 / 환급', 'Consolation title / refund') : GRADE_INFO[g].rarity),
         ))),
-        h('p.muted', {}, `중복은 연구비로 돌려받아요 (일반 ${GRADE_INFO.major.refund} · 희귀 ${GRADE_INFO.minor.refund} · 전설 ${GRADE_INFO.accept.refund}).`),
+        h('p.muted', {}, tr(`중복은 연구비로 돌려받아요 (일반 ${GRADE_INFO.major.refund} · 희귀 ${GRADE_INFO.minor.refund} · 전설 ${GRADE_INFO.accept.refund}).`, `Duplicates are refunded as funding (Common ${GRADE_INFO.major.refund} · Rare ${GRADE_INFO.minor.refund} · Legendary ${GRADE_INFO.accept.refund}).`)),
       ),
     ),
     h('div.submit-box', {},
-      h('div.pity', {}, `{star} 희귀 이상 보장까지 ${PITY - c.pity}편`),
-      h('div.collect', {}, `모은 아이템 ${have}/${total}`, h('div.lv-track', {}, h('div.lv-fill', { style: { width: `${(have / total) * 100}%` } }))),
-      h('button.btn.primary.submit-1', { disabled: s.money >= DRAW_PRICE ? undefined : 'true', onclick: () => run(1) }, `{paper} 1편 투고 {coin}${fmt(DRAW_PRICE)}`),
+      h('div.pity', {}, tr(`{star} 희귀 이상 보장까지 ${PITY - c.pity}편`, `{star} Rare+ guaranteed in ${PITY - c.pity}`)),
+      h('div.collect', {}, tr(`모은 아이템 ${have}/${total}`, `Collected ${have}/${total}`), h('div.lv-track', {}, h('div.lv-fill', { style: { width: `${(have / total) * 100}%` } }))),
+      h('button.btn.primary.submit-1', { disabled: s.money >= DRAW_PRICE ? undefined : 'true', onclick: () => run(1) }, tr(`{paper} 1편 투고 {coin}${fmt(DRAW_PRICE)}`, `{paper} Submit 1 {coin}${fmt(DRAW_PRICE)}`)),
       h('button.btn.submit-10', { disabled: s.money >= DRAW10_PRICE ? undefined : 'true', onclick: () => run(10) },
-        `{books} 10편 투고 {coin}${fmt(DRAW10_PRICE)}`, h('small', {}, ' 1편 무료')),
-      h('p.muted', {}, `지금까지 ${fmt(c.draws)}편 투고`),
+        tr(`{books} 10편 투고 {coin}${fmt(DRAW10_PRICE)}`, `{books} Submit 10 {coin}${fmt(DRAW10_PRICE)}`), h('small', {}, tr(' 1편 무료', ' 1 free'))),
+      h('p.muted', {}, tr(`지금까지 ${fmt(c.draws)}편 투고`, `${fmt(c.draws)} submitted so far`)),
     ),
   );
 }
@@ -157,7 +158,7 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
   const units = UNITS.filter((u) => isUnitOwned(s, u));
   if (slot !== HERO_SLOT && !units.some((u) => u.id === slot)) slot = HERO_SLOT;
   const slots = [
-    { id: HERO_SLOT, name: `${ctx.heroName} (나)`, look: heroLook(1).look, tier: 1 },
+    { id: HERO_SLOT, name: tr(`${ctx.heroName} (나)`, `${ctx.heroName} (you)`), look: heroLook(1).look, tier: 1 },
     ...units.map((u) => ({ id: u.id, name: u.names[unitProgress(s, u.id).tier - 1]!, look: u.look, tier: unitProgress(s, u.id).tier })),
   ];
   const cur = slots.find((x) => x.id === slot)!;
@@ -171,7 +172,7 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
   const chip = (item: CosmeticDef, on: boolean, pic: HTMLElement): HTMLElement => {
     const have = owns(s, item.id);
     return h(`button.wear-chip.g-${item.grade}${on ? '.on' : ''}${have ? '' : '.locked'}`, {
-      title: have ? `${item.name}: ${item.desc}` : `${GRADE_INFO[item.grade].label}에서 나와요`,
+      title: have ? `${item.name}: ${item.desc}` : tr(`${GRADE_INFO[item.grade].label}에서 나와요`, `Drops from ${GRADE_INFO[item.grade].label}`),
       disabled: have ? undefined : 'true',
       onclick: () => change(() => equip(s, slot, item.kind as 'hat' | 'color', on ? null : item.id)),
     }, have ? pic : h('span.q', {}, '?'), h('small', {}, have ? item.name : GRADE_INFO[item.grade].rarity));
@@ -189,7 +190,7 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
       h('div.closet-preview', {},
         h('img', { src: portrait(cur.look, cur.tier, cur.id), alt: '' }),
         h('b', {}, cur.name),
-        h('small.muted', {}, [fit.hat && COSMETIC_BY_ID[fit.hat]!.name, fit.color && COSMETIC_BY_ID[fit.color]!.name].filter(Boolean).join(' · ') || '기본 차림'),
+        h('small.muted', {}, [fit.hat && COSMETIC_BY_ID[fit.hat]!.name, fit.color && COSMETIC_BY_ID[fit.color]!.name].filter(Boolean).join(' · ') || tr('기본 차림', 'Default outfit')),
         h('button.btn.small', {
           disabled: fit.hat || fit.color ? undefined : 'true',
           onclick: () => change(() => {
@@ -200,19 +201,19 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
             }
             return true;
           }),
-        }, '{party} 모두에게 입히기'),
+        }, tr('{party} 모두에게 입히기', '{party} Apply to everyone')),
       ),
       h('div.closet-items', {},
-        h('div.closet-head', {}, '{crown} 모자·소품'),
+        h('div.closet-head', {}, tr('{crown} 모자·소품', '{crown} Hats & props')),
         h('div.wear-grid', {}, ...hats.map((it) => chip(it, fit.hat === it.id, h('img', { src: portrait(cur.look, cur.tier, cur.id, 1, { hat: it.id, color: fit.color }), alt: '' })))),
-        h('div.closet-head', {}, '{pencil} 옷 색'),
+        h('div.closet-head', {}, tr('{pencil} 옷 색', '{pencil} Outfit color')),
         h('div.wear-grid.colors', {}, ...colors.map((it) => chip(it, fit.color === it.id, swatch(it)))),
-        h('div.closet-head', {}, `{scroll} 칭호 · 지금: ${titleName(s) || '없음'}`),
+        h('div.closet-head', {}, tr(`{scroll} 칭호 · 지금: ${titleName(s) || '없음'}`, `{scroll} Title · now: ${titleName(s) || 'none'}`)),
         h('div.title-grid', {}, ...titles.map((it) => {
           const have = owns(s, it.id);
           const on = s.cosmetics.title === it.id;
           return h(`button.title-chip.g-${it.grade}${on ? '.on' : ''}${have ? '' : '.locked'}`, {
-            title: have ? it.desc : `${GRADE_INFO[it.grade].label}에서 나와요`,
+            title: have ? it.desc : tr(`${GRADE_INFO[it.grade].label}에서 나와요`, `Drops from ${GRADE_INFO[it.grade].label}`),
             disabled: have ? undefined : 'true',
             onclick: () => change(() => equipTitle(s, on ? null : it.id)),
           }, have ? it.name : `? ${GRADE_INFO[it.grade].label}`);
