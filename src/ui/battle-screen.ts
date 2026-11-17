@@ -3,7 +3,7 @@ import { ENEMY_BY_ID } from '../data/enemies';
 import { Battle, WORLD_W } from '../sim/battle';
 import type { BattleLoadout } from '../sim/progression';
 import { iconEl, preloadIcons } from '../render/doodle';
-import { drawBattle, setViewAspect, VIEW_H, VIEW_W } from '../render/scene';
+import { drawBattle, PORTRAIT_TOP, setPortraitAspect, setViewAspect, VIEW_H, VIEW_W } from '../render/scene';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 import { keyOf } from './keys';
@@ -13,6 +13,7 @@ import { audio } from '../audio/engine';
 import { music } from '../audio/music';
 import { playBattleSfx } from '../audio/sfx';
 import { showAudioSettings } from './audio-settings';
+import { isPortrait } from './orientation';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
@@ -56,6 +57,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   /** 화면 비율에 따라 바뀌는 가로 시야 (resize에서 갱신) */
   let viewW = VIEW_W;
   let maxCam = WORLD_W - viewW;
+  /** 세로 화면에서 잘라 낸 위쪽 높이 (가로 화면은 0) */
+  let viewTop = 0;
+  let wasTall: boolean | null = null;
   let speed = SPEEDS.includes(opt.speed ?? 1) ? (opt.speed ?? 1) : 1;
   let paused = false;
   let armed: 'bombard' | null = null;
@@ -122,13 +126,14 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     return { btn, skill: s };
   });
 
+  const unitRow = h('div.unit-row', {}, ...unitBtns.map((u) => u.btn));
   const bottom = h('div.hud-bottom', {},
     h('div.res-col', {},
       h('div.res', {}, h('div.res-track', {}, cafFill), cafTxt),
       h('div.res', {}, h('div.res-track', {}, menFill), menTxt),
       brewBtn,
     ),
-    h('div.unit-row', {}, ...unitBtns.map((u) => u.btn)),
+    unitRow,
     h(`div.skill-row${skillBtns.length > 2 ? '.grid' : ''}`, {}, ...skillBtns.map((s) => s.btn)),
   );
 
@@ -136,7 +141,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const overlay = h('div.overlay');
   overlay.hidden = true;
 
-  const screen = h('div.screen.battle', {}, canvas, top, mini, bossBox, bottom, aimHint, overlay);
+  // 전장(캔버스와 그 위에 뜨는 보스 체력·조준 안내). 가로 화면에서는 화면 전체, 세로 화면에서는 위쪽 띠.
+  const field = h('div.battle-field', {}, canvas, bossBox, aimHint);
+  const screen = h('div.screen.battle', {}, field, top, mini, bottom, overlay);
   root.replaceChildren(screen);
 
   function setSpeed(s: number): void {
@@ -224,17 +231,45 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const resize = (): void => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const r = canvas.getBoundingClientRect();
+    // 세로 화면: 하늘·바닥을 잘라 낸 띠를 보여 준다. 화면을 돌려도 전투는 그대로이고 시야만 다시 잡는다.
+    const tall = isPortrait();
+    let viewH = VIEW_H;
     if (r.width > 0 && r.height > 0) {
-      viewW = setViewAspect(r.width / r.height);
+      const aspect = r.width / r.height;
+      const mid = camX + viewW / 2;
+      viewW = tall ? setPortraitAspect(aspect) : setViewAspect(aspect);
+      viewH = tall ? viewW / aspect : VIEW_H;
       maxCam = WORLD_W - viewW;
-      camX = clamp(camX, 0, maxCam);
+      // 화면을 돌렸으면 보던 곳의 가운데를 지킨다 (왼쪽 끝에 붙어 있었으면 그대로 왼쪽 끝)
+      const rotated = wasTall !== null && wasTall !== tall && camX > 0;
+      camX = clamp(rotated ? mid - viewW / 2 : camX, 0, maxCam);
+      wasTall = tall;
     }
-    const scale = Math.max(1, (r.width / viewW) * dpr);
-    canvas.width = Math.round(viewW * Math.min(scale, 2));
-    canvas.height = Math.round(VIEW_H * Math.min(scale, 2));
+    viewTop = tall ? PORTRAIT_TOP : 0;
+    const scale = Math.min(2, Math.max(1, (r.width / viewW) * dpr));
+    canvas.width = Math.round(viewW * scale);
+    canvas.height = Math.round(viewH * scale);
   };
-  const ro = new ResizeObserver(resize);
+  /** 세로 화면: 남은 공간에 유닛 버튼이 가장 크게 들어가는 칸 수(4~6)를 고른다 */
+  const layoutUnits = (): void => {
+    if (!isPortrait()) return;
+    const r = unitRow.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const gap = parseFloat(getComputedStyle(unitRow).columnGap) || 0;
+    const n = Math.max(1, unitBtns.length);
+    let best = { cols: 4, cell: 0 };
+    for (let cols = 4; cols <= 6; cols++) {
+      const rows = Math.ceil(n / cols);
+      const cell = Math.min((r.width - gap * (cols - 1)) / cols, (r.height - gap * (rows - 1)) / rows);
+      if (cell > best.cell + 1) best = { cols, cell };
+      if (rows === 1) break;
+    }
+    unitRow.style.setProperty('--cols', String(best.cols));
+    unitRow.style.setProperty('--cell', `${Math.floor(best.cell)}px`);
+  };
+  const ro = new ResizeObserver(() => { resize(); layoutUnits(); });
   ro.observe(canvas);
+  ro.observe(unitRow);
   resize();
 
   // ── 루프 ──
@@ -259,7 +294,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       if (e.type === 'end') music.stop(0.4);
     }
     const k = canvas.width / viewW;
-    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.setTransform(k, 0, 0, k, 0, -viewTop * k);
     drawBattle(ctx, battle, camX, now / 1000, juice);
     if (armed) {
       ctx.fillStyle = 'rgba(30,136,229,.12)';

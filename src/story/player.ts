@@ -9,6 +9,7 @@ import type { Theme } from '../data/stages';
 import { audio } from '../audio/engine';
 import { music } from '../audio/music';
 import { h } from '../ui/dom';
+import { isPortrait } from '../ui/orientation';
 import type { Action, ActorId, Bg, Line, Scene } from './script';
 
 /**
@@ -324,7 +325,8 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   const resize = (): void => {
     const r = canvas.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    viewW = Math.max(960, Math.round((H * r.width) / r.height));
+    // 세로 화면에서는 그림 상자가 덜 납작해서(CSS) 가로 폭을 조금 좁혀 인물을 크게 보여 준다
+    viewW = Math.max(isPortrait() ? 720 : 960, Math.round((H * r.width) / r.height));
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const scale = Math.min(2, Math.max(1, (r.width / viewW) * dpr));
     canvas.width = Math.round(viewW * scale);
