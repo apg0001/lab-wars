@@ -87,9 +87,28 @@ export interface Fighter {
   ownerUid: number;
   /** 남은 수명 (포탑만 유한) */
   lifeT: number;
+  /** 방어 깎기 남은 시간과 받는 피해 배율 */
+  shredT: number;
+  shredMul: number;
+  /** 띄우기: 공중에 떠 있는 남은 시간과 처음 길이 (연출용, 움직임은 stunT가 막는다) */
+  airT: number;
+  airDur: number;
+  /** 기절 장판 대기 */
+  fieldCd: number;
+  /** 성장 배율과 처음 최대 HP·크기 */
+  growMul: number;
+  baseMaxHp: number;
+  baseScale: number;
+  /** 재출현을 이미 썼는지 */
+  respawned: boolean;
+  /** 분열로 생긴 쪽 (다시 갈라지지 않고 카페인을 반만 준다) */
+  splitChild: boolean;
 }
 
-export type ProjectileKind = 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt' | 'wave' | 'coolant';
+export type ProjectileKind =
+  | 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt' | 'wave' | 'coolant'
+  // 장비 22종·버그 군단
+  | 'beam' | 'pulse' | 'spark' | 'dot' | 'solder' | 'photon' | 'qubit';
 
 export interface Projectile {
   kind: ProjectileKind;
@@ -114,9 +133,11 @@ export interface Projectile {
   pierce?: number;
   /** 관통 판정: 쏜 쪽이 공중을 맞힐 수 있는지 */
   antiAir?: boolean;
+  /** 쏜 유닛 (흡혈·연쇄·대공 배율·카페인 흡수용) */
+  src?: Fighter;
 }
 
-export type FxKind = 'dmg' | 'text' | 'boom' | 'heal' | 'stomp' | 'spawn' | 'poof' | 'zap';
+export type FxKind = 'dmg' | 'text' | 'boom' | 'heal' | 'stomp' | 'spawn' | 'poof' | 'zap' | 'arc';
 
 export interface Fx {
   kind: FxKind;
@@ -127,6 +148,9 @@ export interface Fx {
   text?: string;
   color?: string;
   r?: number;
+  /** 'arc' (연쇄 번개) 끝점 */
+  x2?: number;
+  y2?: number;
 }
 
 /**
@@ -619,6 +643,8 @@ export class Battle {
       reward, isBoss: false, walk: this.rng() * 10,
       burnT: 0, burnDps: 0, burnAcc: 0, slowT: 0, slowMul: 1, frozenT: 0, shield: 0, shieldCd: 0, revived: false,
       turretCd: stats.turret?.every ?? 0, strikeCd: stats.fieldStrike?.every ?? 0, ownerUid: 0, lifeT: Infinity,
+      shredT: 0, shredMul: 1, airT: 0, airDur: 0, fieldCd: stats.stunField ? stats.stunField.every * 0.5 : 0,
+      growMul: 1, baseMaxHp: stats.hp, baseScale: look.scale ?? 1, respawned: false, splitChild: false,
     };
     this.fighters.push(f);
     return f;
@@ -664,10 +690,12 @@ export class Battle {
 
   /** 맞힌 적에게 거는 상태 이상만 골라낸다 (없으면 undefined) */
   private hitEffects(s: CombatStats): HitEffects | undefined {
-    return s.burn || s.slow || s.freeze ? { burn: s.burn, slow: s.slow, freeze: s.freeze } : undefined;
+    return s.burn || s.slow || s.freeze || s.armorShred || s.knockup
+      ? { burn: s.burn, slow: s.slow, freeze: s.freeze, armorShred: s.armorShred, knockup: s.knockup }
+      : undefined;
   }
 
-  /** 화상·둔화·빙결 걸기. 빙결 확률만 전투 난수를 쓴다. */
+  /** 화상·둔화·빙결·방어 깎기·띄우기 걸기. 빙결·띄우기 확률만 전투 난수를 쓴다. */
   private applyHit(f: Fighter, e: HitEffects): void {
     if (f.dead) return;
     if (e.burn) {
@@ -682,6 +710,18 @@ export class Battle {
       const d = e.freeze.dur * (f.isBoss ? 0.4 : 1);
       f.stunT = Math.max(f.stunT, d);
       f.frozenT = Math.max(f.frozenT, d);
+      f.attacking = false;
+      f.swing = 0;
+    }
+    if (e.armorShred) {
+      f.shredMul = f.shredT > 0 ? Math.max(f.shredMul, e.armorShred.mul) : e.armorShred.mul;
+      f.shredT = Math.max(f.shredT, e.armorShred.dur);
+    }
+    // 띄우기: 보스는 면역 (확률도 굴리지 않는다)
+    if (e.knockup && !f.isBoss && this.rng() < e.knockup.chance) {
+      f.stunT = Math.max(f.stunT, e.knockup.dur);
+      if (f.airT <= 0) f.airDur = e.knockup.dur;
+      f.airT = Math.max(f.airT, e.knockup.dur);
       f.attacking = false;
       f.swing = 0;
     }
@@ -706,6 +746,16 @@ export class Battle {
     }
     f.slowT = Math.max(0, f.slowT - dt);
     f.frozenT = Math.max(0, f.frozenT - dt);
+    f.shredT = Math.max(0, f.shredT - dt);
+    f.airT = Math.max(0, f.airT - dt);
+    if (s.grow && f.growMul < s.grow.max) {
+      // 메모리 누수: 최대 HP가 늘어난 만큼 HP도 차고 몸도 커진다
+      f.growMul = Math.min(s.grow.max, f.growMul + s.grow.rate * dt);
+      const max = f.baseMaxHp * f.growMul;
+      f.hp += max - f.maxHp;
+      f.maxHp = max;
+      f.look = { ...f.look, scale: f.baseScale * (1 + (f.growMul - 1) * 0.45) };
+    }
     if (f.lifeT !== Infinity) {
       f.lifeT -= dt;
       if (f.lifeT <= 0) {
@@ -737,7 +787,7 @@ export class Battle {
     }
   }
 
-  /** 3D 프린터 등: 제자리에서 쏘는 포탑을 세운다 */
+  /** 3D 프린터 등: 제자리에서 쏘는 포탑을 세운다 (speed가 있으면 라우터의 패킷처럼 걸어가는 졸개) */
   private tickTurret(f: Fighter, dt: number): void {
     const spec = f.stats.turret!;
     f.turretCd -= dt;
@@ -745,8 +795,10 @@ export class Battle {
     const mine = this.fighters.filter((o) => !o.dead && o.ownerUid === f.uid).length;
     if (mine >= spec.max) return;
     f.turretCd = spec.every;
-    const stats: CombatStats = { hp: spec.hp, atk: spec.atk, range: spec.range, speed: 0, interval: spec.interval };
-    const t = this.addFighter(f.side, `${f.defId}:turret`, tr('포탑', 'Turret'), spec.look, f.tier, stats, f.x - 8 * (f.side === 'ally' ? 1 : -1), 0);
+    const walker = (spec.speed ?? 0) > 0;
+    const stats: CombatStats = { hp: spec.hp, atk: spec.atk, range: spec.range, speed: spec.speed ?? 0, interval: spec.interval };
+    const name = walker ? tr('패킷', 'Packet') : tr('포탑', 'Turret');
+    const t = this.addFighter(f.side, `${f.defId}:turret`, name, spec.look, f.tier, stats, f.x + (walker ? 10 : -8) * (f.side === 'ally' ? 1 : -1), 0);
     t.ownerUid = f.uid;
     t.lifeT = spec.life;
     t.depth = f.depth + 6;
@@ -768,6 +820,25 @@ export class Battle {
     }
     this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 90, t: 0, life: 1.1, text: tr('{sparkle} 연산 완료!', '{sparkle} Compute done!'), color: '#80d8ff' });
     this.emit({ type: 'strike', n: foes.length });
+  }
+
+  /** 블루스크린·EMP: 주기마다 반경 안 상대를 잠깐 기절시킨다 (상대가 없으면 기다린다) */
+  private tickStunField(f: Fighter, dt: number): void {
+    const sf = f.stats.stunField!;
+    f.fieldCd -= dt;
+    if (f.fieldCd > 0) return;
+    const foes = this.alive(f.side === 'ally' ? 'enemy' : 'ally').filter((o) => Math.abs(o.x - f.x) <= sf.radius + bodyR(o));
+    if (!foes.length) return;
+    f.fieldCd = sf.every;
+    for (const o of foes) {
+      const d = sf.dur * (o.isBoss ? 0.4 : 1);
+      o.stunT = Math.max(o.stunT, d);
+      o.attacking = false;
+      o.swing = 0;
+    }
+    this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.6, r: sf.radius, color: f.side === 'ally' ? '#40c4ff' : '#2979ff' });
+    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 80, t: 0, life: 1, text: f.side === 'ally' ? tr('{bolt} 펄스!', '{bolt} Pulse!') : tr('{dizzy} 멈춤!', '{dizzy} Halted!'), color: '#82b1ff' });
+    this.emit({ type: 'stomp', x: f.x, r: sf.radius });
   }
 
   private canHit(attacker: CombatStats, target: Fighter): boolean {
@@ -817,6 +888,8 @@ export class Battle {
       return;
     }
 
+    if (s.stunField) this.tickStunField(f, dt);
+
     if (s.heal) {
       f.healCd -= dt;
       if (f.healCd <= 0) {
@@ -856,11 +929,17 @@ export class Battle {
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
-      else this.damageFighter(target, atk, f.side, s.knockback, true, this.hitEffects(s));
+      else {
+        this.hitFrom(f, target, atk, f.side, s.knockback, true, this.hitEffects(s));
+        this.chainFrom(f, target, atk);
+      }
     } else {
       const bx = f.side === 'ally' ? ENEMY_FRONT + 20 : ALLY_FRONT - 20;
       if (ranged) this.shoot(f, atk, bx, GROUND_Y - 80, null, true);
-      else this.damageBase(f.side === 'ally' ? this.enemy : this.ally, atk * (s.buildingMul ?? 1), f.x + (f.side === 'ally' ? 16 : -16));
+      else {
+        this.damageBase(f.side === 'ally' ? this.enemy : this.ally, atk * (s.buildingMul ?? 1), f.x + (f.side === 'ally' ? 16 : -16));
+        this.drainCaffeine(f);
+      }
     }
   }
 
@@ -900,6 +979,7 @@ export class Battle {
       hit: this.hitEffects(f.stats),
       pierce: f.stats.pierce,
       antiAir: f.stats.range >= RANGED_THRESHOLD,
+      src: f,
     });
   }
 
@@ -954,19 +1034,20 @@ export class Battle {
       for (const o of this.alive(foe)) {
         if (o.stats.flying && !p.antiAir) continue;
         const d = (o.x - p.x0) * dir;
-        if (d >= -12 && d <= end + bodyR(o)) this.damageFighter(o, p.dmg, p.side, p.knockback, false, p.hit);
+        if (d >= -12 && d <= end + bodyR(o)) this.hitFrom(p.src, o, p.dmg, p.side, p.knockback, false, p.hit);
       }
       if (p.hitsBase) this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul, p.x1);
       return;
     }
     if (p.hitsBase) {
       this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul, p.x1);
+      if (p.src) this.drainCaffeine(p.src);
       return;
     }
     if (p.splash > 0) {
       for (const o of this.alive(foe)) {
         const dy = Math.abs(this.fy(o) - p.y1);
-        if (Math.abs(o.x - p.x1) <= p.splash + bodyR(o) && dy < 170) this.damageFighter(o, p.dmg, p.side, p.knockback, false, p.hit);
+        if (Math.abs(o.x - p.x1) <= p.splash + bodyR(o) && dy < 170) this.hitFrom(p.src, o, p.dmg, p.side, p.knockback, false, p.hit);
       }
       // 범위 공격이 건물 앞에서 터지면 건물도 맞는다.
       const base = p.side === 'ally' ? this.enemy : this.ally;
@@ -977,13 +1058,70 @@ export class Battle {
       return;
     }
     const tgt = this.fighters.find((f) => f.uid === p.targetUid && !f.dead);
-    if (tgt) this.damageFighter(tgt, p.dmg, p.side, p.knockback, false, p.hit);
+    if (tgt) {
+      this.hitFrom(p.src, tgt, p.dmg, p.side, p.knockback, false, p.hit);
+      if (p.src) this.chainFrom(p.src, tgt, p.dmg);
+    }
   }
 
-  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }, melee = false, eff?: HitEffects, burn = false): void {
-    if (f.dead) return;
+  /**
+   * 유닛이 직접 준 피해: 대공 배율을 곱하고, 흡혈·카페인 흡수를 처리한다.
+   * (화상 틱·폭발·연산 타격처럼 주인이 없는 피해는 damageFighter를 바로 부른다)
+   */
+  private hitFrom(src: Fighter | undefined, o: Fighter, dmg: number, side: Side, kb?: { chance: number; dist: number }, melee = false, eff?: HitEffects): void {
+    const s = src?.stats;
+    if (s?.airMul && o.stats.flying) dmg *= s.airMul;
+    const dealt = this.damageFighter(o, dmg, side, kb, melee, eff);
+    if (src && s?.lifesteal && dealt > 0 && !src.dead && src.hp < src.maxHp) {
+      src.hp = Math.min(src.maxHp, src.hp + dealt * s.lifesteal);
+      if (this.rng() < 0.35) this.fx.push({ kind: 'heal', x: src.x, y: this.fy(src) - 34, t: 0, life: 0.6 });
+    }
+    if (src) this.drainCaffeine(src);
+  }
+
+  /** 정전: 맞힐 때마다 상대 연구실의 카페인을 빼앗는다 (지금은 적 → 플레이어만 의미가 있다) */
+  private drainCaffeine(src: Fighter): void {
+    const n = src.stats.caffeineDrain;
+    if (!n || src.side !== 'enemy' || this.caffeine <= 0) return;
+    this.caffeine = Math.max(0, this.caffeine - n);
+    this.fx.push({ kind: 'text', x: src.x, y: this.fy(src) - 70, t: 0, life: 0.7, text: `-${n}{coffee}`, color: '#b388ff' });
+  }
+
+  /** 테슬라 코일 등: 맞힌 적에서 가까운 다른 적으로 번개가 튄다 */
+  private chainFrom(src: Fighter, first: Fighter, dmg: number): void {
+    const c = src.stats.chain;
+    if (!c) return;
+    const foe: Side = src.side === 'ally' ? 'enemy' : 'ally';
+    const hit = new Set<number>([first.uid]);
+    const eff = this.hitEffects(src.stats);
+    let from = first;
+    for (let j = 0; j < c.jumps; j++) {
+      dmg *= c.falloff;
+      let next: Fighter | null = null;
+      let best = Infinity;
+      for (const o of this.alive(foe)) {
+        if (hit.has(o.uid) || !this.canHit(src.stats, o)) continue;
+        const d = Math.abs(o.x - from.x);
+        if (d <= c.range && d < best) {
+          best = d;
+          next = o;
+        }
+      }
+      if (!next) break;
+      hit.add(next.uid);
+      this.fx.push({ kind: 'arc', x: from.x, y: this.fy(from) - 22, x2: next.x, y2: this.fy(next) - 22, t: 0, life: 0.3, color: src.stats.freeze ? '#b388ff' : '#80d8ff' });
+      this.hitFrom(src, next, dmg, src.side, undefined, false, eff);
+      from = next;
+    }
+  }
+
+  /** 피해를 주고 실제로 깎인 HP를 돌려준다 (보호막이 막은 만큼은 빼고) */
+  private damageFighter(f: Fighter, dmg: number, from: Side, kb?: { chance: number; dist: number }, melee = false, eff?: HitEffects, burn = false): number {
+    if (f.dead) return 0;
     // 학회 뒤풀이: 아군 무적
-    if (f.side === 'ally' && this.invulnT > 0) return;
+    if (f.side === 'ally' && this.invulnT > 0) return 0;
+    // 방어 깎기: 받는 피해가 늘어난다
+    if (f.shredT > 0) dmg *= f.shredMul;
     // 보호막이 먼저 막는다
     if (f.shield > 0) {
       const absorbed = Math.min(f.shield, dmg);
@@ -992,9 +1130,10 @@ export class Battle {
       if (dmg <= 0) {
         f.hitFlash = 0.06;
         if (eff) this.applyHit(f, eff);
-        return;
+        return 0;
       }
     }
+    const dealt = Math.min(dmg, Math.max(0, f.hp));
     this.emit({ type: 'hit', x: f.x, y: this.fy(f) - 20 * (f.look.scale ?? 1), dmg, melee, to: f.side });
     if (kb && !f.isBoss && f.hp > dmg && this.rng() < kb.chance) this.knockback(f, kb.dist);
     f.hp -= dmg;
@@ -1010,12 +1149,27 @@ export class Battle {
       f.burnAcc = 0;
       this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 80, t: 0, life: 1.2, text: tr('{retry} 재부팅!', '{retry} Rebooting!'), color: '#80d8ff' });
       this.emit({ type: 'revive', x: f.x });
-      return;
+      return dealt;
+    }
+    if (f.hp <= 0 && f.stats.respawn && !f.respawned) {
+      // 무한 루프: 보상 없이 출발점으로 돌아가 다시 온다
+      f.respawned = true;
+      this.fx.push({ kind: 'poof', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5 });
+      f.hp = Math.max(1, f.maxHp * f.stats.respawn.hpRatio);
+      f.x = f.side === 'enemy' ? ENEMY_FRONT + 20 : ALLY_FRONT - 20;
+      f.burnT = f.burnAcc = f.slowT = f.shredT = f.stunT = f.frozenT = f.airT = f.kbT = 0;
+      f.attacking = false;
+      f.swing = 0;
+      this.fx.push({ kind: 'spawn', x: f.x, y: this.fy(f), t: 0, life: 0.4 });
+      this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 80, t: 0, life: 1.2, text: tr('{retry} 처음부터 다시!', '{retry} Back to the top!'), color: '#ffab40' });
+      this.emit({ type: 'revive', x: f.x });
+      return dealt;
     }
     if (f.hp <= 0) {
       f.dead = true;
       f.hp = 0;
       if (f.stats.deathBurst) this.deathBurst(f);
+      if (f.stats.split && !f.splitChild) this.splitApart(f);
       this.fx.push({ kind: 'poof', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5 });
       this.emit({ type: 'kill', x: f.x, y: this.fy(f) - 16, side: f.side, boss: f.isBoss });
       if (f.side === 'enemy') {
@@ -1023,13 +1177,30 @@ export class Battle {
         const reward = Math.round(f.reward * this.cardMods.reward);
         this.killReward += reward;
         // 적 세기(기본 처치 보상)에 비례해 카페인을 얻는다
-        const caf = killCaffeine(f.defId);
+        const caf = Math.max(1, Math.round(killCaffeine(f.defId) * (f.splitChild ? 0.5 : 1)));
         // 멘탈 고갈 외전: 처치하면 멘탈이 조금 돌아온다
         if (this.stage.mods?.drain) this.mental = Math.min(this.loadout.mentalMax, this.mental + 3 + caf * 0.5);
         this.caffeine = Math.min(this.caffeineMax, this.caffeine + caf);
         this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${reward}{coin} +${caf}{coffee}`, color: '#ffd54f' });
       }
     }
+    return dealt;
+  }
+
+  /** 머지 컨플릭트: 쓰러지면 작은 둘로 갈라진다 (적은 최대 수를 넘지 않는다) */
+  private splitApart(f: Fighter): void {
+    const sp = f.stats.split!;
+    const dir = f.side === 'ally' ? 1 : -1;
+    for (let i = 0; i < sp.count; i++) {
+      if (f.side === 'enemy' && this.alive('enemy').length >= MAX_ENEMIES) break;
+      const stats: CombatStats = { ...f.stats, split: undefined, hp: Math.max(1, Math.round(f.maxHp * sp.hpRatio)), atk: f.stats.atk * sp.scale };
+      const look: Look = { ...f.look, scale: (f.look.scale ?? 1) * sp.scale };
+      const c = this.addFighter(f.side, f.defId, f.name, look, f.tier, stats, f.x + dir * (i * 22 - 6), Math.round(f.reward * 0.4));
+      c.splitChild = true;
+      c.depth = f.depth + (i ? 8 : -4);
+      c.cd = 0.6;
+    }
+    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 1, text: tr('{swords} 충돌!', '{swords} Conflict!'), color: '#ff8a65' });
   }
 
   /** 쓰러질 때 폭발: 반경 안 적에게 피해와 자기 상태 이상 */
@@ -1162,6 +1333,22 @@ function projectileKind(defId: string): ProjectileKind {
     case 'scope': return 'wave';
     case 'cooler': return 'coolant';
     case 'cluster': return 'code';
+    case 'logic':
+    case 'siggen':
+    case 'dish':
+      return 'pulse';
+    case 'debugger': return 'dot';
+    case 'tesla': return 'spark';
+    case 'tower':
+    case 'accelerator':
+      return 'beam';
+    case 'reflow': return 'solder';
+    case 'fiber': return 'photon';
+    case 'quantum': return 'qubit';
+    case 'npu':
+    case 'pi':
+    case 'router':
+      return 'code';
     default: return 'bolt';
   }
 }

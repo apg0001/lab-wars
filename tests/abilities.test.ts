@@ -189,10 +189,29 @@ describe('장비 능력', () => {
     expect(unitStats(UNIT_BY_ID.iron!, { level: 1, tier: 1 }).burn).toEqual(UNIT_BY_ID.iron!.burn);
   });
 
-  it('샘플 뽑기 장비 6종: 등급 구성과 능력이 데이터로 지정돼 있다', () => {
+  it('뽑기 장비 28종: 등급 구성(레어 14 · 에픽 9 · 레전더리 5)과 능력이 데이터로 지정돼 있다', () => {
     expect(GACHA_UNITS.map((u) => `${u.id}:${u.rarity}`)).toEqual([
-      'iron:rare', 'scope:rare', 'firewall:rare', 'cooler:epic', 'printer3d:epic', 'cluster:legend',
+      'iron:rare', 'scope:rare', 'firewall:rare',
+      'breadboard:rare', 'multimeter:rare', 'arduino:rare', 'logic:rare', 'ups:rare', 'pi:rare',
+      'siggen:rare', 'router:rare', 'wafer:rare', 'debugger:rare', 'dish:rare',
+      'cooler:epic', 'printer3d:epic',
+      'tesla:epic', 'tower:epic', 'robotarm:epic', 'rack:epic', 'reflow:epic', 'emp:epic', 'fiber:epic',
+      'cluster:legend', 'quantum:legend', 'accelerator:legend', 'npu:legend', 'tokamak:legend',
     ]);
+    const count = (r: string) => GACHA_UNITS.filter((u) => u.rarity === r).length;
+    expect([count('rare'), count('epic'), count('legend')]).toEqual([14, 9, 5]);
+    // 모두 장비 그림, 서로 다른 그림, 영어 설정 글까지
+    const variants = GACHA_UNITS.map((u) => u.look.variant);
+    expect(GACHA_UNITS.every((u) => u.look.kind === 'gear' && u.en?.lore && u.lore)).toBe(true);
+    expect(new Set(variants).size).toBe(variants.length);
+    // 레전더리는 모두 비싸고 대기가 길다
+    for (const u of GACHA_UNITS.filter((x) => x.rarity === 'legend')) {
+      expect(u.cost, u.id).toBeGreaterThanOrEqual(150);
+      expect(u.cooldown, u.id).toBeGreaterThanOrEqual(20);
+    }
+    // 새 능력도 하나씩은 쓰인다
+    expect(UNIT_BY_ID.tesla!.chain && UNIT_BY_ID.logic!.armorShred && UNIT_BY_ID.robotarm!.knockup).toBeTruthy();
+    expect(UNIT_BY_ID.multimeter!.lifesteal && UNIT_BY_ID.dish!.airMul && UNIT_BY_ID.emp!.stunField && UNIT_BY_ID.router!.turret?.speed).toBeTruthy();
     expect(UNIT_BY_ID.iron!.burn).toBeTruthy();
     expect(UNIT_BY_ID.scope!.slow && UNIT_BY_ID.scope!.pierce).toBeTruthy();
     expect(UNIT_BY_ID.firewall!.shield).toBeTruthy();

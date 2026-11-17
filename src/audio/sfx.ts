@@ -57,9 +57,21 @@ export const sfx = {
       case 'laser':
         audio.tone(o, { f0: 1500, f1: 380, dur: 0.12, gain: 0.08 });
         break;
+      case 'beam':
+        audio.tone(o, { type: 'sawtooth', f0: 220, f1: 1200, dur: 0.22, gain: 0.06, lp: 2400 });
+        break;
+      case 'spark':
+        audio.noise(o, { filter: 'highpass', freq: 4000, dur: 0.09, gain: 0.16 });
+        audio.tone(o, { type: 'square', f0: jitter(120), dur: 0.08, gain: 0.04, lp: 1800 });
+        break;
+      case 'pulse':
+      case 'dot':
+        audio.tone(o, { type: 'square', f0: jitter(660, 0.1), f1: 990, dur: 0.05, gain: 0.04, lp: 2600 });
+        break;
       case 'flask':
       case 'bomb':
       case 'coolant':
+      case 'solder':
         audio.noise(o, { filter: 'bandpass', freq: 500, freqEnd: 1400, q: 2, dur: 0.16, gain: 0.12 });
         break;
       case 'code':

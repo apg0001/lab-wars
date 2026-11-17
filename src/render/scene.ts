@@ -386,6 +386,11 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
     oy = -Math.sin(k * Math.PI) * (f.isBoss ? 20 : 45) + k * k * 10;
     rot = -facing * k * (f.isBoss ? 0.6 : 5);
     ctx.globalAlpha = Math.max(0, 1 - k * k);
+  } else if (f.airT > 0) {
+    // 띄우기: 포물선으로 떴다가 떨어지며 빙글
+    const k = 1 - f.airT / Math.max(0.01, f.airDur);
+    oy = -Math.sin(k * Math.PI) * 38;
+    rot = -facing * Math.sin(k * Math.PI) * 0.5;
   } else if (f.kbT > 0) {
     rot = -facing * 0.18;
   } else if (f.stunT > 0) {
@@ -415,7 +420,7 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
   if (!f.dead) drawStatus(ctx, f, y, time);
 
   // 기절 표시: 머리 위에서 빙글빙글 (빙결은 얼음으로 따로 보인다)
-  if (!f.dead && f.stunT > 0 && f.frozenT <= 0) {
+  if (!f.dead && f.stunT > 0 && f.frozenT <= 0 && f.airT <= 0) {
     const s = f.look.scale ?? 1;
     const top = y - 62 * s - (f.tier >= 3 ? 8 : 0) - 14;
     const img = iconImg('dizzy');
@@ -495,6 +500,7 @@ function drawStatus(ctx: Ctx, f: Fighter, y: number, time: number): void {
   if (f.slowT > 0) icons.push('snail');
   if (f.frozenT > 0) icons.push('snow');
   if (f.shield > 0) icons.push('guard');
+  if (f.shredT > 0) icons.push('shred');
   if (!icons.length) return;
   const top = y - 62 * s - (f.tier >= 3 ? 8 : 0) - (f.stunT > 0 && f.frozenT <= 0 ? 30 : 14);
   const sz = 13;
@@ -545,11 +551,84 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.stroke();
       break;
     }
+    case 'beam': {
+      // 기지국·입자 가속기: 쏜 자리부터 곧게 뻗는 굵은 빛줄기
+      ctx.restore();
+      ctx.save();
+      const end = p.pierce ? x + Math.sign(p.x1 - p.x0) * Math.min(p.pierce, 400) * k : x;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = p.dmg >= 60 ? 'rgba(255,64,129,.35)' : 'rgba(128,216,255,.35)';
+      ctx.lineWidth = p.dmg >= 60 ? 14 : 9;
+      ctx.beginPath();
+      ctx.moveTo(p.x0, p.y0);
+      ctx.lineTo(end, y);
+      ctx.stroke();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      break;
+    }
+    case 'spark': {
+      // 테슬라 코일: 지그재그 번개
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = '#b3e5fc';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(p.x0, p.y0);
+      for (let i = 1; i <= 6; i++) {
+        const px = p.x0 + ((x - p.x0) * i) / 6;
+        const py = p.y0 + ((y - p.y0) * i) / 6 + (i < 6 ? Math.sin(i * 7 + time * 50) * 8 : 0);
+        ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      break;
+    }
+    case 'pulse':
+      // 로직 분석기·신호 발생기·위성 안테나: 사각파 조각
+      ctx.strokeStyle = '#ffd54f';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-9, 3);
+      ctx.lineTo(-5, 3);
+      ctx.lineTo(-5, -4);
+      ctx.lineTo(1, -4);
+      ctx.lineTo(1, 3);
+      ctx.lineTo(6, 3);
+      ctx.lineTo(6, -4);
+      ctx.lineTo(9, -4);
+      ctx.stroke();
+      break;
+    case 'dot':
+      // 디버거 중단점: 빨간 점
+      ctx.fillStyle = '#ff1744';
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'photon':
+      ctx.fillStyle = '#ea80fc';
+      ctx.fillRect(-9, -1.5, 18, 3);
+      break;
+    case 'qubit': {
+      // 양자컴퓨터: 두 겹으로 겹친 상태
+      ctx.rotate(time * 8);
+      for (const [dx, c] of [[-3, '#80d8ff'], [3, '#ffd54f']] as const) {
+        ctx.fillStyle = c;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.arc(dx, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
     case 'flask':
     case 'bomb':
     case 'coolant':
+    case 'solder':
       ctx.rotate(time * 10);
-      ctx.fillStyle = p.kind === 'flask' ? '#69f0ae' : p.kind === 'coolant' ? '#4fc3f7' : '#212121';
+      ctx.fillStyle = p.kind === 'flask' ? '#69f0ae' : p.kind === 'coolant' ? '#4fc3f7' : p.kind === 'solder' ? '#cfd8dc' : '#212121';
       ctx.beginPath();
       ctx.arc(0, 0, 6, 0, Math.PI * 2);
       ctx.fill();
@@ -668,8 +747,24 @@ function drawFx(ctx: Ctx, b: Battle, screenSpace: boolean): void {
         if (img) ctx.drawImage(img, e.x - 11, e.y - 22, 22, 22);
         break;
       }
+      case 'arc': {
+        // 연쇄 번개: 두 점 사이 지그재그
+        ctx.strokeStyle = e.color ?? '#80d8ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y);
+        const x2 = e.x2 ?? e.x;
+        const y2 = e.y2 ?? e.y;
+        for (let i = 1; i <= 5; i++) {
+          const px = e.x + ((x2 - e.x) * i) / 5;
+          const py = e.y + ((y2 - e.y) * i) / 5 + (i < 5 ? (i % 2 ? -9 : 9) : 0);
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        break;
+      }
       case 'stomp':
-        ctx.strokeStyle = '#ff5252';
+        ctx.strokeStyle = e.color ?? '#ff5252';
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.ellipse(e.x, e.y, (e.r ?? 100) * k, 18 * k, 0, 0, Math.PI * 2);

@@ -41,11 +41,11 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 ## ✨ Features
 
 ### ⚔️ Battle
-- **12 ally units + 6 gear units**: lab members who *evolve* from Undergrad → Master's → PhD, a Research Drone (flying), a GPU Server (siege), and AI-assistant parody units (Claudy · Codexy · Jaeminai)
+- **12 ally units + 28 gear units**: lab members who *evolve* from Undergrad → Master's → PhD, a Research Drone (flying), a GPU Server (siege), AI-assistant parody units (Claudy · Codexy · Jaeminai), and ICT & electronics gear that upgrades from Mk.I → Mk.III (14 Rare · 9 Epic · 5 Legendary: Soldering Iron, Tesla Coil, Cell Tower, Quantum Computer, Particle Accelerator…)
 - **15 enemies + 10 bosses**: from the Busywork Memo to Reviewer 2, the Committee Chair, and the final boss, the **University President**
 - Ground/air targeting rules, splash damage and knockback, Caffeine back on kills, coffee machine upgrades mid-battle
 - Auto turrets on both sides, 4 skills powered by Sanity, 1x · 2x · 3x speed
-- 📦 **Equipment Grant (unit draws)**: spend tickets on ICT & electronics gear (Rare 70 · Epic 25 · Legendary 5%, Epic+ guaranteed in a 10-draw, pick-a-Legendary spark at 100). Gear brings burn, slow, freeze, pierce, shields, turrets and reboots into your **9-slot squad**. Duplicates become Passion and raise the level cap
+- 📦 **Equipment Grant (unit draws)**: spend tickets on ICT & electronics gear (Rare 70 · Epic 25 · Legendary 5%, Epic+ guaranteed in a 10-draw, pick-a-Legendary spark at 100). Gear brings burn, slow, freeze, pierce, shields, turrets, reboots, chain lightning, armor shred, knock-ups, lifesteal, stun pulses and packet summons into your **9-slot squad**. Duplicates become Passion and raise the level cap
 - 🚨 **Prof's Emergency Summons**: push the Prof's Office too hard and it strikes back with shockwaves and reinforcements, so sheer numbers won't cut it
 - 💌 **Conference Raffle**: survive a rush and pick one of three envelopes for a card that lasts the rest of the battle (Common, Rare, Legendary, or Cursed)
 
@@ -64,7 +64,7 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 - **Event stages** like 🏖️ breaks, 🎤 spring/summer/fall/winter conferences, and 📝 thesis season
 - Every stage except bosses has a short **story cutscene** (walking, jumping, emote bubbles, voice blips)
 - 📜 Story replay: **binge-watch** from any scene, or **resume** where you left off
-- 🎓 An unskippable ending, plus an ever-harder **♾️ Endless Mode** you can play from the start, with a **🏆 leaderboard**
+- 🎓 An unskippable ending, plus an ever-harder **♾️ Endless Mode** you can play from the start, with a **🏆 leaderboard**. As the rounds climb, the **Bug Army** joins in (Segfault · Memory Leak · Infinite Loop · Merge Conflict · Blue Screen · Power Outage), and the Kernel Panic and Legacy Code bosses show up from round 30
 
 ### 📕 Side Stories: the parts nobody tells you
 

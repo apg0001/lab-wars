@@ -89,6 +89,7 @@ const P: Record<string, string> = {
   crate: '<path d="M4 11l12-5 12 5v13l-12 5-12-5z" fill="#bcaaa4"/><path d="M4 11l12 5 12-5M16 16v13" /><path d="M10 8.5l12 5v4" stroke-width="1.8"/>',
   chip: '<rect x="8" y="8" width="16" height="16" rx="2" fill="#455a64"/><rect x="12" y="12" width="8" height="8" fill="#80d8ff" stroke-width="1.6"/><path d="M12 4v4M16 4v4M20 4v4M12 24v4M16 24v4M20 24v4M4 12h4M4 16h4M4 20h4M24 12h4M24 16h4M24 20h4" stroke-width="1.8"/>',
   bolt: '<path d="M18 3L7 18h7l-2 11 11-15h-7z" fill="#ffeb3b"/>',
+  shred: '<path d="M16 4l10 4v7c0 7-5 11-10 13-5-2-10-6-10-13V8z" fill="#ef9a9a"/><path d="M15 5l-2 7 4 3-3 6 2 6" stroke-width="2.2"/>',
 };
 
 export type IconName = keyof typeof P;
