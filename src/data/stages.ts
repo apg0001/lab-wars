@@ -34,6 +34,10 @@ export interface StageDef {
   enemyBaseHp: number;
   /** 교수실 포탑 공격력 */
   towerAtk: number;
+  /** 무한 모드 교수님 레이저 강화: 전투 1분마다 포탑 공격력 +towerRamp배 (없으면 그대로) */
+  towerRamp?: number;
+  /** 무한 모드 화이트보드 전초기지 (없으면 없음) */
+  outposts?: OutpostDef[];
   /** 기본 출현 간격(초) */
   spawnEvery: number;
   /** 출현 후보와 가중치 */
@@ -62,6 +66,19 @@ export interface StageDef {
   course?: string;
   /** 영어 (src/i18n) */
   en?: StageEn;
+}
+
+/** 화이트보드 전초기지: 교수실 앞 dist만큼 떨어진 자리에 서서 보드마커를 포물선으로 던진다 */
+export interface OutpostDef {
+  /** 교수실 전면(ENEMY_FRONT)에서 앞으로 떨어진 거리 */
+  dist: number;
+  hp: number;
+  atk: number;
+  range: number;
+  interval: number;
+  splash: number;
+  /** 철거 보상 (연구비) */
+  reward: number;
 }
 
 export interface StageEn {
@@ -310,6 +327,30 @@ const ENDLESS_STEP = 0.75;
 /** 무한 모드 추가 배율: 판이 쌓일수록 성장 속도를 앞지르게 */
 const endlessMul = (n: number): number => 1 + n * 0.01;
 
+/** 화이트보드 전초기지가 나오는 판: 15판부터 1개, 30판부터 2개 */
+export const OUTPOST_FROM = [15, 30];
+/** 전초기지 자리 (교수실 전면에서 앞으로) */
+export const OUTPOST_DIST = [300, 600];
+/** 무한 모드 교수님 레이저: 판마다 공격력에 추가로 곱하는 상승폭 (1 + n × 이 값) */
+export const ENDLESS_LASER_STEP = 0.03;
+/** 무한 모드 교수님 레이저: 전투 1분마다 오르는 공격력 비율 */
+export const ENDLESS_TOWER_RAMP = 0.1;
+
+/** 무한 모드 n번째 판의 화이트보드 전초기지 (scale = 그 판 적 능력치 배율) */
+export function endlessOutposts(n: number, scale: number): OutpostDef[] {
+  const count = OUTPOST_FROM.filter((f) => n >= f).length;
+  const atkScale = 1 + (scale - 1) * 0.7;
+  return OUTPOST_DIST.slice(0, count).map((dist) => ({
+    dist,
+    hp: Math.round(1000 * scale),
+    atk: Math.round(16 * atkScale),
+    range: 240,
+    interval: 2,
+    splash: 40,
+    reward: Math.round(40 + 2 * n),
+  }));
+}
+
 export function endlessStage(n: number): StageDef {
   const order = LAST_ORDER + n;
   const c = 19 + n * ENDLESS_STEP;
@@ -328,7 +369,9 @@ export function endlessStage(n: number): StageDef {
     kind: 'endless',
     scale: enemyScale(c) * endlessMul(n),
     enemyBaseHp: Math.round(700 + c * 180),
-    towerAtk: Math.round(10 * (1 + c * 0.12)),
+    towerAtk: Math.round(10 * (1 + c * 0.12) * (1 + ENDLESS_LASER_STEP * n)),
+    towerRamp: ENDLESS_TOWER_RAMP,
+    outposts: endlessOutposts(n, enemyScale(c) * endlessMul(n)),
     spawnEvery: Math.max(1.4, 2.8 - c * 0.06) * (isBoss ? 1.5 : 1),
     pool: [...poolAt(c, kind === 'boss' ? 'normal' : kind), ...ENDLESS_ENEMIES.filter((e) => e.from <= n).map(({ id, weight }) => ({ id, weight }))],
     rush: { first: 30, every: Math.max(18, 40 - c), size: Math.round((3 + Math.floor(c / 3)) * (isBoss ? 0.5 : 1)) },

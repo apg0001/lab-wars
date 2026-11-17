@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.20.1',
+    date: '2026-11-18',
+    title: '화이트보드가 날아온다',
+    items: [
+      '{infinity} 무한 모드 15판부터 교수실 앞에 화이트보드 전초기지가 서요 (30판부터 2개). 보드마커를 던지고, 부수기 전에는 지나갈 수 없어요',
+      '{anger} 무한 모드 교수님 레이저가 판마다 더 세지고, 한 판 안에서도 1분마다 출력이 올라가요 (노랑 → 주황 → 빨강)',
+      '{book} 도감에 화이트보드 전초기지 추가 (15판 도달 시)',
+    ],
+    en: {
+      title: 'Incoming Whiteboards',
+      items: [
+        '{infinity} From Endless round 15, a Whiteboard Outpost guards the office (two from round 30). It throws markers, and you can’t pass until it’s down',
+        '{anger} The professor’s laser now grows stronger every Endless round, and powers up each minute within a battle (yellow → orange → red)',
+        '{book} Whiteboard Outpost added to the codex (after reaching round 15)',
+      ],
+    },
+  },
+  {
     version: '0.20.0',
     date: '2026-11-18',
     title: '전공 수업 개강',

@@ -68,6 +68,7 @@ export const sfx = {
       case 'dot':
         audio.tone(o, { type: 'square', f0: jitter(660, 0.1), f1: 990, dur: 0.05, gain: 0.04, lp: 2600 });
         break;
+      case 'marker':
       case 'flask':
       case 'bomb':
       case 'coolant':

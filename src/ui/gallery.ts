@@ -2,7 +2,7 @@ import { ENEMIES as ALL_ENEMIES } from '../data/enemies';
 
 /** 도감에 싣는 적: 전공 모드 과목 적·교수님은 과목 정보 창에서 본다 */
 const ENEMIES = ALL_ENEMIES.filter((e) => !e.id.startsWith('ce-') && !e.id.startsWith('boss-'));
-import { ENDLESS_BUG_BOSSES, ENDLESS_ENEMIES, SIDE_STAGES, STAGES } from '../data/stages';
+import { ENDLESS_BUG_BOSSES, ENDLESS_ENEMIES, OUTPOST_FROM, SIDE_STAGES, STAGES } from '../data/stages';
 import { UNITS, UNIT_RARITIES, isGachaUnit, rarityLabel, rarityOf } from '../data/units';
 import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitDef, type UnitRarity } from '../data/types';
 import { drawCharacter } from '../render/characters';
@@ -28,6 +28,8 @@ function seenEnemies(save: SaveData): Set<string> {
   }
   // 무한 모드 버그 군단: 열린 판(최고 기록 + 1)까지 합류한 적
   if (isEndlessOpen(save)) for (const e of [...ENDLESS_ENEMIES, ...ENDLESS_BUG_BOSSES]) if (e.from <= save.endless + 1) seen.add(e.id);
+  // 화이트보드 전초기지: 15판에 도달하면 (최고 기록 + 1 ≥ 15)
+  if (isEndlessOpen(save) && OUTPOST_FROM[0]! <= save.endless + 1) seen.add('whiteboard');
   return seen;
 }
 

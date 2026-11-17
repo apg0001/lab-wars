@@ -1604,6 +1604,71 @@ function printer(ctx: Ctx, look: Look, pose: Pose): void {
   ctx.restore();
 }
 
+/** 무한 모드 화이트보드 전초기지: 바퀴 달린 화이트보드, 휘갈긴 수식, 마커 받침, 화난 눈썹 (발 아래 가운데가 원점, 높이 약 58) */
+function whiteboard(ctx: Ctx, look: Look, pose: Pose): void {
+  const t = pose.time;
+  line(ctx);
+  // 바퀴 달린 다리
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(-17, -6);
+  ctx.lineTo(-15, -26);
+  ctx.moveTo(17, -6);
+  ctx.lineTo(15, -26);
+  ctx.moveTo(-17, -10);
+  ctx.lineTo(17, -10);
+  ctx.stroke();
+  line(ctx, 2);
+  for (const x of [-17, 17]) blob(ctx, x, -3.5, 3.5, 3.5, '#455a64');
+  // 던질 때 판이 뒤로 젖혀졌다 돌아온다
+  ctx.save();
+  ctx.translate(0, -26);
+  ctx.rotate(-pose.swing * 0.12 + Math.sin(t * 1.7) * 0.015);
+  line(ctx);
+  rrect(ctx, -25, -34, 50, 34, 3, '#90a4ae');
+  ctx.fillStyle = look.color;
+  ctx.fillRect(-22, -31, 44, 28);
+  // 휘갈긴 수식
+  ctx.save();
+  ctx.fillStyle = look.accent ?? '#1e88e5';
+  ctx.font = 'bold 7px Jua, sans-serif';
+  label(ctx, 'E=mc²', -20, -23);
+  ctx.fillStyle = '#e53935';
+  label(ctx, '∫dx=?', 3, -6);
+  ctx.strokeStyle = look.accent ?? '#1e88e5';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  // 화살표와 동그라미
+  ctx.moveTo(-19, -10);
+  ctx.quadraticCurveTo(-12, -16, -4, -10);
+  ctx.moveTo(-6, -12);
+  ctx.lineTo(-4, -10);
+  ctx.lineTo(-7, -9);
+  ctx.moveTo(-17, -7);
+  ctx.lineTo(-9, -5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(13, -24, 7, 4.5, -0.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  // 화난 눈썹과 눈 (보드에 그려진 낙서)
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = INK;
+  eyes(ctx, 0, -15, 6, true, 1.8);
+  ctx.restore();
+  // 마커 받침과 마커 (던지면 하나씩 비었다 다시 찬다)
+  line(ctx, 2);
+  rrect(ctx, -20, -1, 40, 4, 1.5, '#b0bec5');
+  const missing = pose.swing > 0.2 ? 1 : -1;
+  ['#212121', '#e53935', '#1e88e5'].forEach((c, i) => {
+    if (i === missing) return;
+    line(ctx, 1.2);
+    rrect(ctx, -15 + i * 11, -3, 9, 2.6, 1, c);
+  });
+  ctx.restore();
+}
+
 // ─────────────────────────── 뽑기 장비 (ICT·전자공학 장비) ───────────────────────────
 
 /** 장비용 짧은 다리 (작은 고무발) */
@@ -3699,6 +3764,7 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'professor': professor(ctx, look, pose, defId); break;
     case 'ghost': ghost(ctx, look, pose, defId); break;
     case 'printer': printer(ctx, look, pose); break;
+    case 'whiteboard': whiteboard(ctx, look, pose); break;
     case 'gear': gear(ctx, look, pose); break;
     case 'glitch': glitch(ctx, look, pose); break;
     case 'sidefoe': drawSideFoe(ctx, look, pose); break;
