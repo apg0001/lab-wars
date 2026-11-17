@@ -32,6 +32,7 @@ import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
 import { portrait } from './icons';
 import { closetTab, drawTab } from './gacha';
+import { donateLink } from './donate';
 import { myAvatar, rankAvatar } from './avatar';
 import { COSMETIC_BY_ID } from '../data/cosmetics';
 import { titleName } from '../sim/gacha';
@@ -219,7 +220,10 @@ export class App {
           ? tr(`{key} ${this.api?.user?.username ?? p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이`, `{key} Logged in as ${this.api?.user?.username ?? p.name} · continue on any device`)
           : tr('게스트 · 이 기기에만 저장 중', 'Guest · saved on this device only') + (this.api ? tr(' (로그인하면 다른 기기에서도 이어서 할 수 있어요)', ' (log in to continue on other devices)') : ''))
         : tr('진행 상황은 이 기기에 저장됩니다', 'Progress is saved on this device')),
-      h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, tr('기획·개발 박기찬', 'Made by Gichan Park')),
+      h('div.title-credits', {},
+        donateLink(),
+        h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, tr('기획·개발 박기찬', 'Made by Gichan Park')),
+      ),
     ));
     maybeShowUpdates(this.root.firstElementChild, this.profiles.list().length > 0);
   }
