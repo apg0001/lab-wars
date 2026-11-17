@@ -1,4 +1,5 @@
 import { h, setRich } from './dom';
+import { isPortrait } from './orientation';
 
 type FsElement = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
 type FsDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
@@ -31,7 +32,7 @@ export function shouldOfferFullscreen(): boolean {
 }
 
 /**
- * 전체 화면으로 전환하고 가능하면 가로로 고정한다.
+ * 전체 화면으로 전환하고, 가로로 들고 있으면 가능하면 가로로 고정한다.
  * 지원하지 않는 브라우저(아이폰 Safari 등)는 홈 화면 설치 안내를 띄운다.
  */
 export async function toggleFullscreen(host: Element | null): Promise<void> {
@@ -49,6 +50,8 @@ export async function toggleFullscreen(host: Element | null): Promise<void> {
     showInstallGuide(host);
     return;
   }
+  // 가로로 들고 있으면 예전처럼 가로로 고정한다. 세로로 들고 있으면 세로 배치 그대로 둔다.
+  if (isPortrait()) return;
   try {
     const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
     await o.lock?.('landscape');

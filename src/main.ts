@@ -2,6 +2,9 @@ import './style.css';
 import { App } from './ui/app';
 import { installAudioUnlock } from './audio/engine';
 import { sfx } from './audio/sfx';
+import { installOrientation } from './ui/orientation';
+
+installOrientation();
 
 installAudioUnlock();
 // 메뉴 버튼 딸깍 소리 (전투 하단 버튼은 각자 소리가 있어 제외)

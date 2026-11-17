@@ -107,6 +107,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .stars span.on { color: var(--gold); }
 
 /* ───── 전투 화면 ───── */
+.battle-field { position: absolute; inset: 0; }
 .battle-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 .hud-top {
@@ -206,17 +207,6 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 @keyframes pulse { to { transform: scale(1.08); } }
 
 .aim-hint { position: absolute; top: calc(12 * var(--u)); left: 50%; transform: translateX(-50%); background: #1e88e5; color: #fff; padding: calc(0.5 * var(--u)) calc(1.5 * var(--u)); border-radius: calc(1 * var(--u)); pointer-events: none; }
-
-/* 세로 화면 안내 */
-.rotate {
-  display: none; position: fixed; inset: 0; z-index: 100; background: #1d1a22; color: #fff;
-  place-items: center; text-align: center; font-size: 5vw; padding: 8vw;
-}
-.rotate .phone { font-size: 18vw; display: inline-block; animation: rot 1.6s ease-in-out infinite; }
-@keyframes rot { 50% { transform: rotate(-90deg); } }
-@media (orientation: portrait) and (max-width: 900px) {
-  .rotate { display: grid; }
-}
 
 /* ───── 타이틀 ───── */
 .title {
@@ -521,3 +511,136 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .patch-head { display: flex; justify-content: space-between; align-items: baseline; gap: calc(1 * var(--u)); font-size: calc(1.9 * var(--u)); }
 .patch-note ul { margin: calc(0.5 * var(--u)) 0 0; padding-left: calc(2.4 * var(--u)); }
 .patch-note li { margin: calc(0.3 * var(--u)) 0; font-size: calc(1.7 * var(--u)); }
+
+/* ═════════════════ 세로 화면 ═════════════════
+ * 세로로 들면 <html>에 .portrait가 붙는다 (src/ui/orientation.ts).
+ * 무대가 화면 전체를 채우고, --u는 화면 폭을 56칸으로 나눈 크기라 가로 화면과 글자 크기가 비슷하다.
+ * 전투는 위쪽에 가로 레인 띠, 아래쪽에 조작 버튼을 둔다.
+ */
+.portrait #app { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.portrait .stage { width: 100cqw; height: 100cqh; border-radius: 0; }
+.portrait .stage > * { --u: min(1cqw * 100 / 56, 1cqh); }
+.portrait .panel {
+  min-width: min(calc(40 * var(--u)), calc(100% - 3 * var(--u)));
+  max-width: calc(100% - 3 * var(--u));
+  padding: calc(2 * var(--u)) calc(2.2 * var(--u));
+}
+.portrait .toast { max-width: calc(100% - 4 * var(--u)); width: max-content; }
+
+/* ── 전투 ── */
+.portrait .battle { display: flex; flex-direction: column; background: #efe6d6; }
+.portrait .battle > .hud-top {
+  position: relative; inset: auto; order: 1; margin: calc(0.8 * var(--u)) calc(1 * var(--u)) 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'mid btns' 'ally enemy'; row-gap: calc(0.7 * var(--u));
+}
+.portrait .hud-top > .hp-box { grid-area: ally; min-width: 0; }
+.portrait .hud-top > .hp-box.right { grid-area: enemy; }
+.portrait .hud-mid { grid-area: mid; display: flex; align-items: center; gap: calc(0.8 * var(--u)); min-width: 0; text-align: left; }
+.portrait .hud-mid .stage-tag { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(1.6 * var(--u)); }
+.portrait .hud-mid .time { font-size: calc(1.7 * var(--u)); }
+.portrait .hud-btns { grid-area: btns; justify-self: end; }
+.portrait .hud-btns .icon-btn { font-size: calc(1.8 * var(--u)); min-width: calc(5.4 * var(--u)); padding: calc(0.4 * var(--u)) calc(0.8 * var(--u)); }
+.portrait .battle-field {
+  position: relative; inset: auto; order: 2; flex: none; height: min(calc(100cqw * 0.72), 44cqh);
+  margin-top: calc(0.8 * var(--u)); border-block: calc(0.25 * var(--u)) solid var(--ink); overflow: hidden;
+}
+.portrait .battle-field .boss-bar { top: calc(0.6 * var(--u)); left: 18%; right: 18%; }
+.portrait .battle-field .aim-hint { top: auto; bottom: calc(1 * var(--u)); white-space: nowrap; }
+.portrait .battle > .minimap { position: relative; inset: auto; order: 3; flex: none; margin: calc(0.9 * var(--u)) calc(3 * var(--u)) 0; height: calc(2.6 * var(--u)); }
+.portrait .hud-bottom {
+  position: relative; inset: auto; order: 4; flex: 1; min-height: 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: calc(1.4 * var(--u)); padding: calc(1.2 * var(--u)) calc(1.4 * var(--u)) calc(1.4 * var(--u));
+}
+.portrait .res-col { order: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: calc(0.7 * var(--u)) calc(1 * var(--u)); }
+.portrait .res-col > .res { grid-column: 1; }
+.portrait .res-track { height: calc(2.8 * var(--u)); }
+.portrait .res-txt { font-size: calc(1.8 * var(--u)); }
+.portrait .brew-btn { position: relative; inset: auto; grid-column: 2; grid-row: 1 / span 2; height: auto; font-size: calc(1.8 * var(--u)); padding: 0 calc(1.2 * var(--u)); }
+.portrait .skill-row, .portrait .skill-row.grid { order: 2; display: flex; justify-content: center; gap: calc(2.4 * var(--u)); }
+.portrait .skill-btn, .portrait .skill-row.grid .skill-btn { width: calc(8.4 * var(--u)); height: calc(8.4 * var(--u)); }
+.portrait .skill-icon, .portrait .skill-row.grid .skill-icon { font-size: calc(2.8 * var(--u)); }
+.portrait .skill-btn .cost, .portrait .skill-row.grid .skill-btn .cost { font-size: calc(1.6 * var(--u)); }
+.portrait .unit-row {
+  /* 칸 수와 크기(--cols, --cell)는 battle-screen.ts가 남은 공간에 맞춰 정한다 */
+  order: 3; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), min(var(--cell, calc(12 * var(--u))), calc(13 * var(--u))));
+  justify-content: center; align-content: end; gap: calc(1.1 * var(--u)); overflow: hidden auto; touch-action: pan-y; padding: calc(0.4 * var(--u)) calc(0.2 * var(--u)) calc(0.8 * var(--u));
+}
+.portrait .unit-btn { min-width: 0; max-width: none; width: 100%; aspect-ratio: 1; }
+.portrait .unit-btn img { height: 68%; margin-top: 4%; }
+.portrait .unit-btn .cost { font-size: calc(1.8 * var(--u)); }
+.portrait .unit-btn .hotkey { display: none; }
+
+/* ── 타이틀 ── */
+.portrait .title { padding: calc(7 * var(--u)) calc(2 * var(--u)) calc(5 * var(--u)); gap: calc(2.2 * var(--u)); }
+.portrait .title-logo h1 { font-size: calc(10 * var(--u)); }
+.portrait .title-cast { height: calc(11 * var(--u)); gap: 0; }
+.portrait .title-cast img { height: calc(7.5 * var(--u)); }
+.portrait .title-cast img.big { height: calc(11 * var(--u)); }
+.portrait .vs-mark { margin: 0 calc(0.6 * var(--u)); font-size: calc(3 * var(--u)); }
+.portrait .title-corner { left: calc(1.2 * var(--u)); justify-content: flex-end; }
+.portrait .title-actions { width: 100%; }
+.portrait .title-actions .btn.big { max-width: 100%; }
+.portrait .name-input { width: min(calc(34 * var(--u)), 100%); }
+.portrait .title-foot { text-align: center; padding: 0 calc(1 * var(--u)); }
+.portrait .title-credit { right: 50%; transform: translateX(50%); bottom: calc(1.4 * var(--u)); white-space: nowrap; }
+
+/* ── 공용 상단 바: 뒤로 · 오른쪽 버튼 / 제목 두 줄 ── */
+.portrait .topbar { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'back right' 'title title'; row-gap: calc(0.4 * var(--u)); padding: calc(1 * var(--u)) calc(1.2 * var(--u)) calc(0.6 * var(--u)); }
+.portrait .topbar > :first-child { grid-area: back; }
+.portrait .topbar > .top-title { grid-area: title; font-size: calc(2.4 * var(--u)); }
+.portrait .topbar > :last-child { grid-area: right; justify-self: end; }
+.portrait .top-right { gap: calc(0.6 * var(--u)); }
+.portrait .dex .topbar .money { font-size: calc(1.5 * var(--u)); }
+
+/* ── 스테이지 지도 ── */
+.portrait .chapter-tabs { flex-wrap: wrap; gap: calc(0.6 * var(--u)); padding: 0 calc(1.2 * var(--u)); }
+.portrait .chapter-tabs .chapter-tab { flex: 1 0 calc(15 * var(--u)); border-radius: calc(1 * var(--u)); padding: calc(0.7 * var(--u)); font-size: calc(1.6 * var(--u)); }
+.portrait .chapter-title { padding: calc(1.2 * var(--u)) calc(1.5 * var(--u)) calc(0.6 * var(--u)); font-size: calc(1.8 * var(--u)); }
+.portrait .chapter-title .muted { display: block; }
+.portrait .stage-path { grid-template-columns: repeat(3, auto); column-gap: calc(3 * var(--u)); row-gap: calc(2.2 * var(--u)); align-content: center; }
+.portrait .stage-path::before, .portrait .stage-path::after { display: none; }
+.portrait .stage-path .stage-node { width: calc(12.5 * var(--u)); height: calc(12.5 * var(--u)); }
+.portrait .stage-path .stage-node:nth-child(even) { transform: none; }
+.portrait .stage-path .stage-node:nth-child(3n+2) { transform: translateY(calc(1.6 * var(--u))); }
+.portrait .stage-path .stage-node.boss { width: calc(15 * var(--u)); height: calc(15 * var(--u)); }
+.portrait .stage-path .stage-node.boss:last-child { grid-column: 1 / -1; transform: none; }
+.portrait .map-actions { flex-wrap: wrap; gap: calc(1 * var(--u)); padding: calc(1 * var(--u)) calc(1.4 * var(--u)) calc(1.6 * var(--u)); }
+.portrait .map-actions .btn { flex: 1 0 40%; }
+.portrait .side-list { justify-content: flex-start; overflow-y: auto; touch-action: pan-y; gap: calc(1.2 * var(--u)); padding: calc(0.6 * var(--u)) calc(1.4 * var(--u)) calc(1 * var(--u)); }
+.portrait .side-row { flex-direction: column; align-items: stretch; gap: calc(0.8 * var(--u)); padding: calc(0.8 * var(--u)) calc(1.2 * var(--u)) calc(1.2 * var(--u)); }
+.portrait .side-head { width: auto; }
+.portrait .side-nodes { justify-content: space-between; }
+.portrait .endless-box { padding: 0 calc(1.5 * var(--u)); text-align: center; }
+.portrait .endless-list { flex-direction: column; }
+
+/* ── 연구실 강화 · 도감 ── */
+.portrait .lab-tabs { padding: 0 calc(1.2 * var(--u)); }
+.portrait .card-grid, .portrait .dex-grid { grid-template-columns: minmax(0, 1fr); padding: calc(1 * var(--u)) calc(1.2 * var(--u)) calc(2 * var(--u)); }
+.portrait .card-pic { flex-basis: calc(10 * var(--u)); height: calc(10 * var(--u)); }
+.portrait .dex .dex-grid:has(.enemy) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.portrait .dex .dex-grid.skills { grid-template-columns: minmax(0, 1fr); }
+.portrait .dex-detail { flex-direction: column; align-items: stretch; }
+.portrait .dex-canvas { width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.portrait .dex-info .btn { align-self: center; }
+
+/* ── 창들 ── */
+.portrait .story-grid { max-height: calc(56 * var(--u)); }
+.portrait .rank-row {
+  grid-template-columns: calc(4 * var(--u)) minmax(0, 1fr) auto auto; grid-template-areas: 'no name endless stars' 'no title endless stars';
+  column-gap: calc(0.8 * var(--u)); row-gap: 0;
+}
+.portrait .rank-no { grid-area: no; }
+.portrait .rank-name { grid-area: name; }
+.portrait .rank-title { grid-area: title; }
+.portrait .rank-endless { grid-area: endless; }
+.portrait .rank-stars { grid-area: stars; }
+.portrait .rank-list { max-height: calc(56 * var(--u)); }
+.portrait .fb-list { max-height: calc(56 * var(--u)); }
+.portrait .audio-row { grid-template-columns: calc(10 * var(--u)) calc(7 * var(--u)) minmax(0, 1fr) calc(4.5 * var(--u)); gap: calc(0.8 * var(--u)); }
+
+/* ── 컷신: 그림은 화면 폭에 맞추고 대사 상자는 그 아래 ── */
+.portrait .cutscene { display: flex; flex-direction: column; justify-content: center; padding-bottom: calc(4 * var(--u)); gap: calc(3.6 * var(--u)); }
+.portrait .cut-canvas { position: relative; inset: auto; flex: none; height: auto; aspect-ratio: 4 / 3; }
+.portrait .cut-box { position: relative; inset: auto; flex: none; margin: 0 calc(1.6 * var(--u)); min-height: calc(20 * var(--u)); font-size: calc(2.4 * var(--u)); }
+.portrait .cut-title { top: calc(8 * var(--u)); max-width: calc(100% - 4 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.portrait .side-map .top-title { color: #f3e5f5; }
