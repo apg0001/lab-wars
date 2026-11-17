@@ -35,7 +35,7 @@ export function newSave(): SaveData {
     stars: {},
     units: {},
     subs: [],
-    facilities: { remodel: 0, coffee: 0, tumbler: 0, meditate: 0, printer: 0, printerRange: 0 },
+    facilities: { remodel: 0, coffee: 0, tumbler: 0, meditate: 0, planner: 0, printer: 0, printerRange: 0 },
     endless: 0,
     seen: [],
     updatedAt: Date.now(),
@@ -230,6 +230,8 @@ export interface BattleLoadout {
   mentalRegen: number;
   printerAtk: number;
   printerRange: number;
+  /** 동료 재소환 대기시간 배율 */
+  cooldownMul: number;
   deck: DeckEntry[];
   skills: SkillDef[];
 }
@@ -245,6 +247,7 @@ export function makeLoadout(save: SaveData): BattleLoadout {
     mentalRegen: 1.5 + 0.25 * f.meditate,
     printerAtk: 20 * (1 + 0.2 * f.printer),
     printerRange: 300 + 20 * f.printerRange,
+    cooldownMul: 1 - 0.04 * f.planner,
     deck: UNITS.filter((u) => isUnitOwned(save, u)).map((def) => {
       const p = unitProgress(save, def.id);
       return { def, stats: unitStats(def, p), tier: p.tier, level: p.level };
