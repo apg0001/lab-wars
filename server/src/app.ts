@@ -55,6 +55,9 @@ export interface RankRow {
   cleared: number;
   /** 지금 신분 (학부생 ~ 교수) */
   title: string;
+  /** 전공 모드 평점 (4.5 만점, 들은 과목이 없으면 null)과 이수 학점 */
+  gpa: number | null;
+  credits: number;
   /** 칭호 아이템 id, 대표 캐릭터와 단계·차림 */
   badge: string;
   avatar: string;
@@ -115,6 +118,27 @@ export function rankLook(raw: unknown): RankLook {
   const tier = u && typeof u === 'object' ? (u as { tier?: unknown }).tier : undefined;
   if (typeof tier === 'number' && Number.isFinite(tier)) out.avatarTier = Math.min(3, Math.max(1, Math.floor(tier)));
   return out;
+}
+
+const GRADE_POINT: Record<string, number> = { 'A+': 4.5, A0: 4.0, 'B+': 3.5, B0: 3.0, 'C+': 2.5, C0: 2.0, 'D+': 1.5, D0: 1.0, F: 0 };
+const COURSE_ID = /^[a-z0-9]{2,16}$/;
+/** 전공 과목 1개 학점 (게임과 같다) */
+const COURSE_CREDITS = 3;
+
+/** 저장 데이터의 전공 학점으로 평점·이수 학점을 낸다 (모르는 값은 버린다) */
+export function rankGpa(raw: unknown): { gpa: number | null; credits: number } {
+  const g = (raw && typeof raw === 'object' ? (raw as { grades?: unknown }).grades : null);
+  if (!g || typeof g !== 'object') return { gpa: null, credits: 0 };
+  let pts = 0;
+  let n = 0;
+  let passed = 0;
+  for (const [id, v] of Object.entries(g as Record<string, unknown>).slice(0, 80)) {
+    if (!COURSE_ID.test(id) || typeof v !== 'string' || !(v in GRADE_POINT)) continue;
+    pts += GRADE_POINT[v]!;
+    n++;
+    if (v !== 'F') passed++;
+  }
+  return { gpa: n ? Math.round((pts / n) * 100) / 100 : null, credits: passed * COURSE_CREDITS };
 }
 
 export function rankStats(raw: unknown): { endless: number; stars: number; cleared: number; title: string } {
@@ -180,11 +204,11 @@ export function createApp(store: Store, cfg: Config) {
       } catch {
         /* 깨진 저장은 0점 */
       }
-      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data), ...rankLook(data) };
+      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data), ...rankLook(data), ...rankGpa(data) };
     }).filter((r) => r.cleared > 0 || r.endless > 0)
       // 무한 기록 → 별 → 먼저 달성한 사람
       .sort((a, b) => b.endless - a.endless || b.stars - a.stars || b.cleared - a.cleared || a.at - b.at)
-      .map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title, badge: r.badge, avatar: r.avatar, avatarTier: r.avatarTier, fit: r.fit }));
+      .map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title, badge: r.badge, avatar: r.avatar, avatarTier: r.avatarTier, fit: r.fit, gpa: r.gpa, credits: r.credits }));
     board = { at: now, rows };
     return rows;
   };

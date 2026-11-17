@@ -1,4 +1,7 @@
-import { ENEMIES } from '../data/enemies';
+import { ENEMIES as ALL_ENEMIES } from '../data/enemies';
+
+/** 도감에 싣는 적: 전공 모드 과목 적·교수님은 과목 정보 창에서 본다 */
+const ENEMIES = ALL_ENEMIES.filter((e) => !e.id.startsWith('ce-') && !e.id.startsWith('boss-'));
 import { ENDLESS_BUG_BOSSES, ENDLESS_ENEMIES, SIDE_STAGES, STAGES } from '../data/stages';
 import { UNITS, UNIT_RARITIES, isGachaUnit, rarityLabel, rarityOf } from '../data/units';
 import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitDef, type UnitRarity } from '../data/types';
@@ -181,7 +184,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       const attacking = cycle > 3;
       const swing = attacking ? Math.max(0, 1 - ((cycle - 3) % 0.75) / 0.25) : 0;
       const s = p.look.scale ?? 1;
-      const zoom = Math.min(3.2, 230 / ((p.look.kind === 'professor' ? 90 : p.look.kind === 'gear' ? 74 : 58) * s));
+      const zoom = Math.min(3.2, 230 / ((p.look.kind === 'professor' || p.look.kind === 'lecturer' ? 90 : p.look.kind === 'gear' ? 74 : 58) * s));
       ctx.translate(240, 290);
       ctx.scale(zoom, zoom);
       const lift = p.stats.flying ? -40 : 0;

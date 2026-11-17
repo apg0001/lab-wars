@@ -485,7 +485,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     for (const u of unitBtns) {
       const cdLeft = battle.unitCd[u.entry.def.id] ?? 0;
       setStyle(u.cd, 'height', pct(cdLeft / (u.entry.def.cooldown * battle.loadout.cooldownMul)));
-      u.btn.classList.toggle('off', battle.caffeine < u.entry.def.cost);
+      u.btn.classList.toggle('off', battle.caffeine < battle.unitCost(u.entry.def.id));
     }
     for (const s of skillBtns) {
       s.btn.classList.toggle('off', !battle.canCast(s.skill.id));

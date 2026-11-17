@@ -27,6 +27,9 @@ import { AccountApi, AccountSaveStore, API_URL, ApiError, displayName, progressS
 import { showFeedbackForm, showFeedbackInbox, showNicknameForm } from './feedback';
 import { showGiftAdmin, showGiftBox } from './gifts';
 import { mountBattle } from './battle-screen';
+import { gradeLines, majorBoard, majorSummary, showCourseInfo } from './major';
+import { isGraduated, isMajorOpen, MAJOR_UNLOCK_STAGE, recordGrade } from '../sim/grades';
+import { COURSE_BY_ID } from '../data/major';
 import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
 import { mountGallery, statTags } from './gallery';
@@ -68,6 +71,8 @@ export class App {
   private save: SaveData = newSave();
   private settings: Settings = { speed: 1 };
   private chapter = 1;
+  /** 지도 모드: 스토리(캠페인·무한·외전) / 전공 (기기에 기억) */
+  private mode: 'story' | 'major' = kv.get('mapMode') === 'major' ? 'major' : 'story';
   private cleanup: (() => void) | null = null;
   /** 연구실 동료 탭 정렬·보기 (기기에 기억) */
   private readonly labPref = loadPref('lab', LAB_SORT);
@@ -412,12 +417,82 @@ export class App {
     );
   }
 
+  /** 스토리 모드 / 전공 모드 전환 */
+  private modeSwitch(): HTMLElement {
+    const open = isMajorOpen(this.save);
+    const set = (m: 'story' | 'major'): void => {
+      this.mode = m;
+      kv.set('mapMode', m);
+      this.showMap();
+    };
+    return h('div.mode-switch', {},
+      h(`button.mode-btn${this.mode === 'story' ? '.on' : ''}`, { onclick: () => set('story') }, tr('{scroll} 스토리 모드', '{scroll} Story Mode')),
+      h(`button.mode-btn${this.mode === 'major' ? '.on' : ''}`, {
+        disabled: open ? undefined : 'true',
+        title: open ? '' : tr(`${MAJOR_UNLOCK_STAGE} 클리어 시 전공 배정`, `Unlocks after clearing ${MAJOR_UNLOCK_STAGE}`),
+        onclick: () => set('major'),
+      }, open ? tr('{cap} 전공 모드', '{cap} Major Mode') : tr(`{lock} 전공 모드 (${MAJOR_UNLOCK_STAGE} 클리어)`, `{lock} Major Mode (clear ${MAJOR_UNLOCK_STAGE})`)),
+    );
+  }
+
+  /** 전공 모드 지도: 이수체계도 */
+  private showMajorMap(): void {
+    const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
+    this.notice = '';
+    const ctx = { save: this.save, host: () => this.root.firstElementChild, start: (st: StageDef) => this.startBattle(st) };
+    const board = majorBoard(ctx);
+    const prev = this.root.querySelector<HTMLElement>('.major-board');
+    const keep = prev ? [prev.scrollLeft, prev.scrollTop] : null;
+    this.swap(h('div.screen.map.major-map', {},
+      this.topBar(tr('전공', 'Major')),
+      toast,
+      this.modeSwitch(),
+      majorSummary(this.save),
+      board,
+      this.mapActions(),
+    ));
+    if (keep) [board.scrollLeft, board.scrollTop] = keep;
+    if (markSeen(this.save, 'guide:major')) {
+      this.persist();
+      this.showMajorIntro();
+    } else if (isGraduated(this.save) && markSeen(this.save, 'major:grad')) {
+      this.persist();
+      this.showGraduation();
+    }
+  }
+
+  /** 전공 배정 장면 (처음 한 번) */
+  private showMajorIntro(): void {
+    const overlay = h('div.overlay');
+    overlay.append(h('div.panel.squad-guide.major-intro', {},
+      h('h2', {}, tr('{cap} 전공 배정: 정보통신공학', '{cap} Major Assigned: Information & Communication Engineering')),
+      h('p', {}, tr('전공 교수님 면담을 무사히 마쳤어요. 이제 진짜 전공 수업이 시작돼요! 과목마다 그 과목다운 규칙이 있어요: 자료구조 시간엔 잡무가 스택처럼 끼어들고, 신호와시스템 시간엔 적이 깜빡이며 보여요.', 'You survived office hours with the Prof. Now the real major courses begin! Every course has a rule true to its subject: in Data Structures, busywork cuts in like a stack; in Signals and Systems, enemies flicker in and out of view.')),
+      h('p', {}, tr('이기면 연구실 체력으로 A+~D0 학점, 지면 F예요. C+ 이하는 재수강할 수 있지만 재수강은 최고 A0. 선수과목을 이수해야 다음 과목이 열리고, 평점(GPA)은 순위표에 공개돼요.', 'Win and your Lab\'s HP earns an A+~D0; lose and it\'s an F. C+ or lower can be retaken, but retakes cap at A0. Pass prerequisites to unlock later courses, and your GPA shows on the leaderboard.')),
+      h('p.muted', {}, tr('교수님들은 모두 가상 인물이에요.', 'All professors are fictional.')),
+      h('button.btn.primary', { onclick: () => overlay.remove() }, tr('{pencil} 수강 신청하러 가기', '{pencil} Go register for courses')),
+    ));
+    this.root.firstElementChild?.append(overlay);
+  }
+
+  /** 졸업 장면 (전 과목 이수) */
+  private showGraduation(): void {
+    const overlay = h('div.overlay');
+    overlay.append(h('div.panel.squad-guide.major-grad', {},
+      h('img', { src: myAvatar(this.save), alt: '', class: 'grad-avatar' }),
+      h('h2', {}, tr('{party} 학위수여식', '{party} Commencement')),
+      h('p', {}, tr(`${this.profile?.name ?? '나'}, 정보통신공학 학사 학위를 받았어요! 세미콜론에 울던 1학년이 엊그제 같은데… 이제 대학원 연구실이 기다리고 있어요. (어쩌면 이미 거기 계시죠?)`, `${this.profile?.name ?? 'You'} earned a B.S. in Information & Communication Engineering! Feels like yesterday you were crying over a missing semicolon… The grad lab awaits. (Or maybe you\'re already there?)`)),
+      h('button.btn.primary', { onclick: () => overlay.remove() }, tr('{cap} 학사모 던지기', '{cap} Toss the cap')),
+    ));
+    this.root.firstElementChild?.append(overlay);
+  }
+
   showMap(): void {
     music.play('lobby');
+    if (this.mode === 'major' && isMajorOpen(this.save)) return this.showMajorMap();
     const endlessOpen = isEndlessOpen(this.save);
     const sideOpen = isSideOpen(this.save);
     if (this.chapter === SIDE_TAB && !sideOpen) this.chapter = CHAPTERS.length;
-    const tabs = h('div.chapter-tabs', {}, ...CHAPTERS.map((c) => {
+    const tabRow = h('div.chapter-tabs', {}, ...CHAPTERS.map((c) => {
       const open = isStageOpen(this.save, STAGE_BY_ID[`${c.id}-1`]!);
       return h(`button.chapter-tab${c.id === this.chapter ? '.on' : ''}`, {
         disabled: open ? undefined : 'true',
@@ -430,6 +505,8 @@ export class App {
       disabled: sideOpen ? undefined : 'true',
       onclick: () => { this.chapter = SIDE_TAB; this.showMap(); },
     }, sideOpen ? tr('{redbook} 외전', '{redbook} Side') : '{lock} {redbook}'));
+    // 위쪽: 스토리/전공 모드 전환 + 챕터 탭
+    const tabs = h('div.map-head', {}, this.modeSwitch(), tabRow);
     if (this.chapter === SIDE_TAB) return this.showSideMap(tabs);
     if (this.chapter > CHAPTERS.length) return this.showEndlessMap(tabs);
     const ch = CHAPTERS[this.chapter - 1]!;
@@ -697,6 +774,7 @@ export class App {
       onTutorialDone: shouldShowTutorial(this.save, stage) ? () => { if (markSeen(this.save, GUIDE_TUTORIAL)) this.persist(); } : undefined,
       onEnd: (e) => {
         const out = applyOutcome(this.save, stage, e.win, e.baseHpRatio, e.killReward);
+        const graded = stage.course ? recordGrade(this.save, stage.course, e.win, e.baseHpRatio) : null;
         this.persist();
         const lines = [
           ...(e.timeout ? [tr('{clock} 시간 초과! 제한 시간 안에 교수실을 함락하지 못했어요.', '{clock} Time\'s up! You didn\'t take the Prof\'s Office in time.')] : []),
@@ -704,11 +782,21 @@ export class App {
           ...(out.tickets ? [tr(`{ticket} 무료 뽑기권 +${out.tickets} (장비 지원에서 써요)`, `{ticket} Free ticket +${out.tickets} (use it in Equipment Grant)`)] : []),
           tr(`처치 보상 {coin} ${fmt(out.killReward)} · 처치 ${e.kills}`, `Kill reward {coin} ${fmt(out.killReward)} · ${e.kills} kills`),
           ...this.unlockNews(before),
+          ...(graded ? gradeLines(this.save, graded) : []),
         ];
         const title = e.win ? tr('{party} 교수실 함락!', '{party} Prof\'s Office taken!') : e.timeout ? tr('{clock} 야근 확정… 시간 초과', '{clock} Overtime again… time\'s up') : tr('{dizzy} 연구실이 망가졌다…', '{dizzy} The lab is wrecked…');
         return { title, lines, stars: out.stars };
       },
       actions: (win) => {
+        if (stage.course) {
+          const co = COURSE_BY_ID[stage.course]!;
+          const majorCtx = { save: this.save, host: () => this.root.firstElementChild, start: (st: StageDef) => this.startBattle(st) };
+          return [
+            { label: tr('{cap} 전공 지도로', '{cap} Back to Major'), primary: true, run: () => { this.mode = 'major'; this.showMap(); } },
+            { label: win ? tr('{book} 과목 정보', '{book} Course info') : tr('{retry} 재수강', '{retry} Retake'), run: () => { this.showMap(); showCourseInfo(majorCtx, co); } },
+            { label: tr('{flask} 연구실 강화', '{flask} Upgrade Lab'), run: () => this.showLab() },
+          ];
+        }
         const next = stage.kind === 'endless' ? endlessStage(stage.index + 1) : stage.side ? STAGE_BY_ID[`S${stage.side}-${stage.index + 1}`] : STAGES[stage.order + 1];
         // 보스를 처음 이기면 챕터 마무리 장면, 마지막 보스면 엔딩
         const clearId = scenesOfStage(stage).after[0] ?? '';
@@ -749,7 +837,7 @@ export class App {
     const isAccount = this.profile?.kind === 'account';
     overlay.append(h('div.panel.rank-panel', {},
       h('h2', {}, tr('{trophy} 연구실 순위', '{trophy} Lab Rankings')),
-      h('p.muted.rank-sub', {}, tr('무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 닉네임이 표시돼요.', 'Ranked by Endless best, then campaign stars. Account nicknames are shown.')),
+      h('p.muted.rank-sub', {}, tr('무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 닉네임과 전공 평점이 표시돼요.', 'Ranked by Endless best, then campaign stars. Account nicknames and major GPAs are shown.')),
       body,
       isAccount || !this.api ? null : h('p.notice', {}, tr('{key} 로그인하면 내 기록도 순위에 올라가요.', '{key} Log in to get your record on the board.')),
       h('button.btn.primary', { onclick: close }, tr('닫기', 'Close')),
@@ -765,7 +853,7 @@ export class App {
       h('span.rank-no', {}, r.rank <= 3 ? ['{medal1}', '{medal2}', '{medal3}'][r.rank - 1]! : String(r.rank)),
       h('img.rank-avatar', { src: rankAvatar(r.avatar, r.avatarTier, r.fit), alt: '' }),
       h('span.rank-name', {}, r.name, r.badge && COSMETIC_BY_ID[r.badge]?.kind === 'title' ? h('small.rank-badge', {}, COSMETIC_BY_ID[r.badge]!.name) : null),
-      h('span.rank-title', {}, rankTitle(r.title)),
+      h('span.rank-title', {}, rankTitle(r.title), typeof r.gpa === 'number' ? h('small.rank-gpa', {}, tr(`평점 ${r.gpa.toFixed(2)}`, `GPA ${r.gpa.toFixed(2)}`)) : null),
       h('span.rank-endless', {}, r.endless ? tr(`{infinity} ${r.endless}판`, `{infinity} R${r.endless}`) : '—'),
       h('span.rank-stars', {}, `{star} ${r.stars}`),
     );

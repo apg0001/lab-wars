@@ -489,10 +489,14 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: Spr
     if (Math.sin(time * 13 + f.uid) > 0.75) ctx.translate((Math.sin(time * 71 + f.uid) > 0 ? 3 : -3), 0);
   }
   // 자세는 스프라이트 캐시에서 (초당 ANIM_FPS번만 다시 그림), 맞은 번쩍임도 스프라이트에 미리 칠한다
+  // 전공 과목 화면 규칙: 샘플링(적이 주기적으로만 또렷이 보임), 윤곽선(실루엣)
+  const view = f.side === 'enemy' && !f.isBoss ? b.stage.mods?.course?.view : undefined;
+  if (view === 'strobe') ctx.globalAlpha *= (time + f.uid * 0.13) % 0.9 < 0.3 ? 1 : 0.12;
   sprites.draw(ctx, f.uid, {
     look: f.look, defId: f.defId, tier: f.tier, facing: facing as 1 | -1,
     walk: f.walk, swing: f.swing, moving: !f.attacking && !f.dead,
     flash: f.hitFlash > 0 && !f.dead, phase: (f.uid * 0.6180339887) % 1,
+    silhouette: view === 'silhouette',
   }, time, pixelRatio);
   ctx.restore();
   if (f.copy && !f.dead) drawCopyGlitch(ctx, f, y, time);
@@ -523,10 +527,18 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: Spr
     const s = f.look.scale ?? 1;
     const w = 26 * s;
     const top = y - 62 * s - (f.tier >= 3 ? 8 : 0);
-    ctx.fillStyle = 'rgba(0,0,0,.45)';
-    ctx.fillRect(f.x - w / 2, top, w, 4);
-    ctx.fillStyle = f.side === 'ally' ? '#66bb6a' : '#ef5350';
-    ctx.fillRect(f.x - w / 2, top, w * (f.hp / f.maxHp), 4);
+    if (f.side === 'enemy' && b.stage.mods?.course?.view === 'nan') {
+      // 결측치: 체력 대신 NaN
+      ctx.font = 'bold 10px Jua, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ef5350';
+      ctx.fillText('NaN', f.x, top + 4);
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(f.x - w / 2, top, w, 4);
+      ctx.fillStyle = f.side === 'ally' ? '#66bb6a' : '#ef5350';
+      ctx.fillRect(f.x - w / 2, top, w * (f.hp / f.maxHp), 4);
+    }
   }
 }
 

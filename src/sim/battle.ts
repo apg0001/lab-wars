@@ -4,6 +4,7 @@ import { ENEMY_BY_ID } from '../data/enemies';
 import type { StageDef } from '../data/stages';
 import type { SkillId } from '../data/upgrades';
 import type { BattleLoadout } from './progression';
+import { makeCourseRules, type CourseRule } from './course-rules';
 import { CARDS, DRAFT_FALLBACK, DRAFT_GAP, DRAFT_MIN_T, MAX_DRAWS, RARITY_ODDS, type CardDef, type CardId, type CardRarity } from '../data/cards';
 
 export const WORLD_W = 1800;
@@ -292,6 +293,8 @@ export class Battle {
   private uidSeq = 1;
   private acc = 0;
   private readonly rng: () => number;
+  /** 전공 과목 규칙 (과목 스테이지만, 없으면 빈 목록) */
+  private readonly rules: CourseRule[];
   /** 카드 추첨 전용 난수 (전투 난수 흐름과 분리해 같은 시드면 같은 카드가 나온다) */
   private readonly cardRng: () => number;
   /** 추첨 대기 중인 카드 3장. 있는 동안 전투는 멈춘다 (pickCard로 고른다). */
@@ -318,6 +321,7 @@ export class Battle {
     this.rng = makeRng(seed);
     this.cardRng = makeRng((seed ^ 0x5eedca7d) + 17);
     this.cardsOn = opts.cards ?? true;
+    this.rules = makeCourseRules(stage.mods?.course);
     this.draftIntroLen = Math.max(0, opts.draftIntro ?? 0);
     this.caffeine = loadout.caffeineStart;
     this.ally = { side: 'ally', hp: loadout.baseHp, maxHp: loadout.baseHp, towerCd: 0, hitFlash: 0 };
@@ -333,11 +337,15 @@ export class Battle {
   // ───────────── 플레이어 조작 ─────────────
 
   get caffeineMax(): number {
-    return Math.round(this.loadout.caffeineMax * (1 + 0.25 * (this.brewLevel - 1)));
+    let mul = 1;
+    for (const r of this.rules) if (r.caffeineMax) mul *= r.caffeineMax(this);
+    return Math.round(this.loadout.caffeineMax * (1 + 0.25 * (this.brewLevel - 1)) * mul);
   }
 
   get caffeineRegen(): number {
-    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1) * this.cardMods.regen * this.burnMul;
+    let mul = 1;
+    for (const r of this.rules) if (r.regen) mul *= r.regen(this);
+    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1) * this.cardMods.regen * this.burnMul * mul;
   }
 
   /** 전투 진행률 0~1 (시간 제한 기준, 없으면 0) */
@@ -378,21 +386,32 @@ export class Battle {
     return true;
   }
 
+  /** 소환 비용 (과목 규칙이 바꿀 수 있다) */
+  unitCost(unitId: string): number {
+    const entry = this.loadout.deck.find((d) => d.def.id === unitId);
+    let cost = entry?.def.cost ?? 0;
+    for (const r of this.rules) if (r.cost) cost = r.cost(this, unitId, cost);
+    return cost;
+  }
+
   canSummon(unitId: string): boolean {
     const entry = this.loadout.deck.find((d) => d.def.id === unitId);
-    return !!entry && !this.result && !this.draft && (this.unitCd[unitId] ?? 0) <= 0 && this.caffeine >= entry.def.cost;
+    return !!entry && !this.result && !this.draft && (this.unitCd[unitId] ?? 0) <= 0 && this.caffeine >= this.unitCost(unitId);
   }
 
   summon(unitId: string): boolean {
     if (!this.canSummon(unitId)) return false;
     const entry = this.loadout.deck.find((d) => d.def.id === unitId)!;
-    this.caffeine -= entry.def.cost;
+    this.caffeine -= this.unitCost(unitId);
     this.unitCd[unitId] = entry.def.cooldown * this.loadout.cooldownMul;
     const count = entry.def.count ?? 1;
+    const made: Fighter[] = [];
     for (let i = 0; i < count; i++) {
       const f = this.addFighter('ally', entry.def.id, entry.def.names[entry.tier - 1]!, entry.def.look, entry.tier, entry.stats, ALLY_FRONT - 20 - i * 14, 0);
       f.depth = i * 10 + this.rng() * 6;
+      made.push(f);
     }
+    for (const r of this.rules) r.summoned?.(this, unitId, made);
     const cp = this.stage.mods?.copy;
     if (cp) {
       this.recentSummons.push(unitId);
@@ -501,6 +520,7 @@ export class Battle {
     this.frenzyT = Math.max(0, this.frenzyT - dt);
     this.tickCopy();
     this.tickBlip(dt);
+    for (const r of this.rules) r.step?.(this, dt);
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
     this.hasteT = Math.max(0, this.hasteT - dt);
     this.freezeT = Math.max(0, this.freezeT - dt);
@@ -711,6 +731,7 @@ export class Battle {
     f.summonCd = def.boss?.summon?.every ?? 0;
     f.stompCd = def.boss?.stomp?.every ?? 0;
     f.skillCd = (def.boss?.silence?.every ?? 0) * 0.6;
+    for (const r of this.rules) r.enemySpawned?.(this, f);
     return f;
   }
 
@@ -911,7 +932,9 @@ export class Battle {
   private speedMul(f: Fighter): number {
     const slow = f.slowT > 0 ? f.slowMul : 1;
     if (f.side === 'ally') return (this.hasteT > 0 ? 1.15 : 1) * slow;
-    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * this.countdownMul * slow;
+    let rule = 1;
+    for (const r of this.rules) if (r.speed) rule *= r.speed(this, f);
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * this.countdownMul * slow * rule;
   }
 
   private atkRateMul(f: Fighter): number {
@@ -1149,6 +1172,11 @@ export class Battle {
 
     const target = this.findTarget(f);
     const hitBase = !target && this.baseInRange(f);
+    // 과목 규칙(라운드 로빈·무임승차): 공격하지 않는 차례면 앞을 막아 서기만 한다
+    if ((target || hitBase) && this.rules.some((r) => r.canAttack && !r.canAttack(this, f))) {
+      f.attacking = false;
+      return;
+    }
     f.attacking = !!target || hitBase;
     if (!f.attacking) {
       const dir = f.side === 'ally' ? 1 : -1;
@@ -1309,6 +1337,7 @@ export class Battle {
   private hitFrom(src: Fighter | undefined, o: Fighter, dmg: number, side: Side, kb?: { chance: number; dist: number }, melee = false, eff?: HitEffects): void {
     const s = src?.stats;
     if (s?.airMul && o.stats.flying) dmg *= s.airMul;
+    for (const r of this.rules) if (r.damage) dmg = r.damage(this, o, dmg, src, melee);
     const dealt = this.damageFighter(o, dmg, side, kb, melee, eff);
     if (src && s?.lifesteal && dealt > 0 && !src.dead && src.hp < src.maxHp) {
       src.hp = Math.min(src.maxHp, src.hp + dealt * s.lifesteal);
@@ -1410,6 +1439,7 @@ export class Battle {
       f.hp = 0;
       if (f.stats.deathBurst) this.deathBurst(f);
       if (f.stats.split && !f.splitChild) this.splitApart(f);
+      for (const r of this.rules) r.died?.(this, f);
       this.fx.push({ kind: 'poof', x: f.x, y: this.fy(f) - 16, t: 0, life: 0.5 });
       this.emit({ type: 'kill', x: f.x, y: this.fy(f) - 16, side: f.side, boss: f.isBoss });
       if (f.side === 'enemy') {
@@ -1498,6 +1528,7 @@ export class Battle {
       for (const th of ALARM_AT) if (before > th && now <= th) this.alarm();
     }
     b.hitFlash = 0.1;
+    for (const r of this.rules) r.baseHit?.(this, b.side);
     this.emit({ type: 'baseHit', side: b.side, x, dmg });
     this.fx.push({ kind: 'dmg', x, y: GROUND_Y - 120 - this.rng() * 60, t: 0, life: 0.6, text: String(Math.round(dmg)), color: b.side === 'enemy' ? '#ffe082' : '#ff8a80' });
   }
@@ -1522,6 +1553,37 @@ export class Battle {
     this.emit({ type: 'stomp', x, r: R });
     this.emit({ type: 'alarm' });
     this.banner(tr('{alarm} 교수님 비상 소집! 교수실 앞이 밀려나요', '{alarm} Emergency summons! The front line is pushed back'));
+  }
+
+  // ───────────── 과목 규칙이 쓰는 도구 (src/sim/course-rules.ts) ─────────────
+
+  /** 전투 난수 (같은 씨앗이면 같은 결과) */
+  ruleRand(): number {
+    return this.rng();
+  }
+
+  /** 출현 후보에서 적 하나를 고른다 */
+  rulePick(): string {
+    return this.pickEnemy();
+  }
+
+  ruleSpawn(id: string, x = ENEMY_FRONT + 20): Fighter | null {
+    return this.spawnEnemy(id, false, x);
+  }
+
+  ruleBanner(text: string): void {
+    this.banner(text);
+  }
+
+  ruleText(f: Fighter, text: string, color: string): void {
+    if (this.fx.length < MAX_FX) this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 1, text, color });
+  }
+
+  /** 보상 없이 조용히 없앤다 (압축으로 합쳐질 때) */
+  ruleRemove(f: Fighter): void {
+    f.dead = true;
+    f.hp = 0;
+    f.deathT = 1;
   }
 
   private emit(e: BattleEvent): void {
