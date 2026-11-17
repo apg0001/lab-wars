@@ -4,6 +4,7 @@ import { RANGED_THRESHOLD } from '../data/types';
 import { INK } from './characters';
 import type { Juice } from './juice';
 import { drawDarkness, drawThemeBackdrop, type Light } from './spooky';
+import { exitSign } from './side-backdrops';
 import { drawRich, iconImg } from './doodle';
 import { SpriteCache } from './sprites';
 
@@ -55,7 +56,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   let sprites = spriteCaches.get(b);
   if (!sprites) spriteCaches.set(b, (sprites = new SpriteCache()));
   ctx.save();
-  if (b.stage.theme) drawThemeBackdrop(ctx, b.stage.theme, viewW, GROUND_Y, VIEW_H, camX * 0.5, time);
+  if (b.stage.theme) drawThemeBackdrop(ctx, b.stage.theme, viewW, GROUND_Y, VIEW_H, camX * 0.5, time, b.progress);
   else drawBackdrop(ctx, camX);
   ctx.translate(-camX, 0);
   drawPrinterRange(ctx, ALLY_FRONT + b.loadout.printerRange);
@@ -78,6 +79,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   drawFx(ctx, b, false);
   ctx.restore();
   if (b.stage.mods?.dark) drawDarkness(ctx, viewW, VIEW_H, battleLights(b, camX), time);
+  if (b.blipT > 0) drawBlip(ctx, b, camX, time);
   drawMood(ctx, b, time, juice);
   drawFx(ctx, b, true);
 }
@@ -98,6 +100,22 @@ function battleLights(b: Battle, camX: number): Light[] {
     lights.push({ x: p.x0 + (p.x1 - p.x0) * k - camX, y: p.y0 + (p.y1 - p.y0) * k, r: 45 });
   }
   return lights;
+}
+
+/** 외전 7 순간 정전: 잠깐 깜깜해지고 비상구 표시와 UPS 주변만 빛난다 */
+function drawBlip(ctx: Ctx, b: Battle, camX: number, time: number): void {
+  const sy = GROUND_Y - 300;
+  const lights: Light[] = [{ x: viewW * 0.12 + 35, y: sy + 14, r: 90 }, { x: viewW * 0.78 + 35, y: sy + 14, r: 90 }];
+  for (const f of b.fighters) {
+    if (f.side === 'ally' && !f.dead && f.stats.blipGuard) lights.push({ x: f.x - camX, y: b.fy(f) - 20, r: f.stats.blipGuard * 1.4 });
+  }
+  ctx.save();
+  // 끝날 즈음 서서히 불이 돌아온다
+  ctx.globalAlpha = Math.min(1, b.blipT * 2.5);
+  drawDarkness(ctx, viewW, VIEW_H, lights, time);
+  exitSign(ctx, viewW * 0.12, sy, 1);
+  exitSign(ctx, viewW * 0.78, sy, 1);
+  ctx.restore();
 }
 
 /** 건물이 맞으면 잠깐 흔들린다. */
@@ -437,6 +455,12 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: Spr
     ctx.translate(0, 20);
   }
   ctx.scale(sx, sy);
+  if (f.copy && !f.dead) {
+    // 생성형 복제: 색이 뒤틀리고 가끔 옆으로 어긋난다
+    ctx.filter = 'hue-rotate(170deg) saturate(1.5) brightness(1.05)';
+    ctx.globalAlpha = 0.88;
+    if (Math.sin(time * 13 + f.uid) > 0.75) ctx.translate((Math.sin(time * 71 + f.uid) > 0 ? 3 : -3), 0);
+  }
   // 자세는 스프라이트 캐시에서 (초당 ANIM_FPS번만 다시 그림), 맞은 번쩍임도 스프라이트에 미리 칠한다
   sprites.draw(ctx, f.uid, {
     look: f.look, defId: f.defId, tier: f.tier, facing: facing as 1 | -1,
@@ -444,6 +468,7 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: Spr
     flash: f.hitFlash > 0 && !f.dead, phase: (f.uid * 0.6180339887) % 1,
   }, time, pixelRatio);
   ctx.restore();
+  if (f.copy && !f.dead) drawCopyGlitch(ctx, f, y, time);
 
   if (!f.dead) drawStatus(ctx, f, y, time);
 
@@ -479,9 +504,35 @@ function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: Spr
 }
 
 /** 상태 이상 표시: 보호막 방울, 얼음 덩어리, 불꽃, 머리 위 아이콘 줄 */
+/** 복제본 위로 지나가는 청록·자홍 줄과 머리 위 표시 */
+function drawCopyGlitch(ctx: Ctx, f: Fighter, y: number, time: number): void {
+  const s = f.look.scale ?? 1;
+  const k = (time * 1.7 + f.uid * 0.37) % 1;
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#00e5ff';
+  ctx.fillRect(f.x - 16 * s + 2, y - 55 * s + k * 50 * s, 30 * s, 2);
+  ctx.fillStyle = '#ff4081';
+  ctx.fillRect(f.x - 16 * s - 2, y - 55 * s + ((k + 0.45) % 1) * 50 * s, 30 * s, 1.5);
+  ctx.globalAlpha = 0.9;
+  const img = iconImg('robot');
+  if (img) ctx.drawImage(img, f.x - 7, y - 78 * s, 14, 14);
+  ctx.restore();
+}
+
 function drawStatus(ctx: Ctx, f: Fighter, y: number, time: number): void {
   const s = f.look.scale ?? 1;
   const midY = y - 26 * s;
+  if (f.silenceT > 0) {
+    // 자동 리뷰 AI에게 능력이 막혔다
+    const img = iconImg('mute');
+    if (img) {
+      ctx.save();
+      ctx.globalAlpha = 0.6 + Math.sin(time * 6 + f.uid) * 0.3;
+      ctx.drawImage(img, f.x + 8 * s, y - 60 * s, 13, 13);
+      ctx.restore();
+    }
+  }
   if (f.shield > 0) {
     ctx.save();
     ctx.globalAlpha = 0.5 + Math.sin(time * 5 + f.uid) * 0.15;
