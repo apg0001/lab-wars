@@ -1,8 +1,9 @@
 import { STAGES, type StageDef } from '../data/stages';
 import { UNITS } from '../data/units';
 import { FACILITIES, facilityCost } from '../data/upgrades';
-import { ALLY_FRONT, Battle, makeRng } from './battle';
+import { ALLY_FRONT, Battle, makeRng, type BattleOptions } from './battle';
 import { RANGED_THRESHOLD } from '../data/types';
+import type { CardDef, CardRarity } from '../data/cards';
 import {
   applyOutcome, canEvolve, canLevelUp, evolve, evolveCost, levelUp, levelUpCost, makeLoadout, subscribe,
   canSubscribe, unitProgress, upgradeFacility, type SaveData,
@@ -16,12 +17,22 @@ export function playBot(battle: Battle, limit = battle.stage.timeLimit ?? 300, s
   const rng = makeRng(seed);
   let think = 0;
   while (!battle.result && battle.t < limit) {
+    if (battle.draft) battle.pickCard(botPickCard(battle.draft));
     battle.step(1 / 60);
     think += 1 / 60;
     if (think < 0.4) continue;
     think = 0;
     botThink(battle, rng);
   }
+}
+
+const RARITY_RANK: Record<CardRarity, number> = { legend: 3, rare: 2, common: 1, curse: 0 };
+
+/** 봇의 카드 선택: 가장 높은 등급 (저주는 피한다), 같으면 앞의 카드 */
+export function botPickCard(hand: CardDef[]): number {
+  let best = 0;
+  for (let i = 1; i < hand.length; i++) if (RARITY_RANK[hand[i]!.rarity] > RARITY_RANK[hand[best]!.rarity]) best = i;
+  return best;
 }
 
 function botThink(b: Battle, rng: () => number): void {
@@ -91,8 +102,9 @@ export interface StageRun {
 
 /**
  * 캠페인 전체를 봇으로 진행한다. 지면 직전 스테이지를 한 번 다시 돌아 연구비를 모은 뒤 재도전한다.
+ * opts는 매 판 전투에 그대로 넘긴다 (예: { cards: false }로 카드 추첨 없이 기본 난이도만 잰다).
  */
-export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: StageDef[] = STAGES): { runs: StageRun[]; stuckAt: string | null } {
+export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: StageDef[] = STAGES, opts: BattleOptions = {}): { runs: StageRun[]; stuckAt: string | null } {
   const runs: StageRun[] = [];
   let s = seed;
   for (const [i, stage] of stages.entries()) {
@@ -100,7 +112,7 @@ export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: 
     for (;;) {
       attempts++;
       botShop(save);
-      const r = playOnce(save, stage, s++);
+      const r = playOnce(save, stage, s++, opts);
       if (r.win) {
         runs.push({ stage: stage.id, attempts, stars: r.stars, seconds: Math.round(r.seconds) });
         break;
@@ -109,15 +121,15 @@ export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: 
       const prev = i > 0 ? stages[i - 1] : undefined;
       if (prev) {
         botShop(save);
-        playOnce(save, prev, s++);
+        playOnce(save, prev, s++, opts);
       }
     }
   }
   return { runs, stuckAt: null };
 }
 
-export function playOnce(save: SaveData, stage: StageDef, seed: number): { win: boolean; stars: number; seconds: number } {
-  const battle = new Battle(stage, makeLoadout(save), seed);
+export function playOnce(save: SaveData, stage: StageDef, seed: number, opts: BattleOptions = {}): { win: boolean; stars: number; seconds: number } {
+  const battle = new Battle(stage, makeLoadout(save), seed, opts);
   playBot(battle, undefined, seed * 31 + 7);
   const win = battle.result === 'win';
   const out = applyOutcome(save, stage, win, battle.ally.hp / battle.ally.maxHp, battle.killReward);
