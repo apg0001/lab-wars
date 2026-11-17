@@ -1,9 +1,9 @@
 import { ENEMIES } from '../data/enemies';
-import { SIDE_STAGES, STAGES } from '../data/stages';
+import { ENDLESS_BUG_BOSSES, ENDLESS_ENEMIES, SIDE_STAGES, STAGES } from '../data/stages';
 import { UNITS, UNIT_RARITIES, isGachaUnit, rarityLabel, rarityOf } from '../data/units';
 import { RANGED_THRESHOLD, type CombatStats, type Look, type UnitRarity } from '../data/types';
 import { drawCharacter } from '../render/characters';
-import { isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
+import { isEndlessOpen, isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
 import { SKILLS } from '../data/upgrades';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
@@ -22,6 +22,8 @@ function seenEnemies(save: SaveData): Set<string> {
     for (const p of s.pool) seen.add(p.id);
     if (s.boss) seen.add(s.boss);
   }
+  // 무한 모드 버그 군단: 열린 판(최고 기록 + 1)까지 합류한 적
+  if (isEndlessOpen(save)) for (const e of [...ENDLESS_ENEMIES, ...ENDLESS_BUG_BOSSES]) if (e.from <= save.endless + 1) seen.add(e.id);
   return seen;
 }
 
@@ -46,6 +48,16 @@ function tags(st: CombatStats): string {
   if (st.turret) t.push(tr('포탑 설치', 'Turrets'));
   if (st.revive) t.push(tr('1회 부활', 'Revive once'));
   if (st.fieldStrike) t.push(tr(`{bolt} 전장 타격 ${st.fieldStrike.dmg}`, `{bolt} Field strike ${st.fieldStrike.dmg}`));
+  if (st.chain) t.push(tr(`{bolt} 연쇄 ${st.chain.jumps}회`, `{bolt} Chain ×${st.chain.jumps}`));
+  if (st.armorShred) t.push(tr(`{shred} 방어 깎기 +${Math.round((st.armorShred.mul - 1) * 100)}%`, `{shred} Armor shred +${Math.round((st.armorShred.mul - 1) * 100)}%`));
+  if (st.knockup) t.push(tr(`띄우기 ${Math.round(st.knockup.chance * 100)}%`, `Knock-up ${Math.round(st.knockup.chance * 100)}%`));
+  if (st.lifesteal) t.push(tr(`{heart} 흡혈 ${Math.round(st.lifesteal * 100)}%`, `{heart} Lifesteal ${Math.round(st.lifesteal * 100)}%`));
+  if (st.airMul) t.push(tr(`대공 ×${st.airMul}`, `Anti-air ×${st.airMul}`));
+  if (st.stunField) t.push(tr(`{dizzy} 기절 펄스 ${st.stunField.dur}초`, `{dizzy} Stun pulse ${st.stunField.dur}s`));
+  if (st.split) t.push(tr(`분열 ×${st.split.count}`, `Splits ×${st.split.count}`));
+  if (st.grow) t.push(tr(`성장 ×${st.grow.max}`, `Grows ×${st.grow.max}`));
+  if (st.respawn) t.push(tr('재출현', 'Respawns'));
+  if (st.caffeineDrain) t.push(tr(`{coffee} −${st.caffeineDrain}/타`, `{coffee} −${st.caffeineDrain}/hit`));
   return t.join(' · ');
 }
 
@@ -94,7 +106,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       for (const e of list) {
         const known = seen.has(e.id);
         grid.append(h(`button.dex-cell.enemy${known ? '' : '.unknown'}${e.boss ? '.boss' : ''}`, {
-          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: bossDesc(e.boss), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
+          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: [e.desc, bossDesc(e.boss)].filter(Boolean).join(' '), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
         }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'), h('small.muted', {}, known ? e.role : tr('아직 만나지 않음', 'Not met yet'))));
       }
     }
@@ -139,7 +151,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       const attacking = cycle > 3;
       const swing = attacking ? Math.max(0, 1 - ((cycle - 3) % 0.75) / 0.25) : 0;
       const s = p.look.scale ?? 1;
-      const zoom = Math.min(3.2, 230 / ((p.look.kind === 'professor' ? 90 : 58) * s));
+      const zoom = Math.min(3.2, 230 / ((p.look.kind === 'professor' ? 90 : p.look.kind === 'gear' ? 74 : 58) * s));
       ctx.translate(240, 290);
       ctx.scale(zoom, zoom);
       const lift = p.stats.flying ? -40 : 0;
