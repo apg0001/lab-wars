@@ -2,7 +2,7 @@ import {
   COSMETICS, COSMETIC_BY_ID, DRAW10_PRICE, DRAW_PRICE, GRADE_INFO, GRADES, HERO_SLOT, PITY, type CosmeticDef, type Grade, type Outfit,
 } from '../data/cosmetics';
 import { UNITS } from '../data/units';
-import { drawCosmetics, equip, equipTitle, owns, titleName, type DrawResult } from '../sim/gacha';
+import { drawCosmetics, equip, equipTitle, owns, setAvatar, titleName, type DrawResult } from '../sim/gacha';
 import { isUnitOwned, unitProgress, type SaveData } from '../sim/progression';
 import { heroLook } from '../story/player';
 import { sfx } from '../audio/sfx';
@@ -162,6 +162,7 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
     ...units.map((u) => ({ id: u.id, name: u.names[unitProgress(s, u.id).tier - 1]!, look: u.look, tier: unitProgress(s, u.id).tier })),
   ];
   const cur = slots.find((x) => x.id === slot)!;
+  const avatarSlot = s.cosmetics.avatar || HERO_SLOT;
   const fit = fits[slot] ?? {};
   const change = (fn: () => boolean): void => {
     if (fn()) {
@@ -184,7 +185,7 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
   return h('div.closet', {},
     h('div.slot-strip', {}, ...slots.map((x) => h(`button.slot-btn${x.id === slot ? '.on' : ''}`, { onclick: () => { slot = x.id; ctx.redraw('closet'); } },
       h('img', { src: portrait(x.look, x.tier, x.id), alt: '' }),
-      h('small', {}, x.name),
+      h('small', {}, x.id === avatarSlot ? `{star} ${x.name}` : x.name),
     ))),
     h('div.closet-main', {},
       h('div.closet-preview', {},
@@ -202,6 +203,10 @@ export function closetTab(ctx: GachaCtx): HTMLElement {
             return true;
           }),
         }, tr('{party} 모두에게 입히기', '{party} Apply to everyone')),
+        h('button.btn.small.avatar-set', {
+          disabled: cur.id === avatarSlot ? 'true' : undefined,
+          onclick: () => change(() => setAvatar(s, cur.id === HERO_SLOT ? null : cur.id)),
+        }, cur.id === avatarSlot ? tr('{star} 대표 캐릭터', '{star} Profile character') : tr('{star} 대표 캐릭터로', '{star} Set as profile')),
       ),
       h('div.closet-items', {},
         h('div.closet-head', {}, tr('{crown} 모자·소품', '{crown} Hats & props')),

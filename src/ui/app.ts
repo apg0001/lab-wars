@@ -32,6 +32,8 @@ import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
 import { portrait } from './icons';
 import { closetTab, drawTab } from './gacha';
+import { myAvatar, rankAvatar } from './avatar';
+import { COSMETIC_BY_ID } from '../data/cosmetics';
 import { titleName } from '../sim/gacha';
 import { setWardrobe } from '../render/characters';
 import { SCENES, type Scene } from '../story/script';
@@ -342,7 +344,7 @@ export class App {
 
   private topBar(title: string, back?: () => void): HTMLElement {
     return h('div.topbar', {},
-      back ? h('button.btn.small', { onclick: back }, tr('← 뒤로', '← Back')) : h('button.btn.small', { onclick: () => this.showTitle() }, `{user} ${this.profile?.name ?? ''}`, titleName(this.save) ? h('span.title-chip', {}, titleName(this.save)) : null),
+      back ? h('button.btn.small', { onclick: back }, tr('← 뒤로', '← Back')) : h('button.btn.small.profile-btn', { onclick: () => this.showTitle() }, h('img.avatar-mini', { src: myAvatar(this.save), alt: '' }), this.profile?.name ?? '', titleName(this.save) ? h('span.title-chip', {}, titleName(this.save)) : null),
       h('h2.top-title', {}, title),
       h('div.top-right', {}, this.syncChip(), h('div.money', {}, `{coin} ${fmt(this.save.money)}`), this.audioBtn(), fullscreenButton(() => this.root.firstElementChild)),
     );
@@ -672,7 +674,8 @@ export class App {
     if (isAccount) this.persist();
     const row = (r: RankRow, me = false): HTMLElement => h(`div.rank-row${me ? '.me' : ''}${r.rank <= 3 ? `.top${r.rank}` : ''}`, {},
       h('span.rank-no', {}, r.rank <= 3 ? ['{medal1}', '{medal2}', '{medal3}'][r.rank - 1]! : String(r.rank)),
-      h('span.rank-name', {}, r.name),
+      h('img.rank-avatar', { src: rankAvatar(r.avatar, r.avatarTier, r.fit), alt: '' }),
+      h('span.rank-name', {}, r.name, r.badge && COSMETIC_BY_ID[r.badge]?.kind === 'title' ? h('small.rank-badge', {}, COSMETIC_BY_ID[r.badge]!.name) : null),
       h('span.rank-title', {}, rankTitle(r.title)),
       h('span.rank-endless', {}, r.endless ? tr(`{infinity} ${r.endless}판`, `{infinity} R${r.endless}`) : '—'),
       h('span.rank-stars', {}, `{star} ${r.stars}`),

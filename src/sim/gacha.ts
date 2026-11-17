@@ -1,7 +1,8 @@
 import {
   COSMETICS, COSMETIC_BY_ID, DRAW10_PRICE, DRAW_PRICE, GRADES, GRADE_INFO, HERO_SLOT, PITY, type CosmeticDef, type CosmeticKind, type Grade,
 } from '../data/cosmetics';
-import type { SaveData } from './progression';
+import { isUnitOwned, type SaveData } from './progression';
+import { UNITS } from '../data/units';
 
 /** 0 이상 1 미만 난수 (테스트에서 바꿔 끼운다) */
 export type Rng = () => number;
@@ -87,6 +88,17 @@ export function equip(save: SaveData, slot: string, kind: Exclude<CosmeticKind, 
 export function equipTitle(save: SaveData, id: string | null): boolean {
   if (id !== null && (!owns(save, id) || COSMETIC_BY_ID[id]?.kind !== 'title')) return false;
   save.cosmetics.title = id ?? '';
+  save.updatedAt = Date.now();
+  return true;
+}
+
+/** 대표 캐릭터 정하기: 가진 유닛 id 또는 null(주인공) */
+export function setAvatar(save: SaveData, unitId: string | null): boolean {
+  if (unitId !== null) {
+    const def = UNITS.find((u) => u.id === unitId);
+    if (!def || !isUnitOwned(save, def)) return false;
+  }
+  save.cosmetics.avatar = unitId ?? '';
   save.updatedAt = Date.now();
   return true;
 }

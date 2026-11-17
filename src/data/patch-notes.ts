@@ -22,6 +22,36 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.16.2',
+    date: '2026-11-17',
+    title: '연타 주의',
+    items: [
+      '{check} 숫자키를 꾹 누른 채 소환하다가 경품 추첨 창이 뜨면 카드가 저절로 골라지던 문제를 고쳤어요. 이제 키에서 손을 뗐다가 다시 눌러야 골라져요',
+    ],
+    en: {
+      title: 'Mind the Mashing',
+      items: [
+        '{check} Holding a number key to summon no longer auto-picks a prize card when the draft pops up. Release and press again to choose',
+      ],
+    },
+  },
+  {
+    version: '0.16.1',
+    date: '2026-11-17',
+    title: '내 얼굴을 걸고',
+    items: [
+      '{star} 대표 캐릭터: 옷장에서 가진 유닛 하나를 대표로 정하면, 입힌 차림 그대로 프로필과 순위표에 나와요',
+      '{trophy} 순위표에 심사 결과 칭호가 이름 아래 함께 보여요',
+    ],
+    en: {
+      title: 'Putting a Face on It',
+      items: [
+        '{star} Profile character: pick any unit you own in the Wardrobe and it shows on your profile and the leaderboard, outfit and all',
+        '{trophy} Your Peer Review title now appears under your name on the leaderboard',
+      ],
+    },
+  },
+  {
     version: '0.16.0',
     date: '2026-11-17',
     title: 'Hello, World!',

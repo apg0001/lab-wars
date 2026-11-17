@@ -512,7 +512,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .rank-list { display: flex; flex-direction: column; gap: calc(0.4 * var(--u)); max-height: calc(26 * var(--u)); overflow-y: auto; touch-action: pan-y; }
 .rank-list.mine { margin-top: calc(0.8 * var(--u)); border-top: calc(0.2 * var(--u)) dashed var(--ink); padding-top: calc(0.8 * var(--u)); }
 .rank-row {
-  display: grid; grid-template-columns: calc(5 * var(--u)) 1fr calc(8 * var(--u)) calc(9 * var(--u)) calc(7 * var(--u)); align-items: center;
+  display: grid; grid-template-columns: calc(5 * var(--u)) calc(3.4 * var(--u)) minmax(0, 1fr) calc(8 * var(--u)) calc(9 * var(--u)) calc(7 * var(--u)); align-items: center;
   gap: calc(0.6 * var(--u)); background: #fff; border: calc(0.2 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u));
   padding: calc(0.4 * var(--u)) calc(1 * var(--u)); font-size: calc(1.7 * var(--u)); text-align: left;
 }
@@ -974,7 +974,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 /* ── 창들 ── */
 .portrait .story-grid { max-height: calc(56 * var(--u)); }
 .portrait .rank-row {
-  grid-template-columns: calc(4 * var(--u)) minmax(0, 1fr) auto auto; grid-template-areas: 'no name endless stars' 'no title endless stars';
+  grid-template-columns: calc(4 * var(--u)) calc(3.4 * var(--u)) minmax(0, 1fr) auto auto; grid-template-areas: 'no avatar name endless stars' 'no avatar title endless stars';
   column-gap: calc(0.8 * var(--u)); row-gap: 0;
 }
 .portrait .rank-no { grid-area: no; }
@@ -1039,3 +1039,9 @@ html[lang='en'] body { font-weight: 500; }
 .portrait .ship-info .rarity-chip { align-self: center; }
 .portrait .ship-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(0.5 * var(--u)); }
 .portrait .ship-card img { width: 100%; height: auto; aspect-ratio: 1; }
+/* ── 대표 캐릭터 · 순위표 칭호 ── */
+.profile-btn { display: inline-flex; align-items: center; gap: calc(0.5 * var(--u)); }
+.avatar-mini { width: calc(2.8 * var(--u)); height: calc(2.8 * var(--u)); margin: calc(-0.6 * var(--u)) 0; object-fit: contain; }
+.rank-avatar { width: calc(3.4 * var(--u)); height: calc(3.4 * var(--u)); object-fit: contain; flex: none; }
+.rank-badge { display: block; font-size: calc(1.1 * var(--u)); color: #8e5bd0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portrait .rank-avatar { grid-area: avatar; }

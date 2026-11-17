@@ -32,6 +32,8 @@ export interface CosmeticSave {
   outfits: Record<string, Outfit>;
   /** 이름 옆에 붙이는 칭호 id ('' = 없음) */
   title: string;
+  /** 대표 캐릭터: 옷장 칸 id ('' = 주인공) — 프로필과 순위표에 보인다 */
+  avatar: string;
   /** 마지막 희귀 이상 뒤로 이어진 뽑기 수 */
   pity: number;
   /** 지금까지 투고(뽑기)한 수 */
@@ -111,7 +113,7 @@ export function normalizeGear(raw: unknown): GearSave {
   return out;
 }
 
-export const newCosmetics = (): CosmeticSave => ({ owned: [], outfits: {}, title: '', pity: 0, draws: 0 });
+export const newCosmetics = (): CosmeticSave => ({ owned: [], outfits: {}, title: '', avatar: '', pity: 0, draws: 0 });
 
 /** 꾸미기 기록 정리: 모르는 아이템·칸은 버리고, 가지지 않은 아이템은 벗긴다. 예전 저장은 빈 옷장으로 시작한다. */
 export function normalizeCosmetics(raw: unknown): CosmeticSave {
@@ -133,6 +135,7 @@ export function normalizeCosmetics(raw: unknown): CosmeticSave {
     }
   }
   if (has(r.title, 'title')) out.title = r.title;
+  if (typeof r.avatar === 'string' && UNITS.some((u) => u.id === r.avatar)) out.avatar = r.avatar;
   out.pity = int(r.pity, PITY - 1);
   out.draws = int(r.draws, 1e7);
   return out;
