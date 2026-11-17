@@ -3,11 +3,14 @@ import { STAGES } from '../data/stages';
 import { UNITS } from '../data/units';
 import { RANGED_THRESHOLD, type CombatStats, type Look } from '../data/types';
 import { drawCharacter } from '../render/characters';
-import { isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
+import { isSkillOpen, isStageOpen, isUnitOwned, unitStats, type SaveData } from '../sim/progression';
+import { SKILLS } from '../data/upgrades';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
 
-type Tab = 'ally' | 'enemy' | 'boss';
+type Tab = 'ally' | 'skill' | 'enemy' | 'boss';
+
+const SKILL_KEYS = ['W', 'E', 'R', 'T'];
 
 /** 열린 스테이지에서 등장하는 적 = 만나 본 적 */
 function seenEnemies(save: SaveData): Set<string> {
@@ -50,6 +53,18 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
           }, h('img', { src: portrait(u.look, tier, u.id), alt: '' }), h('span', {}, u.names[tier - 1]!)))),
         ));
       }
+    } else if (tab === 'skill') {
+      grid.classList.add('skills');
+      SKILLS.forEach((sk, i) => {
+        const open = isSkillOpen(save, sk);
+        grid.append(h(`div.dex-ally.dex-skill${open ? '' : '.locked'}`, {},
+          h('div.dex-ally-head', {}, h('span.dex-skill-icon', {}, sk.icon), h('b', {}, sk.name), open ? null : h('span.dex-lock', {}, `${sk.unlockStage} 클리어 시 사용`)),
+          h('p.dex-skill-desc', {}, sk.desc),
+          h('div.stats', {}, `🧠 멘탈 ${sk.cost} · 단축키 ${SKILL_KEYS[i] ?? '-'}${sk.targeted ? ' · 전장을 탭해 위치 지정' : ''}`),
+          h('p.muted.dex-skill-lore', {}, sk.lore),
+        ));
+      });
+      grid.append(h('p.muted.dex-skill-tip', {}, '스킬은 멘탈을 써요. 🏗️ 시설의 🧘 명상 앱으로 멘탈 충전을 늘리면 스킬을 더 자주 쓸 수 있어요.'));
     } else {
       const list = ENEMIES.filter((e) => (tab === 'boss') === !!e.boss);
       for (const e of list) {
@@ -67,7 +82,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
         h('div.money', {}, `동료 ${owned}/${UNITS.length} · 적 ${[...seen].length}/${ENEMIES.length}`),
       ),
       h('div.lab-tabs', {},
-        ...(['ally', 'enemy', 'boss'] as Tab[]).map((t) => h(`button.chapter-tab${t === tab ? '.on' : ''}`, { onclick: () => render(t) }, { ally: '🧑‍🎓 연구실 동료', enemy: '📄 잡무 군단', boss: '👨‍🏫 보스' }[t])),
+        ...(['ally', 'skill', 'enemy', 'boss'] as Tab[]).map((t) => h(`button.chapter-tab${t === tab ? '.on' : ''}`, { onclick: () => render(t) }, { ally: '🧑‍🎓 연구실 동료', skill: '✨ 스킬', enemy: '📄 잡무 군단', boss: '👨‍🏫 보스' }[t])),
       ),
       grid,
     ));

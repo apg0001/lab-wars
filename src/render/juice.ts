@@ -26,8 +26,6 @@ const rnd = (a: number, b: number): number => a + Math.random() * (b - a);
 
 export class Juice {
   private ps: Particle[] = [];
-  /** 0~1, 제곱해서 흔들림 크기로 쓴다 */
-  private trauma = 0;
   /** 남은 히트스톱(실제 시간 초) */
   hitStop = 0;
   /** 화면 전체 번쩍임 0~1 */
@@ -37,10 +35,6 @@ export class Juice {
   private add(p: Omit<Particle, 't' | 'rot' | 'vr' | 'g'> & Partial<Pick<Particle, 'rot' | 'vr' | 'g'>>): void {
     if (this.ps.length >= MAX_PARTICLES) this.ps.shift();
     this.ps.push({ t: 0, rot: 0, vr: 0, g: 0, ...p });
-  }
-
-  shake(amount: number): void {
-    this.trauma = Math.min(1, this.trauma + amount);
   }
 
   stop(sec: number): void {
@@ -60,7 +54,6 @@ export class Juice {
         if (e.melee && heavy) {
           this.add({ kind: 'ring', x: e.x, y: e.y, vx: 0, vy: 0, life: 0.18, size: 22, color: '#fff' });
           this.stop(0.035);
-          this.shake(0.12);
         }
         break;
       }
@@ -75,7 +68,6 @@ export class Juice {
         }
         if (e.side === 'enemy') for (let i = 0; i < 3; i++) this.add({ kind: 'star', x: e.x, y: e.y - 10, vx: rnd(-60, 60), vy: rnd(-180, -100), life: 0.6, size: 5, color: '#ffd54f', g: 300 });
         if (e.boss) {
-          this.shake(0.9);
           this.stop(0.3);
           this.flash = 1;
         }
@@ -89,7 +81,6 @@ export class Juice {
           this.add({ kind: 'dust', x: e.x + rnd(-e.r, e.r) * 0.3, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, life: rnd(0.4, 0.8), size: rnd(8, e.big ? 22 : 14), color: e.big ? '#e3f2fd' : '#eceff1' });
         }
         this.add({ kind: 'ring', x: e.x, y: e.y, vx: 0, vy: 0, life: 0.3, size: e.r * 1.1, color: e.big ? '#90caf9' : '#ffcc80' });
-        this.shake(e.big ? 0.5 : 0.12);
         if (e.big) this.stop(0.07);
         break;
       }
@@ -98,7 +89,6 @@ export class Juice {
           const dir = i % 2 ? 1 : -1;
           this.add({ kind: 'dust', x: e.x + dir * rnd(10, e.r), y: GROUND_Y - 4, vx: dir * rnd(60, 200), vy: rnd(-80, -20), life: rnd(0.5, 0.9), size: rnd(10, 20), color: '#d7ccc8' });
         }
-        this.shake(0.6);
         this.stop(0.08);
         break;
       }
@@ -109,17 +99,14 @@ export class Juice {
         for (let i = 0; i < 6; i++) this.add({ kind: 'star', x: e.x + rnd(-10, 20), y: GROUND_Y - rnd(10, 50), vx: rnd(-30, 60), vy: rnd(-90, -30), life: 0.5, size: 4, color: '#80d8ff', g: 100 });
         break;
       case 'baseHit':
-        if (e.side === 'ally') this.shake(Math.min(0.25, e.dmg / 400));
         for (let i = 0; i < 2; i++) this.add({ kind: 'scrap', x: e.x, y: GROUND_Y - rnd(80, 180), vx: rnd(-80, 80), vy: rnd(-160, -60), life: 0.6, size: 4, color: e.side === 'ally' ? '#90caf9' : '#bcaaa4', rot: rnd(0, 6), vr: rnd(-10, 10), g: 800 });
         break;
       case 'brew':
         for (let i = 0; i < 10; i++) this.add({ kind: 'star', x: 105 + rnd(-30, 30), y: GROUND_Y - rnd(180, 260), vx: rnd(-50, 50), vy: rnd(-120, -40), life: 0.8, size: 5, color: '#ffcc80', g: 150 });
         break;
       case 'bossSpawn':
-        this.shake(0.4);
         break;
       case 'end':
-        this.shake(0.5);
         break;
       default:
         break;
@@ -128,7 +115,6 @@ export class Juice {
 
   update(dt: number): void {
     this.time += dt;
-    this.trauma = Math.max(0, this.trauma - dt * 1.6);
     this.flash = Math.max(0, this.flash - dt * 3);
     for (const p of this.ps) {
       p.t += dt;
@@ -149,13 +135,6 @@ export class Juice {
       }
     }
     this.ps = this.ps.filter((p) => p.t < p.life);
-  }
-
-  /** 현재 화면 흔들림 (px) */
-  offset(): { x: number; y: number } {
-    const s = this.trauma * this.trauma * 14;
-    if (s < 0.05) return { x: 0, y: 0 };
-    return { x: Math.sin(this.time * 73) * s, y: Math.cos(this.time * 61) * s * 0.7 };
   }
 
   /** 월드 좌표계에서 파티클을 그린다. */

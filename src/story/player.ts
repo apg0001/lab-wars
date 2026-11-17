@@ -110,7 +110,6 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   let lineIdx = -1;
   let shown = 0;
   let typing = false;
-  let shakeT = 0;
   let flashT = 0;
   let banner = '';
   let bannerT = 0;
@@ -154,7 +153,7 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
         if (a) a.face = act.dir;
         break;
       }
-      case 'shake': shakeT = 0.45; thud(); break;
+      case 'shake': thud(); break; // 화면 흔들림은 끄고 쿵 소리만
       case 'flash': flashT = 0.6; chime(); break;
       case 'becomeProf': {
         heroIsProf = true;
@@ -267,7 +266,6 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
       const sp = actors.get(speaker);
       if (sp) for (const a of actors.values()) if (a !== sp && Math.abs(a.tx - a.x) < 0.002 && !a.leaving) a.face = sp.x > a.x ? 1 : -1;
     }
-    shakeT = Math.max(0, shakeT - dt);
     flashT = Math.max(0, flashT - dt);
     bannerT = Math.max(0, bannerT - dt);
     draw(now / 1000);
@@ -276,8 +274,7 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
 
   function draw(t: number): void {
     const k = canvas.width / viewW;
-    const sh = shakeT > 0 ? shakeT * 18 : 0;
-    ctx.setTransform(k, 0, 0, k, (Math.random() - 0.5) * sh * k, (Math.random() - 0.5) * sh * k * 0.6);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
     drawBg(ctx, bg, viewW, t, scene.sign);
     const list = [...actors.values()].filter((a) => a.alpha > 0).sort((p, q) => p.x - q.x);
     for (const a of list) {

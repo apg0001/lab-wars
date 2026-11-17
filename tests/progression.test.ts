@@ -137,6 +137,15 @@ describe('성장 시스템', () => {
     expect(STAGES).toHaveLength(70);
   });
 
+  it('일정 관리 앱은 재소환 대기시간을 레벨당 4% 줄인다', () => {
+    const s = newSave();
+    expect(makeLoadout(s).cooldownMul).toBe(1);
+    s.money = 1_000_000;
+    for (let i = 0; i < 10; i++) upgradeFacility(s, 'planner');
+    expect(s.facilities.planner).toBe(8);
+    expect(makeLoadout(s).cooldownMul).toBeCloseTo(0.68);
+  });
+
   it('무한 모드는 캠페인 클리어 후 한 판씩 열리고 최고 기록을 남긴다', () => {
     const s = newSave();
     const e1 = endlessStage(1);

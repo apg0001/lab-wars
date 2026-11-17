@@ -352,6 +352,12 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .dex-cell.boss { background: #ede7f6; }
 .dex-cell.unknown img { filter: brightness(0) opacity(0.35); }
 .dex .dex-grid:has(.enemy) { grid-template-columns: repeat(4, 1fr); }
+.dex .dex-grid.skills { grid-template-columns: repeat(2, 1fr); }
+.dex-skill.locked { opacity: 0.6; }
+.dex-skill-icon { font-size: calc(2.6 * var(--u)); }
+.dex-skill-desc { margin: calc(0.3 * var(--u)) 0; font-size: calc(1.6 * var(--u)); }
+.dex-skill-lore { margin: calc(0.3 * var(--u)) 0 0; font-size: calc(1.4 * var(--u)); font-style: italic; }
+.dex-skill-tip { grid-column: 1 / -1; text-align: center; font-size: calc(1.4 * var(--u)); }
 .dex-detail { display: flex; gap: calc(2 * var(--u)); align-items: center; text-align: left; max-width: calc(86 * var(--u)); }
 .dex-canvas { width: calc(38 * var(--u)); height: calc(28.5 * var(--u)); background: linear-gradient(180deg, #f3efe6, #e4ddcc); border-radius: calc(1 * var(--u)); border: calc(0.22 * var(--u)) solid var(--ink); }
 .dex-info { flex: 1; display: flex; flex-direction: column; gap: calc(0.6 * var(--u)); font-size: calc(1.8 * var(--u)); }
