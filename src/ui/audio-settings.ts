@@ -39,9 +39,9 @@ export function showAudioSettings(host: Element | null, onClose?: () => void): v
   };
 
   overlay.append(h('div.panel.audio-panel', {},
-    h('h2', {}, '🔊 소리 설정'),
-    row('🎵 배경음악', 'musicOn', 'musicVol'),
-    row('🔔 효과음', 'sfxOn', 'sfxVol', () => sfx.summon()),
+    h('h2', {}, '{sound} 소리 설정'),
+    row('{note} 배경음악', 'musicOn', 'musicVol'),
+    row('{sound} 효과음', 'sfxOn', 'sfxVol', () => sfx.summon()),
     h('p.muted', {}, '설정은 이 기기에 저장돼요.'),
     h('button.btn.primary', { onclick: close }, '닫기'),
   ));
@@ -52,5 +52,5 @@ export function showAudioSettings(host: Element | null, onClose?: () => void): v
 export function audioIcon(): string {
   const s = audio.settings;
   const on = (s.musicOn && s.musicVol > 0) || (s.sfxOn && s.sfxVol > 0);
-  return on ? '🔊' : '🔇';
+  return on ? '{sound}' : '{mute}';
 }

@@ -205,7 +205,7 @@ export class Battle {
     this.caffeine -= this.brewCost()!;
     this.brewLevel++;
     this.emit({ type: 'brew', level: this.brewLevel });
-    this.fx.push({ kind: 'text', x: 105, y: GROUND_Y - 280, t: 0, life: 1.2, text: `☕ 커피머신 Lv${this.brewLevel}!`, color: '#ffe0b2' });
+    this.fx.push({ kind: 'text', x: 105, y: GROUND_Y - 280, t: 0, life: 1.2, text: `{coffee} 커피머신 Lv${this.brewLevel}!`, color: '#ffe0b2' });
     return true;
   }
 
@@ -246,15 +246,15 @@ export class Battle {
           f.hp = Math.min(f.maxHp, f.hp + f.maxHp * 0.35);
           this.fx.push({ kind: 'heal', x: f.x, y: this.fy(f) - 30, t: 0, life: 0.8 });
         }
-        this.banner('🍗 야식 도착!');
+        this.banner('{snack} 야식 도착!');
         break;
       case 'allnight':
         this.hasteT = 8;
-        this.banner('🌙 밤샘 모드!');
+        this.banner('{moon} 밤샘 모드!');
         break;
       case 'aircon':
         this.freezeT = 6;
-        this.banner('❄️ 에어컨 풀가동!');
+        this.banner('{snow} 에어컨 풀가동!');
         break;
       case 'bombard': {
         const tx = clamp(x!, ALLY_FRONT, WORLD_W);
@@ -292,14 +292,14 @@ export class Battle {
     this.mental = Math.max(0, Math.min(L.mentalMax, this.mental + (L.mentalRegen - drain) * dt));
     if (drain) {
       const broken = this.mental <= 0.5;
-      if (broken && !this.broken) this.banner('😵 멘탈 붕괴! 아군 공격력 −25%');
+      if (broken && !this.broken) this.banner('{dizzy} 멘탈 붕괴! 아군 공격력 −25%');
       this.broken = broken;
     }
     const fz = this.stage.mods?.frenzy;
     if (fz && this.t >= this.nextFrenzy) {
       this.frenzyT = fz.dur;
       this.nextFrenzy += fz.every;
-      this.banner('📋 평가 시즌! 적이 거세져요');
+      this.banner('{clipboard} 평가 시즌! 적이 거세져요');
       this.emit({ type: 'rush' });
     }
     this.frenzyT = Math.max(0, this.frenzyT - dt);
@@ -337,7 +337,7 @@ export class Battle {
     if (st.boss && !this.bossSpawned && this.t >= 3) {
       this.bossSpawned = true;
       this.spawnEnemy(st.boss, true);
-      this.banner(`⚠️ ${ENEMY_BY_ID[st.boss]!.name} 등장!`);
+      this.banner(`{warn} ${ENEMY_BY_ID[st.boss]!.name} 등장!`);
       this.emit({ type: 'bossSpawn' });
     }
     // 장기전 방지: 3분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
@@ -351,7 +351,7 @@ export class Battle {
     if (this.t >= this.nextRush) {
       this.nextRush += st.rush.every;
       for (let i = 0; i < st.rush.size; i++) this.queue.push({ at: this.t + i * 0.45, id: this.pickEnemy() });
-      this.banner('📢 잡무 러시!');
+      this.banner('{megaphone} 잡무 러시!');
       this.emit({ type: 'rush' });
     }
     while (this.queue.length && this.queue[0]!.at <= this.t) this.spawnEnemy(this.queue.shift()!.id);
@@ -635,7 +635,7 @@ export class Battle {
         // 멘탈 고갈 외전: 처치하면 멘탈이 조금 돌아온다
         if (this.stage.mods?.drain) this.mental = Math.min(this.loadout.mentalMax, this.mental + 3 + caf * 0.5);
         this.caffeine = Math.min(this.caffeineMax, this.caffeine + caf);
-        this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${f.reward}💰 +${caf}☕`, color: '#ffd54f' });
+        this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 60, t: 0, life: 0.9, text: `+${f.reward}{coin} +${caf}{coffee}`, color: '#ffd54f' });
       }
     }
   }
@@ -681,7 +681,7 @@ export class Battle {
     this.fx.push({ kind: 'stomp', x, y: GROUND_Y, t: 0, life: 0.8, r: R });
     this.emit({ type: 'stomp', x, r: R });
     this.emit({ type: 'alarm' });
-    this.banner('🚨 교수님 비상 소집! 교수실 앞이 밀려나요');
+    this.banner('{alarm} 교수님 비상 소집! 교수실 앞이 밀려나요');
   }
 
   private emit(e: BattleEvent): void {

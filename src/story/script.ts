@@ -275,7 +275,7 @@ const S: Scene[] = [
       { who: 'newbie', text: '(서류 더미가… 걸어온다?!)', emote: '💦' },
       { text: '그렇게 또 한 명의 교수님이 탄생했다.' },
       { text: '그리고 연구실의 하루는 오늘도 끝나지 않는다.' },
-      { text: '— 랩워즈 끝 —   ♾️ 무한 모드가 열렸습니다.', do: [{ a: 'banner', text: 'THE END?' }] },
+      { text: '— 랩워즈 끝 —   무한 모드가 열렸습니다.', do: [{ a: 'banner', text: 'THE END?' }] },
     ],
   },
 ];

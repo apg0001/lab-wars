@@ -64,7 +64,7 @@ function showInstallGuide(host: Element | null): void {
     ? ['Safari 아래(또는 위)의 공유 버튼 ⬆️ 을 누르세요.', '“홈 화면에 추가”를 고르세요.', '홈 화면의 랩워즈 아이콘으로 실행하면 주소창 없이 전체 화면으로 열려요.']
     : ['브라우저 메뉴(⋮)를 여세요.', '“홈 화면에 추가” 또는 “앱 설치”를 고르세요.', '설치한 랩워즈 아이콘으로 실행하면 전체 화면으로 열려요.'];
   overlay.append(h('div.panel.install-guide', {},
-    h('h2', {}, '📱 전체 화면으로 하려면'),
+    h('h2', {}, '{phone} 전체 화면으로 하려면'),
     h('p.muted', {}, '이 브라우저는 웹페이지 전체 화면을 지원하지 않아요. 대신 홈 화면에 설치하면 앱처럼 전체 화면으로 열립니다.'),
     h('ol', {}, ...steps.map((s) => h('li', {}, s))),
     h('button.btn.primary', { onclick: () => overlay.remove() }, '알겠어요'),
