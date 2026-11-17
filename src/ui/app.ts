@@ -22,7 +22,7 @@ import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
 import { mountGallery } from './gallery';
 import { maybeShowUpdates, showPatchNotes } from './patch-notes';
-import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscreen } from './fullscreen';
+import { fullscreenButton } from './fullscreen';
 import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
 import { portrait } from './icons';
@@ -57,11 +57,6 @@ export class App {
   }
 
   constructor(private readonly root: HTMLElement) {
-    // 전체 화면이 켜지거나 꺼지면 버튼 글자를 바꾼다
-    onFullscreenChange(() => {
-      const btn = this.root.querySelector('.fs-btn');
-      if (btn) setRich(btn, fsLabel());
-    });
     if (this.accountStore) {
       this.accountStore.onSync = (st) => {
         this.sync = st;
@@ -171,9 +166,7 @@ export class App {
       : this.newProfileForm();
     const notice = this.notice ? h('p.notice', {}, this.notice) : null;
     this.notice = '';
-    const fsBtn = shouldOfferFullscreen() || isFullscreen()
-      ? h('button.icon-btn.fs-btn', { title: '전체 화면', onclick: () => void toggleFullscreen(this.root.firstElementChild) }, fsLabel())
-      : null;
+    const fsBtn = fullscreenButton(() => this.root.firstElementChild, { label: true });
     this.swap(h('div.screen.title', {},
       h('div.title-corner', {}, h('button.icon-btn.patch-btn', { title: '패치노트', onclick: () => showPatchNotes(this.root.firstElementChild) }, '{scroll} 패치노트'), this.audioBtn(), fsBtn),
       h('div.title-logo', {}, h('h1', {}, '랩워즈'), h('p', {}, '교수님에게서 연구실을 지켜라!')),
@@ -183,7 +176,7 @@ export class App {
       h('p.title-foot', {}, p
         ? (p.kind === 'account' ? `{key} ${this.api?.user?.username ?? p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
         : '진행 상황은 이 기기에 저장됩니다'),
-      h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, '기획·개발 apg0001'),
+      h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, '기획·개발 박기찬'),
     ));
     maybeShowUpdates(this.root.firstElementChild, this.profiles.list().length > 0);
   }
@@ -310,7 +303,7 @@ export class App {
     return h('div.topbar', {},
       back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `{user} ${this.profile?.name ?? ''}`),
       h('h2.top-title', {}, title),
-      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `{coin} ${fmt(this.save.money)}`), this.audioBtn()),
+      h('div.top-right', {}, this.syncChip(), h('div.money', {}, `{coin} ${fmt(this.save.money)}`), this.audioBtn(), fullscreenButton(() => this.root.firstElementChild)),
     );
   }
 
@@ -747,6 +740,3 @@ export class App {
   }
 }
 
-function fsLabel(): string {
-  return isFullscreen() ? '{fullscreen} 전체 화면 끄기' : '{fullscreen} 전체 화면';
-}

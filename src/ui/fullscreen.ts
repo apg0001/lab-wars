@@ -1,4 +1,4 @@
-import { h } from './dom';
+import { h, setRich } from './dom';
 
 type FsElement = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
 type FsDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
@@ -71,6 +71,34 @@ function showInstallGuide(host: Element | null): void {
   ));
   host.append(overlay);
 }
+
+function fsText(label: boolean): string {
+  if (isFullscreen()) return label ? '{fullscreen} 전체 화면 끄기' : '{fullscreen}';
+  return label ? '{fullscreen} 전체 화면' : '{fullscreen}';
+}
+
+/**
+ * 어느 화면에든 붙이는 전체 화면 버튼 (타이틀·메뉴·전투·컷신).
+ * 홈 화면에 설치해 실행 중이면 이미 전체 화면이라 null.
+ * label이 없으면 아이콘만 보여 준다. 상태가 바뀌면 모든 버튼이 함께 바뀐다.
+ */
+export function fullscreenButton(host: () => Element | null, opt: { label?: boolean; cls?: string } = {}): HTMLElement | null {
+  if (isStandalone()) return null;
+  const btn = h(`button.icon-btn.fs-btn${opt.cls ? '.' + opt.cls : ''}`, {
+    title: '전체 화면',
+    onclick: (e: Event) => { e.stopPropagation(); void toggleFullscreen(host()); },
+  });
+  if (opt.label) btn.dataset.label = '1';
+  setRich(btn, fsText(!!opt.label));
+  return btn;
+}
+
+onFullscreenChange(() => {
+  document.querySelectorAll<HTMLElement>('.fs-btn').forEach((b) => {
+    setRich(b, fsText(b.dataset.label === '1'));
+    b.title = isFullscreen() ? '전체 화면 끄기' : '전체 화면';
+  });
+});
 
 /** 전체 화면 상태가 바뀔 때마다 콜백 (버튼 다시 보이기 등) */
 export function onFullscreenChange(cb: () => void): () => void {
