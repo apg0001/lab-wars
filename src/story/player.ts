@@ -1,4 +1,5 @@
 import type { Look } from '../data/types';
+import { fullscreenButton } from '../ui/fullscreen';
 import { UNIT_BY_ID } from '../data/units';
 import { ENEMY_BY_ID } from '../data/enemies';
 import { drawCharacter, INK } from '../render/characters';
@@ -95,7 +96,8 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   const skip = opt.skippable ? h('button.btn.small.cut-skip', { onclick: (e: Event) => { e.stopPropagation(); finish(); } }, '건너뛰기 ⏭') : null;
   const stop = opt.onStop ? h('button.btn.small.cut-stop', { onclick: (e: Event) => { e.stopPropagation(); finish(true); } }, '그만 보기 ✕') : null;
   const prog = opt.progress ? h('div.cut-progress', {}, opt.progress) : null;
-  root.append(canvas, box, ...[title, skip, stop, prog].filter((x): x is HTMLElement => !!x));
+  const corner = h('div.cut-corner', {}, fullscreenButton(() => host), stop, skip);
+  root.append(canvas, box, corner, ...[title, prog].filter((x): x is HTMLElement => !!x));
   host.append(root);
   if (scene.music) music.play(scene.music);
 
