@@ -1,4 +1,5 @@
 import { RANGED_THRESHOLD, type CombatStats, type Look, type Side } from '../data/types';
+import { tr } from '../i18n';
 import { ENEMY_BY_ID } from '../data/enemies';
 import type { StageDef } from '../data/stages';
 import type { SkillId } from '../data/upgrades';
@@ -263,7 +264,7 @@ export class Battle {
     this.caffeine -= this.brewCost()!;
     this.brewLevel++;
     this.emit({ type: 'brew', level: this.brewLevel });
-    this.fx.push({ kind: 'text', x: 105, y: GROUND_Y - 280, t: 0, life: 1.2, text: `{coffee} 커피머신 Lv${this.brewLevel}!`, color: '#ffe0b2' });
+    this.fx.push({ kind: 'text', x: 105, y: GROUND_Y - 280, t: 0, life: 1.2, text: tr(`{coffee} 커피머신 Lv${this.brewLevel}!`, `{coffee} Coffee Machine Lv${this.brewLevel}!`), color: '#ffe0b2' });
     return true;
   }
 
@@ -304,15 +305,15 @@ export class Battle {
           f.hp = Math.min(f.maxHp, f.hp + f.maxHp * 0.35);
           this.fx.push({ kind: 'heal', x: f.x, y: this.fy(f) - 30, t: 0, life: 0.8 });
         }
-        this.banner('{snack} 야식 도착!');
+        this.banner(tr('{snack} 야식 도착!', '{snack} Snacks are here!'));
         break;
       case 'allnight':
         this.hasteT = 6;
-        this.banner('{moon} 밤샘 모드!');
+        this.banner(tr('{moon} 밤샘 모드!', '{moon} All-Nighter Mode!'));
         break;
       case 'aircon':
         this.freezeT = 6;
-        this.banner('{snow} 에어컨 풀가동!');
+        this.banner(tr('{snow} 에어컨 풀가동!', '{snow} AC at full blast!'));
         break;
       case 'bombard': {
         const tx = clamp(x!, ALLY_FRONT, WORLD_W);
@@ -361,14 +362,14 @@ export class Battle {
     this.mental = Math.max(0, Math.min(L.mentalMax, this.mental + (L.mentalRegen - drain) * dt));
     if (drain) {
       const broken = this.mental <= 0.5;
-      if (broken && !this.broken) this.banner('{dizzy} 멘탈 붕괴! 아군 공격력 −25%');
+      if (broken && !this.broken) this.banner(tr('{dizzy} 멘탈 붕괴! 아군 공격력 −25%', '{dizzy} Sanity broken! Ally damage −25%'));
       this.broken = broken;
     }
     const fz = this.stage.mods?.frenzy;
     if (fz && this.t >= this.nextFrenzy) {
       this.frenzyT = fz.dur;
       this.nextFrenzy += fz.every;
-      this.banner('{clipboard} 평가 시즌! 적이 거세져요');
+      this.banner(tr('{clipboard} 평가 시즌! 적이 거세져요', '{clipboard} Evaluation season! Enemies get fierce'));
       this.emit({ type: 'rush' });
     }
     this.frenzyT = Math.max(0, this.frenzyT - dt);
@@ -399,7 +400,7 @@ export class Battle {
       this.finish('lose');
     } else if (left !== null && left <= TIME_WARN && !this.timeWarned) {
       this.timeWarned = true;
-      this.banner('{clock} 퇴근 1분 전!');
+      this.banner(tr('{clock} 퇴근 1분 전!', '{clock} 1 minute till clock-out!'));
       this.emit({ type: 'timeWarn' });
     }
     this.checkDraft();
@@ -409,7 +410,7 @@ export class Battle {
     this.result = r;
     this.draft = null;
     if (r) this.emit({ type: 'end', result: r });
-    this.banner(r === 'win' ? '교수실 함락!' : this.timedOut ? '{clock} 야근 확정… 시간 초과' : '연구실이 망가졌다…');
+    this.banner(r === 'win' ? tr('교수실 함락!', 'Prof\'s Office taken!') : this.timedOut ? tr('{clock} 야근 확정… 시간 초과', '{clock} Overtime again… time\'s up') : tr('연구실이 망가졌다…', 'The lab is wrecked…'));
   }
 
   // ───────────── 학회 경품 추첨 ─────────────
@@ -441,7 +442,7 @@ export class Battle {
     this.draws++;
     this.lastDraftT = this.t;
     this.acc = 0;
-    if (survived) this.banner('{check} 러시를 버텨 냈다!');
+    if (survived) this.banner(tr('{check} 러시를 버텨 냈다!', '{check} Survived the rush!'));
     this.emit({ type: 'draft' });
   }
 
@@ -521,7 +522,7 @@ export class Battle {
     if (st.boss && !this.bossSpawned && this.t >= 3) {
       this.bossSpawned = true;
       this.spawnEnemy(st.boss, true);
-      this.banner(`{warn} ${ENEMY_BY_ID[st.boss]!.name} 등장!`);
+      this.banner(tr(`{warn} ${ENEMY_BY_ID[st.boss]!.name} 등장!`, `{warn} ${ENEMY_BY_ID[st.boss]!.name} appears!`));
       this.emit({ type: 'bossSpawn' });
     }
     // 장기전 방지: 3분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
@@ -541,7 +542,7 @@ export class Battle {
     if (this.t >= this.nextRush) {
       this.nextRush += st.rush.every;
       for (let i = 0; i < st.rush.size; i++) this.queue.push({ at: this.t + i * 0.45, id: this.pickEnemy(), rush: true });
-      this.banner('{megaphone} 잡무 러시!');
+      this.banner(tr('{megaphone} 잡무 러시!', '{megaphone} Busywork rush!'));
       this.emit({ type: 'rush' });
     }
     while (this.queue.length && this.queue[0]!.at <= this.t) {
@@ -723,7 +724,7 @@ export class Battle {
       if (f.summonCd <= 0) {
         f.summonCd = b.summon.every;
         for (let i = 0; i < b.summon.count; i++) this.spawnEnemy(b.summon.id, false, f.x + 20 + i * 12);
-        this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 150, t: 0, life: 1, text: '이것 좀 해와!', color: '#fff' });
+        this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 150, t: 0, life: 1, text: tr('이것 좀 해와!', 'Do this for me!'), color: '#fff' });
       }
     }
     if (b.stomp) {
@@ -735,7 +736,7 @@ export class Battle {
         }
         this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.6, r: b.stomp.radius });
         this.emit({ type: 'stomp', x: f.x, r: b.stomp.radius });
-        this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 160, t: 0, life: 1, text: '버럭!', color: '#ff5252' });
+        this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 160, t: 0, life: 1, text: tr('버럭!', 'HEY!'), color: '#ff5252' });
       }
     }
   }
@@ -853,7 +854,7 @@ export class Battle {
     f.kbT = 0.4;
     f.kbV = (f.side === 'ally' ? -1 : 1) * dist * 6;
     f.swing = 0;
-    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 0.6, text: '넉백!', color: '#80d8ff' });
+    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 70, t: 0, life: 0.6, text: tr('넉백!', 'Knockback!'), color: '#80d8ff' });
     this.emit({ type: 'knockback', x: f.x, y: this.fy(f) - 20 });
   }
 
@@ -879,9 +880,9 @@ export class Battle {
       o.attacking = false;
     }
     this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.8, r: 420 });
-    this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: '{anger} 이게 뭐야!', color: '#ff5252' });
+    this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: tr('{anger} 이게 뭐야!', '{anger} What is THIS?!'), color: '#ff5252' });
     this.emit({ type: 'rage', x: f.x });
-    this.banner(`{anger} ${f.name} 호통!`);
+    this.banner(tr(`{anger} ${f.name} 호통!`, `{anger} ${f.name} yells!`));
   }
 
   private damageBase(b: Base, dmg: number, x: number): void {
@@ -915,7 +916,7 @@ export class Battle {
     this.fx.push({ kind: 'stomp', x, y: GROUND_Y, t: 0, life: 0.8, r: R });
     this.emit({ type: 'stomp', x, r: R });
     this.emit({ type: 'alarm' });
-    this.banner('{alarm} 교수님 비상 소집! 교수실 앞이 밀려나요');
+    this.banner(tr('{alarm} 교수님 비상 소집! 교수실 앞이 밀려나요', '{alarm} Emergency summons! The front line is pushed back'));
   }
 
   private emit(e: BattleEvent): void {

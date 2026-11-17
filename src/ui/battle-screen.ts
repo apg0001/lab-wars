@@ -15,6 +15,7 @@ import { playBattleSfx } from '../audio/sfx';
 import { showAudioSettings } from './audio-settings';
 import { isPortrait } from './orientation';
 import { RARITY_LABEL, type CardDef } from '../data/cards';
+import { tr } from '../i18n';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
@@ -76,8 +77,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const allyTxt = h('span.hp-txt');
   const enemyTxt = h('span.hp-txt');
   const timeTxt = h('span.time');
-  const speedBtn = h('button.icon-btn', { title: '배속', onclick: () => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!) }, '');
-  const pauseBtn = h('button.icon-btn', { title: '일시정지', onclick: () => setPaused(true) }, '{pause}');
+  const speedBtn = h('button.icon-btn', { title: tr('배속', 'Speed'), onclick: () => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!) }, '');
+  const pauseBtn = h('button.icon-btn', { title: tr('일시정지', 'Pause'), onclick: () => setPaused(true) }, '{pause}');
   const mini = h('div.minimap');
   const miniDots = h('div.mini-dots');
   const miniView = h('div.mini-view');
@@ -86,9 +87,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   bossBox.hidden = true;
 
   const top = h('div.hud-top', {},
-    h('div.hp-box', {}, h('span.hp-label', {}, iconEl('lab'), '연구실'), h('div.hp-track', {}, allyBar), allyTxt),
+    h('div.hp-box', {}, h('span.hp-label', {}, iconEl('lab'), tr('연구실', 'Lab')), h('div.hp-track', {}, allyBar), allyTxt),
     h('div.hud-mid', {}, h('div.stage-tag', {}, `${opt.stage.id} ${opt.stage.name}`), timeTxt),
-    h('div.hp-box.right', {}, h('span.hp-label', {}, '교수실', iconEl('prof')), h('div.hp-track', {}, enemyBar), enemyTxt),
+    h('div.hp-box.right', {}, h('span.hp-label', {}, tr('교수실', 'Prof'), iconEl('prof')), h('div.hp-track', {}, enemyBar), enemyTxt),
     h('div.hud-btns', {}, speedBtn, pauseBtn, fullscreenButton(() => screen)),
   );
 
@@ -101,7 +102,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const brewLv = h('span.brew-lv');
   const brewCostNum = h('span');
   const brewCost = h('span.brew-cost', {}, iconEl('coffee'), brewCostNum);
-  const brewBtn = h('button.brew-btn', { title: '커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', onclick: () => battle.brew() }, iconEl('coffeeMachine', 'brew-ico'), brewLv, brewCost, h('span.hotkey', {}, 'Q'));
+  const brewBtn = h('button.brew-btn', { title: tr('커피머신 업그레이드 (Q): 카페인 최대치·충전 속도 증가', 'Upgrade Coffee Machine (Q): more max Caffeine and faster charge'), onclick: () => battle.brew() }, iconEl('coffeeMachine', 'brew-ico'), brewLv, brewCost, h('span.hotkey', {}, 'Q'));
 
   const unitBtns = opt.loadout.deck.map((d, i) => {
     const cd = h('div.cd-mask');
@@ -138,7 +139,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     h(`div.skill-row${skillBtns.length > 2 ? '.grid' : ''}`, {}, ...skillBtns.map((s) => s.btn)),
   );
 
-  const aimHint = h('div.aim-hint', {}, '{books} 폭격할 지점을 탭하세요');
+  const aimHint = h('div.aim-hint', {}, tr('{books} 폭격할 지점을 탭하세요', '{books} Tap where to drop the barrage'));
   // 적용 중인 카드 효과 칩 (학회 경품 추첨)
   const chips = h('div.card-chips');
   let chipKey = '';
@@ -171,13 +172,13 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     audio.duck(p);
     if (p) {
       overlay.replaceChildren(h('div.panel', {},
-        h('h2', {}, '일시정지'),
-        h('p.muted', {}, '전장 드래그: 시점 이동 · 1~0 - =: 소환 · Q: 커피머신 · W/E/R/T: 스킬'),
+        h('h2', {}, tr('일시정지', 'Paused')),
+        h('p.muted', {}, tr('전장 드래그: 시점 이동 · 1~0 - =: 소환 · Q: 커피머신 · W/E/R/T: 스킬', 'Drag field: move camera · 1–0 - =: deploy · Q: coffee machine · W/E/R/T: skills')),
         h('div.btn-col', {},
-          h('button.btn.primary', { onclick: () => setPaused(false) }, '계속하기'),
-          h('button.btn', { onclick: () => showAudioSettings(screen) }, '{sound} 소리 설정'),
-          isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? '{fullscreen} 전체 화면 끄기' : '{fullscreen} 전체 화면'),
-          h('button.btn', { onclick: () => { cleanup(); opt.onQuit(); } }, '후퇴하기'),
+          h('button.btn.primary', { onclick: () => setPaused(false) }, tr('계속하기', 'Resume')),
+          h('button.btn', { onclick: () => showAudioSettings(screen) }, tr('{sound} 소리 설정', '{sound} Sound')),
+          isStandalone() ? null : h('button.btn', { onclick: () => void toggleFullscreen(screen) }, isFullscreen() ? tr('{fullscreen} 전체 화면 끄기', '{fullscreen} Exit fullscreen') : tr('{fullscreen} 전체 화면', '{fullscreen} Fullscreen')),
+          h('button.btn', { onclick: () => { cleanup(); opt.onQuit(); } }, tr('후퇴하기', 'Retreat')),
         ),
       ));
     }
@@ -203,8 +204,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       h('span.hotkey', {}, String(i + 1)),
     ));
     draftLayer.replaceChildren(h('div.draft-box', {},
-      h('h2', {}, '{envelope} 학회 경품 추첨!'),
-      h('p.muted', {}, `봉투 하나를 고르세요 · 이번 판에만 적용 (${battle.draws}/3)`),
+      h('h2', {}, tr('{envelope} 학회 경품 추첨!', '{envelope} Conference Raffle!')),
+      h('p.muted', {}, tr(`봉투 하나를 고르세요 · 이번 판에만 적용 (${battle.draws}/3)`, `Pick an envelope · this battle only (${battle.draws}/3)`)),
       h('div.draft-row', {}, ...draftCards),
     ));
     draftLayer.hidden = false;
