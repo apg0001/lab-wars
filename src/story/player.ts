@@ -3,6 +3,7 @@ import { UNIT_BY_ID } from '../data/units';
 import { ENEMY_BY_ID } from '../data/enemies';
 import { drawCharacter, INK } from '../render/characters';
 import { drawThemeBackdrop } from '../render/spooky';
+import { iconImg } from '../render/doodle';
 import type { Theme } from '../data/stages';
 import { audio } from '../audio/engine';
 import { music } from '../audio/music';
@@ -560,6 +561,8 @@ function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sig
   ctx.fillRect(-20, GROUND - 10, w + 40, 8);
 }
 
+const EMOTE_ICON: Record<string, string> = { '💦': 'sweat', '💢': 'anger', '♪': 'note' };
+
 function drawEmote(ctx: CanvasRenderingContext2D, x: number, y: number, emote: string, life: number, t: number): void {
   const pop = life > 1.4 ? 1 + (life - 1.4) * 2.5 : 1;
   ctx.save();
@@ -578,10 +581,16 @@ function drawEmote(ctx: CanvasRenderingContext2D, x: number, y: number, emote: s
   ctx.lineTo(-18, 28);
   ctx.lineTo(-2, 18);
   ctx.fill();
-  ctx.font = 'bold 22px Jua, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = emote === '💢' ? '#e53935' : INK;
-  ctx.fillText(emote, 0, 1);
+  // 이모지 대신 손그림 아이콘 (!, ?, …는 글자)
+  const icon = EMOTE_ICON[emote];
+  const img = icon ? iconImg(icon) : null;
+  if (img) ctx.drawImage(img, -14, -14, 28, 28);
+  else {
+    ctx.font = 'bold 22px Jua, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = INK;
+    ctx.fillText(icon ? '' : emote, 0, 1);
+  }
   ctx.restore();
 }
