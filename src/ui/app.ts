@@ -9,7 +9,7 @@ import { UNITS } from '../data/units';
 import { FACILITIES, SKILLS, facilityCost } from '../data/upgrades';
 import type { UnitDef } from '../data/types';
 import {
-  applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isEndlessOpen, isSkillOpen, isStageOpen,
+  applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isEndlessOpen, isSideOpen, isSkillOpen, isStageOpen,
   isUnitOwned, levelCap, levelUp, levelUpCost, makeLoadout, newSave, subscribe, unitProgress, unitStats,
   upgradeFacility, takeMigrationNotes, REPLAY_MUL, type SaveData,
 } from '../sim/progression';
@@ -26,6 +26,9 @@ import { fullscreenButton } from './fullscreen';
 import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
 import { portrait } from './icons';
+import { closetTab, drawTab } from './gacha';
+import { titleName } from '../sim/gacha';
+import { setWardrobe } from '../render/characters';
 import { SCENES, type Scene } from '../story/script';
 import { STORY_ORDER, scenesOfStage, unlockedScenes } from '../story/unlock';
 import { playMarathon, playScenes } from '../story/player';
@@ -66,6 +69,7 @@ export class App {
       this.accountStore.onReplaced = (data) => {
         // 다른 기기에서 더 많이 진행했다: 화면이 전투 중이 아니면 바로 반영한다.
         this.save = data;
+        setWardrobe(data.cosmetics.outfits);
         if (this.root.querySelector('.map')) this.showMap();
       };
     }
@@ -98,6 +102,7 @@ export class App {
     this.sync = p.kind === 'account' ? 'pending' : null;
     takeMigrationNotes();
     this.save = (await this.storeFor(p).load(p.id)) ?? newSave();
+    setWardrobe(this.save.cosmetics.outfits);
     const notes = takeMigrationNotes();
     if (notes.length) {
       // 환불 등 정리된 데이터를 바로 저장해 같은 일이 두 번 일어나지 않게 한다
@@ -123,6 +128,7 @@ export class App {
   }
 
   private persist(): void {
+    setWardrobe(this.save.cosmetics.outfits);
     if (this.profile) void this.storeFor(this.profile).save(this.profile.id, this.save);
   }
 
@@ -301,7 +307,7 @@ export class App {
 
   private topBar(title: string, back?: () => void): HTMLElement {
     return h('div.topbar', {},
-      back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `{user} ${this.profile?.name ?? ''}`),
+      back ? h('button.btn.small', { onclick: back }, '← 뒤로') : h('button.btn.small', { onclick: () => this.showTitle() }, `{user} ${this.profile?.name ?? ''}`, titleName(this.save) ? h('span.title-chip', {}, titleName(this.save)) : null),
       h('h2.top-title', {}, title),
       h('div.top-right', {}, this.syncChip(), h('div.money', {}, `{coin} ${fmt(this.save.money)}`), this.audioBtn(), fullscreenButton(() => this.root.firstElementChild)),
     );
@@ -310,7 +316,8 @@ export class App {
   showMap(): void {
     music.play('lobby');
     const endlessOpen = isEndlessOpen(this.save);
-    if (this.chapter > CHAPTERS.length && !endlessOpen) this.chapter = CHAPTERS.length;
+    const sideOpen = isSideOpen(this.save);
+    if (this.chapter === SIDE_TAB && !sideOpen) this.chapter = CHAPTERS.length;
     const tabs = h('div.chapter-tabs', {}, ...CHAPTERS.map((c) => {
       const open = isStageOpen(this.save, STAGE_BY_ID[`${c.id}-1`]!);
       return h(`button.chapter-tab${c.id === this.chapter ? '.on' : ''}`, {
@@ -321,9 +328,9 @@ export class App {
       disabled: endlessOpen ? undefined : 'true',
       onclick: () => { this.chapter = CHAPTERS.length + 1; this.showMap(); },
     }, endlessOpen ? '{infinity} 무한' : '{lock} {infinity}'), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
-      disabled: endlessOpen ? undefined : 'true',
+      disabled: sideOpen ? undefined : 'true',
       onclick: () => { this.chapter = SIDE_TAB; this.showMap(); },
-    }, endlessOpen ? '{redbook} 외전' : '{lock} {redbook}'));
+    }, sideOpen ? '{redbook} 외전' : '{lock} {redbook}'));
     if (this.chapter === SIDE_TAB) return this.showSideMap(tabs);
     if (this.chapter > CHAPTERS.length) return this.showEndlessMap(tabs);
     const ch = CHAPTERS[this.chapter - 1]!;
@@ -348,7 +355,32 @@ export class App {
       h('button.btn.dex-btn', { onclick: () => this.showGallery() }, '{book} 도감'),
       h('button.btn.story-btn', { onclick: () => this.showStory() }, '{scroll} 스토리'),
       h('button.btn.rank-btn', { onclick: () => this.showLeaderboard() }, '{trophy} 순위'),
+      h('button.btn.gacha-btn', { onclick: () => this.showGacha() }, '{mail} 심사 결과'),
     );
+  }
+
+  /** 심사 결과: 연구비로 꾸미기 아이템 뽑기 · 옷장 */
+  private showGacha(tab: 'draw' | 'closet' = 'draw'): void {
+    music.play('lobby');
+    const ctx = {
+      save: this.save,
+      heroName: this.profile?.name ?? '나',
+      persist: () => this.persist(),
+      redraw: (t: 'draw' | 'closet') => this.showGacha(t),
+      host: () => this.root.firstElementChild,
+    };
+    const prev = this.root.querySelector<HTMLElement>(`.gacha .gacha-body[data-tab="${tab}"]`);
+    const keep = prev ? prev.scrollTop : 0;
+    const body = h('div.gacha-body', { 'data-tab': tab }, tab === 'draw' ? drawTab(ctx) : closetTab(ctx));
+    this.swap(h('div.screen.gacha', {},
+      this.topBar('심사 결과', () => this.showMap()),
+      h('div.lab-tabs', {},
+        h(`button.chapter-tab${tab === 'draw' ? '.on' : ''}`, { onclick: () => this.showGacha('draw') }, '{mail} 투고하기'),
+        h(`button.chapter-tab${tab === 'closet' ? '.on' : ''}`, { onclick: () => this.showGacha('closet') }, '{hanger} 옷장'),
+      ),
+      body,
+    ));
+    if (keep) body.scrollTop = keep;
   }
 
   /** 무한 모드: 다음 판 도전과 최고 기록 */
@@ -557,7 +589,7 @@ export class App {
             this.swap(h('div.screen.story-backdrop'));
             this.play([clearScene], () => {
               this.chapter = CHAPTERS.length + 1;
-              this.notice = '{infinity} 무한 모드와 {redbook} 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
+              this.notice = '{redbook} 외전 3편이 열렸어요! 교수가 되어도 일은 끝나지 않는다.';
               this.showMap();
             }, 7);
           } }];

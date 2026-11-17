@@ -19,6 +19,21 @@ export function setViewAspect(aspect: number): number {
   return viewW;
 }
 
+/**
+ * 세로 화면: 위쪽 하늘과 바닥 아래쪽을 잘라 레인을 크게 보여 준다.
+ * 성(위끝 약 160)·공중 유닛·알림 문구가 들어가도록 위는 90부터, 아래는 480까지.
+ */
+export const PORTRAIT_TOP = 90;
+export const PORTRAIT_BOTTOM = 480;
+/** 세로 화면에서 가장 좁게 보여줄 가로 폭 */
+const VIEW_W_MIN_PORTRAIT = 420;
+/** 세로 화면용: 잘라 낸 높이에 맞춰 가로 폭을 그대로 정한다 (가로 화면과 달리 줄어들 수 있다) */
+export function setPortraitAspect(aspect: number): number {
+  const h = PORTRAIT_BOTTOM - PORTRAIT_TOP;
+  viewW = Math.round(Math.min(VIEW_W, Math.max(VIEW_W_MIN_PORTRAIT, h * aspect)));
+  return viewW;
+}
+
 type Ctx = CanvasRenderingContext2D;
 
 export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juice?: Juice): void {

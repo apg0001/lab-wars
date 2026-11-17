@@ -123,7 +123,7 @@ describe('전투 시뮬레이션', () => {
   });
 
   it('시간이 다 되면 시간 초과로 패배하고, 1분 전에 한 번 경고한다', () => {
-    const b = new Battle({ ...STAGE_BY_ID['1-1']!, timeLimit: 70 }, makeLoadout(newSave()), 1);
+    const b = new Battle({ ...STAGE_BY_ID['1-1']!, timeLimit: 70 }, makeLoadout(newSave()), 1, { cards: false });
     b.ally.hp = b.ally.maxHp = 1e9; // 연구실이 먼저 무너지지 않게
     b.enemy.hp = b.enemy.maxHp = 1e9;
     expect(b.timeLeft).toBe(70);

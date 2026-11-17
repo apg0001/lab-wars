@@ -238,9 +238,14 @@ export function legacyOrder(oldId: string): number | null {
 const ENDLESS_BOSSES = ['prof2', 'reviewer2', 'chair', 'committee', 'dean', 'president'];
 
 /** 무한 모드 n번째 판 (1부터). 판마다 조금씩 강해지고 5판마다 보스가 나온다. */
+/** 무한 모드 판당 곡선 상승폭 (캠페인 끝 c=19에서 시작) */
+const ENDLESS_STEP = 0.75;
+/** 무한 모드 추가 배율: 판이 쌓일수록 성장 속도를 앞지르게 */
+const endlessMul = (n: number): number => 1 + n * 0.01;
+
 export function endlessStage(n: number): StageDef {
   const order = LAST_ORDER + n;
-  const c = curve(order);
+  const c = 19 + n * ENDLESS_STEP;
   const isBoss = n % 5 === 0;
   const kinds: StageKind[] = ['normal', 'conference', 'normal', 'thesis'];
   const kind = isBoss ? 'boss' : kinds[n % kinds.length]!;
@@ -253,7 +258,7 @@ export function endlessStage(n: number): StageDef {
     order,
     name: isBoss ? `무한 ${n}판: 보스 러시` : `무한 ${n}판`,
     kind: 'endless',
-    scale: enemyScale(c),
+    scale: enemyScale(c) * endlessMul(n),
     enemyBaseHp: Math.round(700 + c * 180),
     towerAtk: Math.round(10 * (1 + c * 0.12)),
     spawnEvery: Math.max(1.4, 2.8 - c * 0.06) * (isBoss ? 1.5 : 1),
