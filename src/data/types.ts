@@ -27,7 +27,9 @@ export type LookKind =
   /** 뽑기 장비 (ICT·전자공학 장비). 어떤 장비인지는 look.variant */
   | 'gear'
   /** 무한 모드 전용 버그·장애 군단. 어떤 버그인지는 look.variant */
-  | 'glitch';
+  | 'glitch'
+  /** 외전 4~7 전용 적·보스. 어떤 적인지는 look.variant */
+  | 'sidefoe';
 
 /** 장비 그림 종류 (look.kind === 'gear') */
 export type GearVariant =
@@ -41,6 +43,17 @@ export type GearVariant =
 
 /** 버그 군단 그림 종류 (look.kind === 'glitch') */
 export type GlitchVariant = 'segfault' | 'leak' | 'loop' | 'conflict' | 'bsod' | 'outage' | 'panic' | 'legacy';
+
+/** 외전 4~7 적 그림 종류 (look.kind === 'sidefoe') */
+export type SideVariant =
+  // 외전 4 마감 24시
+  | 'pagelimit' | 'citation' | 'lowres' | 'submitsys'
+  // 외전 5 AI 시대의 연구실
+  | 'hallucite' | 'plagiarism' | 'injection' | 'autoreview'
+  // 외전 6 랩실 창업기
+  | 'cloudbill' | 'pivot' | 'bmq'
+  // 외전 7 연구실 정전의 날
+  | 'powerstrip' | 'overload' | 'breaker' | 'mainbreaker';
 
 /** 유닛 등급: 기본(스토리 해금) · 레어 · 에픽 · 레전더리(뽑기) */
 export type UnitRarity = 'basic' | 'rare' | 'epic' | 'legend';
@@ -56,7 +69,7 @@ export interface Look {
   /** 크기 배율 (기본 1) */
   scale?: number;
   /** 장비·버그 그림 종류 */
-  variant?: GearVariant | GlitchVariant;
+  variant?: GearVariant | GlitchVariant | SideVariant;
 }
 
 /** 맞힌 상대에게 거는 상태 이상 */
@@ -152,6 +165,8 @@ export interface CombatStats {
   respawn?: { hpRatio: number };
   /** 카페인 흡수: 맞힐 때마다 상대 연구실의 카페인을 이만큼 빼앗는다 */
   caffeineDrain?: number;
+  /** 비상 전원: 이 반경 안 아군은 순간 정전(외전 7)의 기절·증발을 피한다 */
+  blipGuard?: number;
 }
 
 export interface UnitDef extends CombatStats {
@@ -187,6 +202,14 @@ export interface BossPattern {
   stomp?: { dmg: number; radius: number; every: number };
   /** 호통: HP 비율이 at 아래로 처음 떨어질 때마다 모든 아군을 stun초 기절시키고 push만큼 밀어낸다 (없으면 기본값) */
   rage?: { at: number[]; stun: number; push: number };
+  /** 소환할 때 외치는 말 [한국어, 영어] (없으면 기본 대사) */
+  say?: [string, string];
+  /** 접속 폭주 (외전 4): 전투 시간이 after 비율을 넘으면 every초마다 모든 아군을 dur초 멈춘다 */
+  overload?: { after: number; every: number; dur: number };
+  /** 자동 리뷰 (외전 5): every초마다 반경 안 아군의 능력을 dur초 막고 dmg 피해 */
+  silence?: { every: number; radius: number; dur: number; dmg: number };
+  /** 메인 차단기 (외전 7): HP 비율이 at 아래로 떨어지면 순간 정전 간격이 every로 짧아진다 */
+  blipFaster?: { at: number[]; every: number[] };
 }
 
 export interface EnemyDef extends CombatStats {
