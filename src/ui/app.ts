@@ -25,6 +25,7 @@ import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
 import { AccountApi, AccountSaveStore, API_URL, ApiError, displayName, progressScore, type RankRow, type SyncState } from '../save/remote';
 import { showFeedbackForm, showFeedbackInbox, showNicknameForm } from './feedback';
+import { showGiftAdmin, showGiftBox } from './gifts';
 import { mountBattle } from './battle-screen';
 import { music } from '../audio/music';
 import { audioIcon, showAudioSettings } from './audio-settings';
@@ -70,6 +71,8 @@ export class App {
   private cleanup: (() => void) | null = null;
   /** 연구실 동료 탭 정렬·보기 (기기에 기억) */
   private readonly labPref = loadPref('lab', LAB_SORT);
+  /** 선물함에 쌓인 받지 않은 선물 수 (계정만) */
+  private gifts = 0;
 
   private storeFor(p: Profile): SaveStore {
     return p.kind === 'account' && this.accountStore ? this.accountStore : this.localStore;
@@ -139,9 +142,40 @@ export class App {
     const acct = p.kind === 'account' ? this.api?.user : null;
     if (acct && displayName(acct) !== p.name) this.profile = p = this.profiles.upsertAccount(acct.id, displayName(acct));
     this.profiles.remember(p);
+    this.gifts = 0;
+    if (p.kind === 'account') void this.checkGifts();
     const next = STAGES.find((s) => !isCleared(this.save, s.id)) ?? STAGES[STAGES.length - 1]!;
     this.chapter = next.chapter;
     if (go) this.showMap();
+  }
+
+  /** 받지 않은 선물 수를 받아 와 버튼 표시를 고친다 (실패해도 조용히 넘어간다) */
+  private async checkGifts(): Promise<void> {
+    if (!this.api || this.profile?.kind !== 'account') return;
+    const id = this.profile.id;
+    const n = await this.api.gifts().then((g) => g.length).catch(() => this.gifts);
+    if (this.profile?.id !== id || n === this.gifts) return;
+    this.gifts = n;
+    // 지도는 선물이 있을 때만 버튼을 보이므로 다시 그리고, 타이틀은 버튼만 바꾼다 (전투·열린 창은 건드리지 않는다)
+    if (this.root.querySelector('.map') && !this.root.querySelector('.overlay')) this.showMap();
+    else for (const b of this.root.querySelectorAll<HTMLElement>('.title .gift-btn')) b.replaceWith(this.giftButton());
+  }
+
+  /** 선물함 버튼 (계정만). 받으면 저장에 더하고 바로 동기화한다. */
+  private giftButton(big = false): HTMLElement {
+    const open = (): void => showGiftBox(this.root.firstElementChild, this.api!, (money, tickets) => {
+      this.save.money += money;
+      this.save.gear.tickets = Math.min(99999, this.save.gear.tickets + tickets);
+      this.persist();
+      for (const m of this.root.querySelectorAll('.topbar .money')) setRich(m, `{coin} ${fmt(this.save.money)}`);
+    }, (claimed) => {
+      if (!claimed) return;
+      this.gifts = 0;
+      // 지도의 뽑기권 표시를 새로 그리고, 남은 선물 수를 다시 센다
+      if (this.root.querySelector('.map')) this.showMap();
+      void this.checkGifts();
+    });
+    return h(`button.btn.gift-btn${big ? '' : '.small'}${this.gifts ? '.has-gift' : ''}`, { onclick: open }, tr('{gift} 선물함', '{gift} Gifts'), this.gifts ? h('span.badge', {}, String(this.gifts)) : null);
   }
 
   private persist(): void {
@@ -263,6 +297,8 @@ export class App {
         this.showTitle();
       }) }, tr('{pencil} 닉네임', '{pencil} Nickname')) : null,
       user?.admin && this.api ? h('button.btn.small', { onclick: () => showFeedbackInbox(host(), this.api!) }, tr('{mail} 의견함', '{mail} Inbox')) : null,
+      user?.admin && this.api ? h('button.btn.small', { onclick: () => showGiftAdmin(host(), this.api!) }, tr('{gift} 선물 보내기', '{gift} Send gifts')) : null,
+      user && this.api ? this.giftButton() : null,
       h('button.btn.small', { onclick: () => showFeedbackForm(host(), this.api, this.profile?.kind === 'guest' ? this.profile.name : '') }, tr('{megaphone} 의견 보내기', '{megaphone} Feedback')),
     ];
   }
@@ -384,14 +420,15 @@ export class App {
     const ch = CHAPTERS[this.chapter - 1]!;
     const stages = STAGES.filter((s) => s.chapter === ch.id);
     const nodes = h('div.stage-path', {}, ...stages.map((s) => this.stageNode(s)));
-    const totalStars = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    // 캠페인 별만 센다 (외전 별은 따로)
+    const totalStars = STAGES.reduce((a, st) => a + (this.save.stars[st.id] ?? 0), 0);
     const toast = this.notice ? h('div.toast', { onclick: (e: Event) => (e.currentTarget as HTMLElement).remove() }, this.notice) : null;
     this.notice = '';
     this.swap(h('div.screen.map', {},
       this.topBar(tr('스테이지', 'Stages')),
       toast,
       tabs,
-      h('div.chapter-title', {}, h('b', {}, tr(`${ch.id}장 ${ch.name}: ${ch.subtitle}`, `Ch. ${ch.id} ${ch.name}: ${ch.subtitle}`)), h('span.muted', {}, tr(` · 총 별 ${totalStars}/${STAGES.length * 3}`, ` · Stars ${totalStars}/${STAGES.length * 3}`))),
+      h('div.chapter-title', {}, h('b', {}, tr(`${ch.id}장 ${ch.name}: ${ch.subtitle}`, `Ch. ${ch.id} ${ch.name}: ${ch.subtitle}`)), h('span.muted', {}, tr(`{star} 총 별 ${totalStars}/${STAGES.length * 3}`, `{star} Stars ${totalStars}/${STAGES.length * 3}`))),
       nodes,
       this.mapActions(),
     ));
@@ -425,6 +462,7 @@ export class App {
       h('button.btn.dex-btn', { onclick: () => this.showGallery() }, tr('{book} 도감', '{book} Codex')),
       h('button.btn.story-btn', { onclick: () => this.showStory() }, tr('{scroll} 스토리', '{scroll} Story')),
       h('button.btn.rank-btn', { onclick: () => this.showLeaderboard() }, tr('{trophy} 순위', '{trophy} Ranks')),
+      this.gifts && this.api ? this.giftButton(true) : null,
       h('button.btn.gacha-btn', { onclick: () => this.showGacha() }, tr('{crate} 장비 지원 · 심사', '{crate} Grants & Reviews'), this.save.gear.tickets ? h('span.badge', {}, `{ticket}${this.save.gear.tickets}`) : null),
     );
   }

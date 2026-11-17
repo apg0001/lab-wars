@@ -8,8 +8,16 @@ export function isPortrait(): boolean {
   return !!query?.matches;
 }
 
+/** 세로 화면 위아래(상태 표시줄·홈 바·사파리 주소창 영역) 색: 게임 배경과 같은 밝은 색 */
+export const PORTRAIT_EDGE = '#fdf3ec';
+const LANDSCAPE_EDGE = '#1d1a22';
+
 function apply(): void {
-  document.documentElement.classList.toggle('portrait', isPortrait());
+  const portrait = isPortrait();
+  document.documentElement.classList.toggle('portrait', portrait);
+  // 아이폰 사파리는 theme-color로 위아래 막대를 칠한다. 가로(검은 여백)와 세로(밝은 화면)를 맞춰 준다.
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) meta.content = portrait ? PORTRAIT_EDGE : LANDSCAPE_EDGE;
 }
 
 /** 한 번만 호출: 지금 방향을 반영하고, 돌릴 때마다 다시 반영한다. */

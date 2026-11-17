@@ -382,6 +382,11 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const bossFill = bossBox.querySelector('.boss-fill') as HTMLElement;
 
   function frame(now: number): void {
+    // 120Hz·144Hz 화면에서는 한 번 걸러 그린다 (약 60~72fps). 60Hz 화면의 흔들림(16ms 안팎)은 건너뛰지 않는다.
+    if (now - last < 12) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (!paused) {
@@ -411,44 +416,70 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     raf = requestAnimationFrame(frame);
   }
 
+  // HUD는 매 프레임 부르지만, 값이 바뀐 곳만 DOM에 쓴다 (같은 값을 다시 쓰면 스타일·배치 계산이 돌기 때문)
+  const setText = (el: HTMLElement, v: string): void => {
+    if (el.textContent !== v) el.textContent = v;
+  };
+  const setStyle = (el: HTMLElement, prop: 'width' | 'height' | 'left', v: string): void => {
+    if (el.style[prop] !== v) el.style[prop] = v;
+  };
+  const pct = (k: number): string => `${(Math.max(0, Math.min(1, k)) * 100).toFixed(1)}%`;
+  /** 미니맵 점: 매 프레임 HTML을 새로 만들지 않고 점 요소를 돌려 쓴다 */
+  const miniPool: HTMLElement[] = [];
+
   function updateHud(): void {
     const L = opt.loadout;
-    allyBar.style.width = `${(battle.ally.hp / battle.ally.maxHp) * 100}%`;
-    enemyBar.style.width = `${(battle.enemy.hp / battle.enemy.maxHp) * 100}%`;
-    allyTxt.textContent = fmt(battle.ally.hp);
-    enemyTxt.textContent = fmt(battle.enemy.hp);
+    setStyle(allyBar, 'width', pct(battle.ally.hp / battle.ally.maxHp));
+    setStyle(enemyBar, 'width', pct(battle.enemy.hp / battle.enemy.maxHp));
+    setText(allyTxt, fmt(battle.ally.hp));
+    setText(enemyTxt, fmt(battle.enemy.hp));
     // 시간 제한이 있으면 남은 시간을, 없으면 경과 시간을 보여 준다
     const left = battle.timeLeft;
     const sec = left === null ? Math.floor(battle.t) : Math.ceil(left);
-    timeTxt.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    setText(timeTxt, `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`);
     timeTxt.classList.toggle('low', left !== null && left <= 30 && !battle.result);
-    cafFill.style.width = `${(battle.caffeine / battle.caffeineMax) * 100}%`;
-    cafNum.textContent = ` ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`;
+    setStyle(cafFill, 'width', pct(battle.caffeine / battle.caffeineMax));
+    setText(cafNum, ` ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`);
     const bc = battle.brewCost();
-    brewLv.textContent = `Lv${battle.brewLevel}`;
-    brewCostNum.textContent = bc === null ? 'MAX' : String(bc);
+    setText(brewLv, `Lv${battle.brewLevel}`);
+    setText(brewCostNum, bc === null ? 'MAX' : String(bc));
     brewCost.classList.toggle('max', bc === null);
     brewBtn.classList.toggle('off', !battle.canBrew());
-    menFill.style.width = `${(battle.mental / L.mentalMax) * 100}%`;
-    menNum.textContent = ` ${Math.floor(battle.mental)}`;
+    setStyle(menFill, 'width', pct(battle.mental / L.mentalMax));
+    setText(menNum, ` ${Math.floor(battle.mental)}`);
     for (const u of unitBtns) {
       const cdLeft = battle.unitCd[u.entry.def.id] ?? 0;
-      u.cd.style.height = `${Math.min(1, cdLeft / (u.entry.def.cooldown * battle.loadout.cooldownMul)) * 100}%`;
+      setStyle(u.cd, 'height', pct(cdLeft / (u.entry.def.cooldown * battle.loadout.cooldownMul)));
       u.btn.classList.toggle('off', battle.caffeine < u.entry.def.cost);
     }
     for (const s of skillBtns) {
       s.btn.classList.toggle('off', !battle.canCast(s.skill.id));
       s.btn.classList.toggle('armed', armed === s.skill.id);
     }
-    aimHint.hidden = !armed;
+    if (aimHint.hidden !== !armed) aimHint.hidden = !armed;
     // 미니맵
-    const dots = battle.fighters.filter((f) => !f.dead).map((f) => `<i class="${f.side}${f.isBoss ? ' boss' : ''}${f.stats.flying ? ' air' : ''}" style="left:${(f.x / WORLD_W) * 100}%"></i>`).join('');
-    miniDots.innerHTML = dots;
-    miniView.style.left = `${(camX / WORLD_W) * 100}%`;
-    miniView.style.width = `${(viewW / WORLD_W) * 100}%`;
-    const boss = battle.fighters.find((f) => f.isBoss && !f.dead);
-    bossBox.hidden = !boss;
-    if (boss) bossFill.style.width = `${(boss.hp / boss.maxHp) * 100}%`;
+    let n = 0;
+    let boss: (typeof battle.fighters)[number] | undefined;
+    for (const f of battle.fighters) {
+      if (f.dead) continue;
+      if (f.isBoss && !boss) boss = f;
+      let dot = miniPool[n];
+      if (!dot) {
+        dot = document.createElement('i');
+        miniPool.push(dot);
+        miniDots.append(dot);
+      }
+      const cls = `${f.side}${f.isBoss ? ' boss' : ''}${f.stats.flying ? ' air' : ''}`;
+      if (dot.className !== cls) dot.className = cls;
+      setStyle(dot, 'left', pct(f.x / WORLD_W));
+      if (dot.hidden) dot.hidden = false;
+      n++;
+    }
+    for (let i = n; i < miniPool.length && !miniPool[i]!.hidden; i++) miniPool[i]!.hidden = true;
+    setStyle(miniView, 'left', pct(camX / WORLD_W));
+    setStyle(miniView, 'width', pct(viewW / WORLD_W));
+    if (bossBox.hidden !== !boss) bossBox.hidden = !boss;
+    if (boss) setStyle(bossFill, 'width', pct(boss.hp / boss.maxHp));
   }
 
   function endBattle(): void {

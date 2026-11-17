@@ -7,6 +7,8 @@ import type { BattleLoadout } from './progression';
 import { CARDS, DRAFT_FALLBACK, DRAFT_GAP, DRAFT_MIN_T, MAX_DRAWS, RARITY_ODDS, type CardDef, type CardId, type CardRarity } from '../data/cards';
 
 export const WORLD_W = 1800;
+/** 피해 숫자를 더 띄우지 않는 화면 효과 수 (난전에서 글자 그리기가 프레임을 잡아먹지 않게) */
+const MAX_FX = 140;
 export const GROUND_Y = 400;
 export const AIR_Y = 265;
 export const BASE_W = 150;
@@ -1139,7 +1141,9 @@ export class Battle {
     f.hp -= dmg;
     f.hitFlash = 0.12;
     if (f.isBoss && f.hp > 0) this.checkRage(f);
-    this.fx.push({ kind: 'dmg', x: f.x + (this.rng() - 0.5) * 16, y: this.fy(f) - 40 - (f.look.scale ?? 1) * 20, t: 0, life: 0.6, text: String(Math.round(dmg)), color: burn ? '#ffab40' : from === 'ally' ? '#fff' : '#ff8a80' });
+    // 피해 숫자: 난수는 늘 같은 순서로 쓰고(재현성), 화면 효과가 너무 많으면 숫자만 생략한다
+    const dmgX = f.x + (this.rng() - 0.5) * 16;
+    if (this.fx.length < MAX_FX) this.fx.push({ kind: 'dmg', x: dmgX, y: this.fy(f) - 40 - (f.look.scale ?? 1) * 20, t: 0, life: 0.6, text: String(Math.round(dmg)), color: burn ? '#ffab40' : from === 'ally' ? '#fff' : '#ff8a80' });
     if (f.hp > 0 && eff) this.applyHit(f, eff);
     if (f.hp <= 0 && f.stats.revive && !f.revived) {
       // 1회 부활 (재부팅)
