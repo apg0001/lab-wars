@@ -80,6 +80,9 @@ export class App {
 
   constructor(private readonly root: HTMLElement) {
     onLangChange(() => this.rerender());
+    // 게임을 켜 둔 동안에도 선물이 오면 알 수 있게: 앱으로 돌아올 때와 90초마다 선물함을 다시 확인한다
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void this.checkGifts(); });
+    window.setInterval(() => { if (document.visibilityState === 'visible') void this.checkGifts(); }, 90_000);
     if (this.accountStore) {
       this.accountStore.onSync = (st) => {
         this.sync = st;
@@ -156,10 +159,21 @@ export class App {
     const id = this.profile.id;
     const n = await this.api.gifts().then((g) => g.length).catch(() => this.gifts);
     if (this.profile?.id !== id || n === this.gifts) return;
+    const more = n > this.gifts;
     this.gifts = n;
+    // 새 선물이 오면 잠깐 알림 (전투 중에는 방해하지 않고 배지만 남긴다)
+    if (more && !this.root.querySelector('.battle')) this.giftToast(n);
     // 지도는 선물이 있을 때만 버튼을 보이므로 다시 그리고, 타이틀은 버튼만 바꾼다 (전투·열린 창은 건드리지 않는다)
     if (this.root.querySelector('.map') && !this.root.querySelector('.overlay')) this.showMap();
     else for (const b of this.root.querySelectorAll<HTMLElement>('.title .gift-btn')) b.replaceWith(this.giftButton());
+  }
+
+  /** '선물이 도착했어요' 알림: 몇 초 뒤 사라지고, 누르면 바로 닫힌다 */
+  private giftToast(n: number): void {
+    this.root.querySelector('.gift-toast')?.remove();
+    const t = h('div.toast.gift-toast', { onclick: () => t.remove() }, tr(`{gift} 선물이 도착했어요! 선물함에 ${n}개`, `{gift} You've got gifts! ${n} in your inbox`));
+    this.root.firstElementChild?.append(t);
+    window.setTimeout(() => t.remove(), 4500);
   }
 
   /** 선물함 버튼 (계정만). 받으면 저장에 더하고 바로 동기화한다. */
