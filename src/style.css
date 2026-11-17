@@ -917,7 +917,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
  */
 /* 세로: 상태 표시줄·홈 바 영역도 게임 배경색으로 칠해 위아래 검은 띠가 생기지 않게 */
 html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
-.portrait #app { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+/* 아래 홈 바 여백은 40%만 비워 화면을 더 쓴다 (배경은 끝까지 칠한다) */
+.portrait #app { padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) * 0.4); }
 .portrait .stage { width: 100cqw; height: 100cqh; border-radius: 0; }
 .portrait .stage > * { --u: min(1cqw * 100 / 56, 1cqh); }
 .portrait .panel {
@@ -1178,3 +1179,7 @@ html[lang='en'] body { font-weight: 500; }
 .portrait .stage-path { min-height: 0; overflow-y: auto; touch-action: pan-y; align-content: safe center; padding-top: calc(1.4 * var(--u)); padding-bottom: calc(1.4 * var(--u)); }
 .chapter-title .muted { margin-left: calc(0.8 * var(--u)); }
 .portrait .chapter-title .muted { display: block; margin-left: 0; }
+
+/* ── 선물 도착 알림 ── */
+.gift-toast { z-index: 30; top: calc(2 * var(--u)); background: #fff3e0; border-color: #ef6c00; animation: gift-pop 0.35s ease-out; pointer-events: auto; cursor: pointer; }
+@keyframes gift-pop { from { transform: translate(-50%, calc(-2 * var(--u))); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
