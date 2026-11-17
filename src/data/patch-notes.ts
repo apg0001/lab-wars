@@ -22,6 +22,28 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.17.2',
+    date: '2026-11-17',
+    title: '세로 화면 다듬기',
+    items: [
+      '{phone} 아이폰 세로 화면에서 위아래에 생기던 검은 띠를 게임 배경색으로 바꿨어요',
+      '{check} 덜 길쭉한 세로 화면에서 지도 아래 버튼(장비 지원 등)이 잘리던 문제를 고쳤어요',
+      '{star} 지도의 총 별이 외전 별까지 세어 최대치를 넘던 문제를 고쳤어요',
+      '{swords} 소환 카드 테두리를 통일했어요. 등급은 카드 위쪽 색 띠로 보여요',
+      '{coffee} PC에서 후원 버튼을 누르면 휴대폰으로 여는 방법을 안내해요 (카카오페이 링크는 휴대폰 전용)',
+    ],
+    en: {
+      title: 'Portrait Polish',
+      items: [
+        '{phone} The dark bars above and below the game on iPhone portrait now match the game background',
+        '{check} Map buttons (Equipment Grant etc.) no longer get cut off on shorter portrait screens',
+        '{star} The map star total no longer counts side-story stars past the maximum',
+        '{swords} Summon cards share one border style; rarity shows as a colored strip on top',
+        '{coffee} On PC, the support button explains how to open the phone-only KakaoPay link',
+      ],
+    },
+  },
+  {
     version: '0.17.1',
     date: '2026-11-17',
     title: '커피 한 잔의 여유',
