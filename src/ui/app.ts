@@ -177,6 +177,7 @@ export class App {
       h('p.title-foot', {}, p
         ? (p.kind === 'account' ? `{key} ${p.name} 계정으로 자동 로그인됨 · 어느 기기에서든 이어서 플레이` : '게스트 · 이 기기에만 저장 중' + (this.api ? ' (로그인하면 다른 기기에서도 이어서 할 수 있어요)' : ''))
         : '진행 상황은 이 기기에 저장됩니다'),
+      h('a.title-credit', { href: 'https://github.com/apg0001', target: '_blank', rel: 'noopener' }, '기획·개발 apg0001'),
     ));
   }
 

@@ -15,7 +15,7 @@ export interface SkillDef {
 
 export const SKILLS: SkillDef[] = [
   { id: 'snack', name: '야식 배달', icon: 'snack', cost: 35, desc: '모든 아군 HP를 최대치의 35% 회복', lore: '치킨 앞에서는 모두가 잠시 평화로워진다.' },
-  { id: 'allnight', name: '밤샘 모드', icon: 'moon', cost: 50, desc: '8초간 아군 공격 속도 ×1.6, 이동 속도 ×1.2', unlockStage: '1-10', lore: '내일의 나에게 빚을 지고 오늘의 나를 깨운다.' },
+  { id: 'allnight', name: '밤샘 모드', icon: 'moon', cost: 55, desc: '6초간 아군 공격 속도 ×1.4, 이동 속도 ×1.15', unlockStage: '1-10', lore: '내일의 나에게 빚을 지고 오늘의 나를 깨운다.' },
   { id: 'aircon', name: '에어컨 풀가동', icon: 'snow', cost: 45, desc: '6초간 적 이동·공격 속도 ×0.5', unlockStage: '3-10', lore: '18도로 맞추면 잡무도 굳는다. 대신 다들 담요를 찾는다.' },
   { id: 'bombard', name: '논문 투고 폭격', icon: 'books', cost: 60, desc: '탭한 지점에 150 피해 (반경 90)', unlockStage: '5-10', targeted: true, lore: '쌓아 둔 원고를 한꺼번에 던진다. 하나쯤은 억셉트되겠지.' },
 ];
