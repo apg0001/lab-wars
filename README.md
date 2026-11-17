@@ -142,6 +142,11 @@ tests/       Vitest 테스트
 docs/        기획서, 서버 문서, README 이미지
 ```
 
+## 👤 만든 사람
+
+**[apg0001](https://github.com/apg0001)**: 기획·개발·밸런스, 그리고 대학원 생존.
+교수님의 잡무를 직접 겪으며 만들었습니다.
+
 ## 🤝 기여
 
 이슈·브랜치·커밋·PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md)를 따릅니다.
