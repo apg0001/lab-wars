@@ -3,10 +3,33 @@ import { kv, LocalSaveStore, type SaveStore } from './store';
 
 /** 배포 시 VITE_API_URL로 계정 서버 주소를 넣는다. 비어 있으면 로그인 기능을 숨긴다. */
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+/** 의견에 함께 남길 게임 버전 (배포 시 VITE_APP_VERSION, 없으면 빌드 모드) */
+const APP_VERSION: string = String(import.meta.env.VITE_APP_VERSION ?? import.meta.env.MODE ?? '');
 
 export interface AccountUser {
   id: number;
   username: string;
+  /** 화면에 보이는 이름 (예전 서버면 없을 수 있다) */
+  nickname?: string;
+  /** 의견함을 볼 수 있는 관리자 */
+  admin?: boolean;
+}
+
+/** 화면에 보여 줄 계정 이름: 닉네임, 없으면 아이디 */
+export const displayName = (u: AccountUser): string => u.nickname || u.username;
+
+export type FeedbackCategory = '문의' | '건의' | '버그';
+
+export interface FeedbackItem {
+  id: number;
+  category: FeedbackCategory;
+  text: string;
+  author: string;
+  guest: boolean;
+  version: string;
+  createdAt: number;
+  done: boolean;
+  doneAt: number | null;
 }
 
 interface Tokens {
@@ -32,6 +55,8 @@ export interface RankRow {
   stars: number;
   cleared: number;
   title: string;
+  /** 서버가 표시해 주는 내 줄 */
+  mine?: boolean;
 }
 
 export interface Leaderboard {
@@ -132,6 +157,39 @@ export class AccountApi {
   async putSave(data: SaveData, version: number): Promise<number> {
     const r = await this.authed('PUT', '/api/save', { data, version });
     return Number(r.version);
+  }
+
+  /** 기기에 보관한 사용자 정보만 바꾼다 (갱신 토큰은 그대로) */
+  private keepUser(user: AccountUser): AccountUser {
+    try {
+      const saved = JSON.parse(kv.get('auth') ?? 'null') as { refresh: string } | null;
+      if (saved) kv.set('auth', JSON.stringify({ ...saved, user }));
+    } catch {
+      /* 다음 자동 로그인 때 다시 받는다 */
+    }
+    return user;
+  }
+
+  /** 닉네임을 바꾼다 (2~12자) */
+  async setNickname(nickname: string): Promise<AccountUser> {
+    const r = await this.authed('PUT', '/api/me/nickname', { nickname });
+    return this.keepUser(r.user as AccountUser);
+  }
+
+  /** 의견 보내기. 로그인 상태면 계정으로, 아니면 게스트 이름으로 보낸다. */
+  async sendFeedback(category: FeedbackCategory, text: string, guestName = ''): Promise<void> {
+    const body = { category, text, name: guestName, version: APP_VERSION };
+    if (this.user) await this.authed('POST', '/api/feedback', body);
+    else await this.raw('POST', '/api/feedback', body);
+  }
+
+  /** 의견함 (관리자만) */
+  async listFeedback(): Promise<{ items: FeedbackItem[]; open: number }> {
+    return (await this.authed('GET', '/api/admin/feedback')) as unknown as { items: FeedbackItem[]; open: number };
+  }
+
+  async markFeedback(id: number, done: boolean): Promise<void> {
+    await this.authed('PATCH', '/api/admin/feedback', { id, done });
   }
 }
 
