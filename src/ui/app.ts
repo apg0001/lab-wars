@@ -11,7 +11,7 @@ import type { UnitDef } from '../data/types';
 import {
   applyOutcome, canEvolve, canLevelUp, canSubscribe, evolve, evolveCost, isCleared, isEndlessOpen, isSkillOpen, isStageOpen,
   isUnitOwned, levelCap, levelUp, levelUpCost, makeLoadout, newSave, subscribe, unitProgress, unitStats,
-  upgradeFacility, takeMigrationNotes, type SaveData,
+  upgradeFacility, takeMigrationNotes, REPLAY_MUL, type SaveData,
 } from '../sim/progression';
 import { RANGED_THRESHOLD } from '../data/types';
 import { kv, LocalSaveStore, ProfileManager, type Profile, type SaveStore } from '../save/store';
@@ -405,7 +405,7 @@ export class App {
       h('div.enemy-row', {}, ...enemyIds.map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name)))),
       s.kind === 'endless'
         ? h('p', {}, s.index > this.save.endless ? `첫 돌파 보상 💰 ${fmt(s.reward)}` : `재도전 보상 💰 ${fmt(s.reward * 0.4)} + 처치 보상`)
-        : h('p', {}, first ? `첫 클리어 보상 💰 최대 ${fmt(s.reward * 1.2)}` : `재도전 보상 💰 최대 ${fmt(s.reward * 1.2 * 0.4)} + 처치 보상`),
+        : h('p', {}, first ? `첫 클리어 보상 💰 최대 ${fmt(s.reward * 1.2)}` : `재도전 보상 💰 최대 ${fmt(s.reward * 1.2 * REPLAY_MUL)} + 처치 보상`),
       h('p.muted', {}, `출전 유닛 ${deck.length}종`),
       h('div.btn-row', {},
         h('button.btn', { onclick: close }, '닫기'),
