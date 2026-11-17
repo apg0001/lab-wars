@@ -5,13 +5,15 @@
 import { STAGE_SCENES } from './stage-scenes';
 import { SIDE_SCENES } from './side-scenes';
 import { localizeScenes } from './en';
+import type { TrackId } from '../audio/music';
 
-export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny' | 'haunted' | 'tenure' | 'rain';
+export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny' | 'haunted' | 'tenure' | 'rain' | 'deadline' | 'ai' | 'startup' | 'blackout';
 
 export type ActorId =
   | 'hero' | 'senior' | 'claudy' | 'codexy' | 'jaeminai' | 'newbie'
   | 'prof1' | 'prof2' | 'reviewer2' | 'chair' | 'committee' | 'dean' | 'president'
-  | 'tenure' | 'ghost' | 'ghost13' | 'printer3am' | 'imposter' | 'reviewer3' | 'mom';
+  | 'tenure' | 'ghost' | 'ghost13' | 'printer3am' | 'imposter' | 'reviewer3' | 'mom'
+  | 'submitsys' | 'autoreview' | 'vc' | 'mainbreaker' | 'pagelimit' | 'citation' | 'hallucite' | 'injection' | 'cloudbill' | 'powerstrip' | 'breaker';
 
 export type Action =
   | { a: 'enter'; id: ActorId; from: 'left' | 'right'; to: number }
@@ -46,7 +48,7 @@ export interface Scene {
   lines: Line[];
   /** 엔딩처럼 건너뛸 수 없는 장면 */
   noSkip?: boolean;
-  music?: 'lobby' | 'battle' | 'boss' | 'spooky' | 'spookyBoss';
+  music?: TrackId;
 }
 
 const S: Scene[] = [

@@ -494,7 +494,7 @@ export class App {
   }
 
   /** 무한 모드: 다음 판 도전과 최고 기록 */
-  /** 외전: 엔딩 뒤에 열리는 세 가지 이야기 */
+  /** 외전: 엔딩 뒤에 열리는 일곱 가지 이야기 */
   private showSideMap(tabs: HTMLElement): void {
     const rows = SIDE_CHAPTERS.map((sc) => {
       const stages = SIDE_STAGES.filter((s) => s.side === sc.id);
@@ -507,8 +507,8 @@ export class App {
     this.swap(h('div.screen.map.side-map', {},
       this.topBar(tr('스테이지', 'Stages')),
       tabs,
-      h('div.chapter-title', {}, h('b', {}, tr('{redbook} 외전: 아무도 말해 주지 않은 이야기', '{redbook} Side Stories: what nobody tells you')), h('span.muted', {}, tr(' · 으스스한 특수 규칙', ' · spooky special rules'))),
-      h('div.side-list', {}, ...rows),
+      h('div.chapter-title', {}, h('b', {}, tr('{redbook} 외전: 아무도 말해 주지 않은 이야기', '{redbook} Side Stories: what nobody tells you')), h('span.muted', {}, tr(' · 외전마다 특수 규칙', ' · each with its own special rule'))),
+      h(`div.side-list${rows.length > 4 ? '.two-col' : ''}`, {}, ...rows),
       this.mapActions(),
     ));
     if (shouldPromptSquad(this.save)) this.showSquadGuide();

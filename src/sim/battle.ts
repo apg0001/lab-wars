@@ -105,6 +105,12 @@ export interface Fighter {
   respawned: boolean;
   /** 분열로 생긴 쪽 (다시 갈라지지 않고 카페인을 반만 준다) */
   splitChild: boolean;
+  /** 자동 리뷰 AI(외전 5)에게 능력이 막힌 남은 시간 */
+  silenceT: number;
+  /** 보스 특수 패턴(자동 리뷰) 대기 */
+  skillCd: number;
+  /** 생성형 복제(외전 5)로 적 편에 생긴 아군 유닛 복제본 */
+  copy: boolean;
 }
 
 export type ProjectileKind =
@@ -176,6 +182,11 @@ export type BattleEvent =
   | { type: 'alarm' }
   | { type: 'rage'; x: number }
   | { type: 'timeWarn' }
+  /** 외전 7 순간 정전 직전 경고와 정전 */
+  | { type: 'blipWarn' }
+  | { type: 'blip'; vanished: number }
+  /** 외전 5 생성형 복제 */
+  | { type: 'copy'; unitId: string }
   | { type: 'rush' }
   | { type: 'draft' }
   | { type: 'card'; id: CardId; rarity: CardRarity }
@@ -250,6 +261,19 @@ export class Battle {
   private nextFrenzy = Infinity;
   /** 외전 멘탈 붕괴 상태 */
   broken = false;
+  /** 외전 5: 최근 소환한 유닛 id (오래된 것부터) */
+  recentSummons: string[] = [];
+  /** 외전 5: 다음 복제 시각 */
+  nextCopy = Infinity;
+  /** 외전 4 보스 접속 폭주 대기 (시작 전에는 null) */
+  private overloadCd: number | null = null;
+  /** 외전 7 순간 정전: 다음·지난 정전 시각, 경고 여부, 화면이 어두운 남은 시간 */
+  nextBlip = Infinity;
+  private lastBlip = 0;
+  private blipWarned = false;
+  blipT = 0;
+  /** 순간 정전으로 사라진 아군 수 */
+  vanished = 0;
   result: BattleResult = null;
   /** 시간 제한을 넘겨 졌는지 */
   timedOut = false;
@@ -291,6 +315,8 @@ export class Battle {
     this.spawnTimer = stage.spawnEvery * 0.6;
     if (stage.mods?.frenzy) this.nextFrenzy = stage.mods.frenzy.every;
     if (stage.mods?.drain) this.mental = loadout.mentalMax * 0.6;
+    if (stage.mods?.copy) this.nextCopy = stage.mods.copy.every;
+    if (stage.mods?.blip) this.nextBlip = stage.mods.blip.every;
   }
 
   // ───────────── 플레이어 조작 ─────────────
@@ -300,7 +326,25 @@ export class Battle {
   }
 
   get caffeineRegen(): number {
-    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1) * this.cardMods.regen;
+    return this.loadout.caffeineRegen * (1 + 0.2 * (this.brewLevel - 1)) * (this.stage.caffeineMul ?? 1) * this.cardMods.regen * this.burnMul;
+  }
+
+  /** 전투 진행률 0~1 (시간 제한 기준, 없으면 0) */
+  get progress(): number {
+    const lim = this.stage.timeLimit;
+    return lim ? Math.min(1, this.t / lim) : 0;
+  }
+
+  /** 외전 6 번레이트: 카페인 충전 배율 (1 → to) */
+  get burnMul(): number {
+    const br = this.stage.mods?.burnRate;
+    return br ? 1 - (1 - br.to) * this.progress : 1;
+  }
+
+  /** 외전 4 카운트다운: 적 이동·공격 속도 배율 (1 → mul) */
+  get countdownMul(): number {
+    const cd = this.stage.mods?.countdown;
+    return cd ? 1 + (cd.mul - 1) * this.progress : 1;
   }
 
   /** 다음 단계 비용 (최고 단계면 null) */
@@ -337,6 +381,11 @@ export class Battle {
     for (let i = 0; i < count; i++) {
       const f = this.addFighter('ally', entry.def.id, entry.def.names[entry.tier - 1]!, entry.def.look, entry.tier, entry.stats, ALLY_FRONT - 20 - i * 14, 0);
       f.depth = i * 10 + this.rng() * 6;
+    }
+    const cp = this.stage.mods?.copy;
+    if (cp) {
+      this.recentSummons.push(unitId);
+      if (this.recentSummons.length > cp.recent) this.recentSummons.shift();
     }
     this.fx.push({ kind: 'spawn', x: ALLY_FRONT - 10, y: GROUND_Y, t: 0, life: 0.4 });
     this.emit({ type: 'summon', x: ALLY_FRONT - 10 });
@@ -428,6 +477,8 @@ export class Battle {
       this.emit({ type: 'rush' });
     }
     this.frenzyT = Math.max(0, this.frenzyT - dt);
+    this.tickCopy();
+    this.tickBlip(dt);
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
     this.hasteT = Math.max(0, this.hasteT - dt);
     this.freezeT = Math.max(0, this.freezeT - dt);
@@ -633,7 +684,159 @@ export class Battle {
     f.isBoss = !!def.boss;
     f.summonCd = def.boss?.summon?.every ?? 0;
     f.stompCd = def.boss?.stomp?.every ?? 0;
+    f.skillCd = (def.boss?.silence?.every ?? 0) * 0.6;
     return f;
+  }
+
+  // ───────────── 외전 4~7 특수 규칙 ─────────────
+
+  /** 외전 4 보스 접속 폭주: 전투 시간이 after를 넘으면 every초마다 모든 아군을 dur초 멈춘다 */
+  private tickOverload(f: Fighter, o: { after: number; every: number; dur: number }, dt: number): void {
+    if (this.progress < o.after) return;
+    if (this.overloadCd === null) {
+      // 처음엔 예고하고 3초 뒤에
+      this.overloadCd = 3;
+      this.banner(tr('{warn} 제출 마감 임박! 접속자 폭주 중…', '{warn} Deadline rush! Server traffic spiking…'));
+    }
+    this.overloadCd -= dt;
+    if (this.overloadCd > 0) return;
+    this.overloadCd = o.every;
+    for (const a of this.alive('ally')) {
+      a.stunT = Math.max(a.stunT, o.dur);
+      a.attacking = false;
+      a.swing = 0;
+    }
+    this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.8, r: 420, color: '#1565c0' });
+    this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: tr('503 Service Unavailable', '503 Service Unavailable'), color: '#90caf9' });
+    this.emit({ type: 'rage', x: f.x });
+    this.banner(tr('{dizzy} 접속 폭주! 아군 전원 응답 없음', '{dizzy} Server Overload! All allies frozen'));
+  }
+
+  /** 외전 5 보스 자동 리뷰: 반경 안 아군의 능력을 막고 (보호막도 벗긴다) 피해를 준다 */
+  private tickSilence(f: Fighter, sp: { every: number; radius: number; dur: number; dmg: number }, dt: number): void {
+    f.skillCd -= dt;
+    if (f.skillCd > 0) return;
+    const hit = this.alive('ally').filter((o) => Math.abs(o.x - f.x) <= sp.radius + bodyR(o));
+    if (!hit.length) return;
+    f.skillCd = sp.every;
+    for (const o of hit) {
+      o.silenceT = Math.max(o.silenceT, sp.dur);
+      o.shield = 0;
+      this.fx.push({ kind: 'zap', x: o.x, y: this.fy(o) - 20, t: 0, life: 0.5, color: '#00e5ff' });
+      this.damageFighter(o, sp.dmg, 'enemy');
+    }
+    this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.7, r: sp.radius, color: '#00e5ff' });
+    this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: tr('{mute} 리뷰: 기여도 불분명', '{mute} Review: unclear contribution'), color: '#80deea' });
+    this.emit({ type: 'stomp', x: f.x, r: sp.radius });
+  }
+
+  /** 외전 5 생성형 복제: 최근 소환 중 하나를 골라 적 편에 약하게 복제한다 */
+  private tickCopy(): void {
+    const cp = this.stage.mods?.copy;
+    if (!cp || this.t < this.nextCopy) return;
+    this.nextCopy += cp.every;
+    if (!this.recentSummons.length) return;
+    const id = this.recentSummons[Math.floor(this.rng() * this.recentSummons.length)]!;
+    this.spawnCopy(id, cp.mul);
+  }
+
+  /** 아군 유닛 unitId를 능력치 ×mul로 적 편에 만든다 (소환 수만큼). 만든 복제본을 돌려준다. */
+  spawnCopy(unitId: string, mul: number): Fighter[] {
+    const entry = this.loadout.deck.find((d) => d.def.id === unitId);
+    if (!entry) return [];
+    const st = entry.stats;
+    const stats: CombatStats = {
+      ...st,
+      hp: Math.max(1, Math.round(st.hp * mul)),
+      atk: st.atk * mul,
+      heal: st.heal && { ...st.heal, amount: st.heal.amount * mul },
+      healZone: st.healZone && { ...st.healZone, hps: st.healZone.hps * mul },
+      shield: st.shield && { ...st.shield, amount: st.shield.amount * mul },
+      fieldStrike: st.fieldStrike && { ...st.fieldStrike, dmg: st.fieldStrike.dmg * mul },
+      deathBurst: st.deathBurst && { ...st.deathBurst, dmg: st.deathBurst.dmg * mul },
+      burn: st.burn && { ...st.burn, dps: st.burn.dps * mul },
+      turret: st.turret && { ...st.turret, hp: Math.round(st.turret.hp * mul), atk: st.turret.atk * mul },
+      // 플레이어에게만 의미 있는 능력은 빼고, 부활은 복제하지 않는다
+      caffeineGen: undefined, blipGuard: undefined, revive: undefined,
+    };
+    const reward = Math.round(entry.def.cost * 0.15 * KILL_REWARD_MUL * (this.stage.killMul ?? 1));
+    const out: Fighter[] = [];
+    for (let i = 0; i < (entry.def.count ?? 1); i++) {
+      if (this.alive('enemy').length >= MAX_ENEMIES) break;
+      const name = tr(`복제된 ${entry.def.names[entry.tier - 1]}`, `Copied ${entry.def.names[entry.tier - 1]}`);
+      const f = this.addFighter('enemy', entry.def.id, name, entry.def.look, entry.tier, stats, ENEMY_FRONT + 20 + i * 14, reward);
+      f.copy = true;
+      f.depth = i * 10 + this.rng() * 6;
+      out.push(f);
+    }
+    if (out.length) {
+      this.fx.push({ kind: 'spawn', x: ENEMY_FRONT + 10, y: GROUND_Y, t: 0, life: 0.4 });
+      this.banner(tr(`{robot} 생성형 복제: ${out[0]!.name}!`, `{robot} Generative Copy: ${out[0]!.name}!`));
+      this.emit({ type: 'copy', unitId });
+    }
+    return out;
+  }
+
+  /** 외전 7 순간 정전 간격: 메인 차단기 HP가 줄수록 짧아진다 */
+  blipEvery(): number {
+    const base = this.stage.mods?.blip?.every ?? Infinity;
+    for (const f of this.fighters) {
+      const bf = !f.dead && f.isBoss ? ENEMY_BY_ID[f.defId]?.boss?.blipFaster : undefined;
+      if (!bf) continue;
+      const r = f.hp / f.maxHp;
+      let e = base;
+      bf.at.forEach((a, i) => { if (r <= a) e = Math.min(e, bf.every[i]!); });
+      return e;
+    }
+    return base;
+  }
+
+  private tickBlip(dt: number): void {
+    const bl = this.stage.mods?.blip;
+    if (!bl) return;
+    this.blipT = Math.max(0, this.blipT - dt);
+    // 간격이 짧아졌으면 (경고 전이라면) 다음 정전을 당긴다
+    const due = this.lastBlip + this.blipEvery();
+    if (!this.blipWarned && due < this.nextBlip) this.nextBlip = Math.max(this.t + bl.warn, due);
+    if (!this.blipWarned && this.t >= this.nextBlip - bl.warn) {
+      this.blipWarned = true;
+      this.banner(tr('{warn} 전력 불안정! 곧 정전돼요', '{warn} Power unstable! Blackout incoming'));
+      this.emit({ type: 'blipWarn' });
+    }
+    if (this.t < this.nextBlip) return;
+    this.powerBlip(bl);
+    this.lastBlip = this.t;
+    this.nextBlip = this.t + this.blipEvery();
+    this.blipWarned = false;
+  }
+
+  /** 아군이 UPS 비상 전원 반경 안에 있는지 */
+  private guarded(o: Fighter, guards: Fighter[]): boolean {
+    return guards.some((g) => Math.abs(g.x - o.x) <= g.stats.blipGuard!);
+  }
+
+  /** 순간 정전: UPS 주변이 아닌 아군은 기절하고, 각자 vanish 확률로 사라진다 (보상 없음) */
+  private powerBlip(bl: { stun: number; vanish: number }): void {
+    const allies = this.alive('ally');
+    const guards = allies.filter((g) => g.stats.blipGuard);
+    let lost = 0;
+    for (const o of allies) {
+      if (this.guarded(o, guards)) continue;
+      o.stunT = Math.max(o.stunT, bl.stun);
+      o.attacking = false;
+      o.swing = 0;
+      if (this.rng() < bl.vanish) {
+        o.dead = true;
+        o.hp = 0;
+        lost++;
+        this.fx.push({ kind: 'poof', x: o.x, y: this.fy(o) - 16, t: 0, life: 0.5 });
+        this.fx.push({ kind: 'text', x: o.x, y: this.fy(o) - 70, t: 0, life: 1.3, text: tr('{warn} 저장 안 한 데이터가 날아갔다!', '{warn} Unsaved data lost!'), color: '#ffab40' });
+      }
+    }
+    this.vanished += lost;
+    this.blipT = bl.stun;
+    this.emit({ type: 'blip', vanished: lost });
+    this.banner(tr('{bolt} 순간 정전!', '{bolt} Power Blip!'));
   }
 
   private addFighter(side: Side, defId: string, name: string, look: Look, tier: number, stats: CombatStats, x: number, reward: number): Fighter {
@@ -647,6 +850,7 @@ export class Battle {
       turretCd: stats.turret?.every ?? 0, strikeCd: stats.fieldStrike?.every ?? 0, ownerUid: 0, lifeT: Infinity,
       shredT: 0, shredMul: 1, airT: 0, airDur: 0, fieldCd: stats.stunField ? stats.stunField.every * 0.5 : 0,
       growMul: 1, baseMaxHp: stats.hp, baseScale: look.scale ?? 1, respawned: false, splitChild: false,
+      silenceT: 0, skillCd: 0, copy: false,
     };
     this.fighters.push(f);
     return f;
@@ -664,7 +868,7 @@ export class Battle {
   }
 
   private computeAuras(): void {
-    const auras = this.fighters.filter((f) => !f.dead && f.stats.aura);
+    const auras = this.fighters.filter((f) => !f.dead && f.stats.aura && f.silenceT <= 0);
     for (const f of this.fighters) {
       f.auraMul = 1;
       for (const a of auras) {
@@ -681,13 +885,13 @@ export class Battle {
   private speedMul(f: Fighter): number {
     const slow = f.slowT > 0 ? f.slowMul : 1;
     if (f.side === 'ally') return (this.hasteT > 0 ? 1.15 : 1) * slow;
-    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * slow;
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * this.countdownMul * slow;
   }
 
   private atkRateMul(f: Fighter): number {
     const slow = f.slowT > 0 ? f.slowMul : 1;
     if (f.side === 'ally') return (this.hasteT > 0 ? 1.4 : 1) * slow;
-    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * slow;
+    return (this.freezeT > 0 ? 0.5 : 1) * this.enemyFrenzy() * this.countdownMul * slow;
   }
 
   /** 맞힌 적에게 거는 상태 이상만 골라낸다 (없으면 undefined) */
@@ -750,6 +954,9 @@ export class Battle {
     f.frozenT = Math.max(0, f.frozenT - dt);
     f.shredT = Math.max(0, f.shredT - dt);
     f.airT = Math.max(0, f.airT - dt);
+    // 자동 리뷰 AI에게 능력이 막힌 동안은 회복 구역·보호막이 멈춘다
+    const silenced = f.silenceT > 0;
+    f.silenceT = Math.max(0, f.silenceT - dt);
     if (s.grow && f.growMul < s.grow.max) {
       // 메모리 누수: 최대 HP가 늘어난 만큼 HP도 차고 몸도 커진다
       f.growMul = Math.min(s.grow.max, f.growMul + s.grow.rate * dt);
@@ -769,7 +976,7 @@ export class Battle {
       }
     }
     if (s.caffeineGen && f.side === 'ally') this.caffeine = Math.min(this.caffeineMax, this.caffeine + s.caffeineGen * dt);
-    if (s.healZone) {
+    if (s.healZone && !silenced) {
       const pulse = Math.floor(this.t) !== Math.floor(this.t - dt);
       for (const o of this.alive(f.side)) {
         if (Math.abs(o.x - f.x) > s.healZone.radius || o.hp >= o.maxHp) continue;
@@ -777,7 +984,7 @@ export class Battle {
         if (pulse) this.fx.push({ kind: 'heal', x: o.x, y: this.fy(o) - 34, t: 0, life: 0.7 });
       }
     }
-    if (s.shield) {
+    if (s.shield && !silenced) {
       f.shieldCd -= dt;
       if (f.shieldCd <= 0) {
         f.shieldCd = s.shield.every;
@@ -890,9 +1097,10 @@ export class Battle {
       return;
     }
 
-    if (s.stunField) this.tickStunField(f, dt);
+    const silenced = f.silenceT > 0;
+    if (s.stunField && !silenced) this.tickStunField(f, dt);
 
-    if (s.heal) {
+    if (s.heal && !silenced) {
       f.healCd -= dt;
       if (f.healCd <= 0) {
         f.healCd = s.heal.every;
@@ -910,8 +1118,8 @@ export class Battle {
 
     const def = f.side === 'enemy' ? ENEMY_BY_ID[f.defId] : undefined;
     if (def?.boss) this.tickBoss(f, def.boss, dt);
-    if (s.turret) this.tickTurret(f, dt);
-    if (s.fieldStrike) this.tickStrike(f, dt);
+    if (s.turret && !silenced) this.tickTurret(f, dt);
+    if (s.fieldStrike && !silenced) this.tickStrike(f, dt);
 
     const target = this.findTarget(f);
     const hitBase = !target && this.baseInRange(f);
@@ -951,7 +1159,7 @@ export class Battle {
       if (f.summonCd <= 0) {
         f.summonCd = b.summon.every;
         for (let i = 0; i < b.summon.count; i++) this.spawnEnemy(b.summon.id, false, f.x + 20 + i * 12);
-        this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 150, t: 0, life: 1, text: tr('이것 좀 해와!', 'Do this for me!'), color: '#fff' });
+        this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 150, t: 0, life: 1, text: b.say ? tr(b.say[0], b.say[1]) : tr('이것 좀 해와!', 'Do this for me!'), color: '#fff' });
       }
     }
     if (b.stomp) {
@@ -966,6 +1174,8 @@ export class Battle {
         this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 160, t: 0, life: 1, text: tr('버럭!', 'HEY!'), color: '#ff5252' });
       }
     }
+    if (b.overload) this.tickOverload(f, b.overload, dt);
+    if (b.silence) this.tickSilence(f, b.silence, dt);
   }
 
   private shoot(f: Fighter, dmg: number, tx: number, ty: number, targetUid: number | null, hitsBase: boolean): void {
@@ -1181,7 +1391,7 @@ export class Battle {
         const reward = Math.round(f.reward * this.cardMods.reward);
         this.killReward += reward;
         // 적 세기(기본 처치 보상)에 비례해 카페인을 얻는다
-        const caf = Math.max(1, Math.round(killCaffeine(f.defId) * (f.splitChild ? 0.5 : 1)));
+        const caf = f.copy ? Math.max(1, Math.round(f.reward * 0.6)) : Math.max(1, Math.round(killCaffeine(f.defId) * (f.splitChild ? 0.5 : 1)));
         // 멘탈 고갈 외전: 처치하면 멘탈이 조금 돌아온다
         if (this.stage.mods?.drain) this.mental = Math.min(this.loadout.mentalMax, this.mental + 3 + caf * 0.5);
         this.caffeine = Math.min(this.caffeineMax, this.caffeine + caf);

@@ -1,6 +1,7 @@
 import type { Look } from '../data/types';
 import { COSMETIC_BY_ID, type Outfit } from '../data/cosmetics';
 import { tr } from '../i18n';
+import { drawSideFoe } from './side-looks';
 
 /** 낙서풍 외곽선 색 */
 export const INK = '#2b2430';
@@ -24,7 +25,7 @@ export interface Pose {
  * 좌우 반전된 상태에서도 글자가 뒤집히지 않게 쓴다. x는 왼쪽 기준.
  * en을 주면 영어일 때 그 글자를 원문과 같은 가운데에, 원문 폭에 맞춰 (너무 길면 좁혀) 쓴다.
  */
-function label(ctx: Ctx, text: string, x: number, y: number, en?: string): void {
+export function label(ctx: Ctx, text: string, x: number, y: number, en?: string): void {
   const w = ctx.measureText(text).width;
   const cx = x + w / 2;
   const shown = en ? tr(text, en) : text;
@@ -47,14 +48,14 @@ function label(ctx: Ctx, text: string, x: number, y: number, en?: string): void 
   ctx.restore();
 }
 
-function line(ctx: Ctx, w = 2.5): void {
+export function line(ctx: Ctx, w = 2.5): void {
   ctx.strokeStyle = INK;
   ctx.lineWidth = w;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 }
 
-function blob(ctx: Ctx, x: number, y: number, rx: number, ry: number, fill: string): void {
+export function blob(ctx: Ctx, x: number, y: number, rx: number, ry: number, fill: string): void {
   ctx.beginPath();
   ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   ctx.fillStyle = fill;
@@ -62,7 +63,7 @@ function blob(ctx: Ctx, x: number, y: number, rx: number, ry: number, fill: stri
   ctx.stroke();
 }
 
-function rrect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, fill: string): void {
+export function rrect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, fill: string): void {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
   ctx.fillStyle = fill;
@@ -70,7 +71,7 @@ function rrect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, 
   ctx.stroke();
 }
 
-function eyes(ctx: Ctx, x: number, y: number, gap: number, angry = false, size = 2.2): void {
+export function eyes(ctx: Ctx, x: number, y: number, gap: number, angry = false, size = 2.2): void {
   ctx.fillStyle = INK;
   for (const dx of [-gap, gap]) {
     ctx.beginPath();
@@ -87,7 +88,7 @@ function eyes(ctx: Ctx, x: number, y: number, gap: number, angry = false, size =
   }
 }
 
-function legs(ctx: Ctx, pose: Pose, spread = 6, len = 8, color = '#455a64'): void {
+export function legs(ctx: Ctx, pose: Pose, spread = 6, len = 8, color = '#455a64'): void {
   const k = pose.moving ? Math.sin(pose.walk * 2) * 4 : 0;
   ctx.lineWidth = 4.5;
   ctx.strokeStyle = INK;
@@ -2933,6 +2934,7 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'printer': printer(ctx, look, pose); break;
     case 'gear': gear(ctx, look, pose); break;
     case 'glitch': glitch(ctx, look, pose); break;
+    case 'sidefoe': drawSideFoe(ctx, look, pose); break;
   }
   if (hat) {
     const a = headAnchor(look.kind, pose.tier);

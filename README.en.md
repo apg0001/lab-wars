@@ -36,7 +36,7 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 | | |
 |:-:|:-:|
 | <img src="docs/images/map.webp" alt="Stage map" width="360"><br>**7 chapters, 70 stages** · from undergrad to postdoc | <img src="docs/images/cutscene.webp" alt="Story cutscene" width="360"><br>**An animated story cutscene for every stage** |
-| <img src="docs/images/lab.webp" alt="Lab upgrades" width="360"><br>**Level up, evolve, upgrade facilities** | <img src="docs/images/side-map.webp" alt="Side Story map" width="360"><br>**Three Side Stories after the ending** |
+| <img src="docs/images/lab.webp" alt="Lab upgrades" width="360"><br>**Level up, evolve, upgrade facilities** | <img src="docs/images/side-map.webp" alt="Side Story map" width="360"><br>**Seven Side Stories after the ending** |
 
 ## ✨ Features
 
@@ -77,10 +77,14 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 | 1 · Assistant Prof Survival Guide | 📋 **Evaluation Season**: enemies periodically get fiercer | Tenure Committee |
 | 2 · Grad School Ghost Stories | 🕯️ **Blackout**: you only see around your allies. Ghosts flicker | 13th-Year Ghost Senpai |
 | 3 · A Researcher's Struggles | 🌧️ **Sanity Drain**: Sanity keeps dropping; at zero, attack −25% | Reviewer 3 |
+| 4 · 24 Hours to Deadline | ⏳ **Countdown**: 4:00 time limit (boss 4:30); enemies keep speeding up to ×1.5 | Submission System (Server Overload freezes everyone) |
+| 5 · The Lab in the Age of AI | 🤖 **Generative Copy**: every 14s one of your recent summons is cloned onto the enemy side at 60% stats | Auto-Review AI (silences nearby allies' abilities) |
+| 6 · After Graduation: The Lab Startup | 🔥 **Burn Rate**: caffeine charge shrinks over time, down to 35% | VC Partner ("So what's the business model?" flying questions) |
+| 7 · Blackout Day | ⚡ **Power Blip**: every 20s allies are stunned 1.5s and each has a 10% chance to vanish. Allies near a UPS are safe | Main Breaker (blips come faster as its HP drops) |
 
 ### 🎨 And also
 - 🖌️ **Zero image files**: every character, background, and effect is drawn directly with Canvas
-- 🎵 **Zero audio files**: 5 music tracks and all sound effects are synthesized live with Web Audio (separate music/SFX toggles and volume)
+- 🎵 **Zero audio files**: 7 music tracks and all sound effects are synthesized live with Web Audio (separate music/SFX toggles and volume)
 - 💥 Impact effects: hit flashes, hitstop, debris, damage numbers
 - ☁️ Log in to continue on any device (self-hosted server); guests save on the device
 - 📲 Install to home screen (PWA) and play offline
