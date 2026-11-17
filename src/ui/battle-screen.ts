@@ -21,6 +21,11 @@ import { runTutorial } from './tutorial';
 
 /** 스킬 슬롯 순서대로 쓰는 단축키 (Q는 커피머신, A/D는 시점 이동) */
 const SKILL_KEYS = ['w', 'e', 'r', 't'];
+/** 경품 추첨 전 연출: 전투 시간 0.2초를 0.2배속으로 = 실제 약 1초 */
+const DRAFT_INTRO = 0.2;
+const DRAFT_SLOW = 0.2;
+/** 카드가 다 뒤집힌 뒤 숫자키를 받기 시작할 때까지 (ms) */
+const DRAFT_KEY_LOCK = 350;
 /** 유닛 슬롯 단축키: 1~9 (편성 최대 9칸, 남은 키는 예비) */
 const UNIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'minus', 'equal'];
 const UNIT_KEY_LABEL: Record<string, string> = { minus: '-', equal: '=' };
@@ -55,7 +60,7 @@ const SPEEDS = [1, 2, 3];
 
 export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => void {
   preloadIcons();
-  const battle = new Battle(opt.stage, opt.loadout, (Date.now() & 0xffff) + 1);
+  const battle = new Battle(opt.stage, opt.loadout, (Date.now() & 0xffff) + 1, { draftIntro: DRAFT_INTRO });
   const canvas = document.createElement('canvas');
   canvas.className = 'battle-canvas';
   const ctx = canvas.getContext('2d')!;
@@ -69,6 +74,10 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   let speed = SPEEDS.includes(opt.speed ?? 1) ? (opt.speed ?? 1) : 1;
   let paused = false;
   let armed: 'bombard' | null = null;
+  /** 추첨 연출로 화면이 어두워진 정도 0~1 (부드럽게 따라간다) */
+  let draftDim = 0;
+  /** 이 시각 전에는 숫자키로 카드를 고르지 않는다 */
+  let draftKeyAt = 0;
   let ended = false;
   let raf = 0;
   let last = performance.now();
@@ -240,6 +249,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
 
   function revealAll(): void {
     window.clearTimeout(draftTimer);
+    if (!draftReady) draftKeyAt = performance.now() + DRAFT_KEY_LOCK;
     draftReady = true;
     draftLayer.classList.add('ready');
   }
@@ -311,10 +321,13 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     held.add(k);
     if (k === 'escape' || k === 'p') return setPaused(!paused);
     if (paused) return;
+    // 추첨 연출 중에는 키를 받지 않는다 (소환하던 숫자키가 카드 선택으로 이어지지 않게)
+    if (battle.pendingDraft) return;
     if (battle.draft && !draftLayer.hidden) {
       const di = ['1', '2', '3'].indexOf(k);
-      // 키 반복 입력이나 창이 뜨기 전부터 누르고 있던 키는 무시: 새로 누른 키만 카드를 고른다
-      if (di >= 0 && !e.repeat && !heldAtDraft.has(k)) tapCard(di);
+      // 카드가 다 뒤집히고 잠깐 지난 뒤, 새로 누른 키만 카드를 고른다
+      // (키 반복, 창이 뜨기 전부터 누르던 키, 뒤집히는 중의 키는 무시. 클릭·탭은 그대로)
+      if (di >= 0 && !e.repeat && !heldAtDraft.has(k) && draftReady && performance.now() >= draftKeyAt) tapCard(di);
       return;
     }
     if (k === 'q') battle.brew();
@@ -396,9 +409,11 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     last = now;
     if (!paused) {
       // 히트스톱: 큰 타격 순간 아주 잠깐 시간을 느리게
-      const slow = juice.hitStop > 0 ? 0.08 : 1;
+      // 추첨 직전에는 배속과 상관없이 슬로우모션
+      const intro = battle.pendingDraft !== null;
+      const slow = intro ? DRAFT_SLOW : juice.hitStop > 0 ? 0.08 : 1;
       juice.hitStop = Math.max(0, juice.hitStop - dt);
-      battle.update(dt * speed * slow);
+      battle.update(dt * (intro ? 1 : speed) * slow);
       juice.update(dt * slow);
     }
     for (const e of battle.drainEvents()) {
@@ -410,6 +425,13 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     const k = canvas.width / viewW;
     ctx.setTransform(k, 0, 0, k, 0, -viewTop * k);
     drawBattle(ctx, battle, camX, now / 1000, juice);
+    // 추첨 연출: 슬로우모션 동안 어두워지고, 고르고 나면 천천히 밝아진다
+    const dimTo = battle.pendingDraft || battle.draft ? 1 : 0;
+    draftDim += (dimTo - draftDim) * Math.min(1, dt * (dimTo ? 4 : 5));
+    if (draftDim > 0.01) {
+      ctx.fillStyle = `rgba(20,16,26,${(draftDim * 0.5).toFixed(3)})`;
+      ctx.fillRect(0, 0, viewW, VIEW_H);
+    }
     if (armed) {
       ctx.fillStyle = 'rgba(30,136,229,.12)';
       ctx.fillRect(0, 0, viewW, VIEW_H);
