@@ -66,10 +66,12 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   // 화면 밖(여유 포함) 전투원은 그리지 않는다
   drawList.length = 0;
   for (const f of b.fighters) {
-    const margin = 130 * (f.look.scale ?? 1);
+    const margin = Math.max(130 * (f.look.scale ?? 1), f.stats.aura ? f.stats.aura.radius * 1.5 : 0);
     if (f.x + margin >= viewL && f.x - margin <= viewR) drawList.push(f);
   }
   drawList.sort((p, q) => Number(!!p.stats.flying) - Number(!!q.stats.flying) || b.fy(p) - b.fy(q));
+  // 오로라 범위: 유닛보다 먼저 바닥에 그린다
+  for (const f of drawList) if (f.stats.aura && !f.dead) drawAura(ctx, b, f, time);
   for (const f of drawList) drawFighter(ctx, b, f, time, sprites);
   drawList.length = 0;
   sprites.endFrame();
@@ -379,6 +381,31 @@ function drawOffice(ctx: Ctx, base: Base, time: number): void {
   ctx.arc(x + 25, top - 14, 3, 0, Math.PI * 2);
   ctx.fill();
   crack(ctx, base, x, w);
+  ctx.restore();
+}
+
+// ─────────────── 오로라 범위 ───────────────
+
+/**
+ * 주변 동료를 강하게 하는 유닛(오로라)의 범위를 발밑에 납작한 타원으로 보여 준다.
+ * 판정은 가로 거리만 보므로(computeAuras) 타원의 가로 반지름이 곧 범위다.
+ */
+function drawAura(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
+  const aura = f.stats.aura!;
+  const r = aura.radius * (f.side === 'ally' ? b.cardMods.auraRadius : 1);
+  const y = (f.stats.flying ? GROUND_Y : b.fy(f)) + 2;
+  const ally = f.side === 'ally';
+  const pulse = 0.5 + 0.5 * Math.sin(time * 2.4 + f.uid);
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(f.x, y, r, Math.max(10, r * 0.16), 0, 0, Math.PI * 2);
+  ctx.fillStyle = ally ? `rgba(255,213,79,${0.08 + 0.05 * pulse})` : `rgba(239,83,80,${0.07 + 0.05 * pulse})`;
+  ctx.fill();
+  ctx.setLineDash([8, 6]);
+  ctx.lineDashOffset = -time * 14;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = ally ? 'rgba(255,179,0,.55)' : 'rgba(229,57,53,.5)';
+  ctx.stroke();
   ctx.restore();
 }
 

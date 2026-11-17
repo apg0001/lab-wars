@@ -227,7 +227,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 
 .draft-layer {
   position: absolute; inset: 0; z-index: 15; display: grid; place-items: center;
-  background: rgba(20, 16, 26, 0.6); animation: fade-in 0.25s ease-out;
+  /* 전투 화면이 추첨 연출로 이미 어두워져 있어 살짝만 더 덮는다 */
+  background: rgba(20, 16, 26, 0.25); animation: fade-in 0.25s ease-out;
 }
 .draft-layer.done { background: rgba(20, 16, 26, 0); transition: background 0.5s; pointer-events: none; }
 @keyframes fade-in { from { opacity: 0; } }

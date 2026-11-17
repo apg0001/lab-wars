@@ -4,7 +4,7 @@
  * 무한 모드 40판 + 장비 전부 편성으로 필드를 가득 채운 뒤, 같은 장면을 여러 프레임 그려 평균을 잰다.
  */
 import { Battle } from '../src/sim/battle';
-import { endlessStage } from '../src/data/stages';
+import { STAGES, endlessStage } from '../src/data/stages';
 import { GACHA_UNITS } from '../src/data/units';
 import { makeLoadout, newSave } from '../src/sim/progression';
 import { drawBattle } from '../src/render/scene';
@@ -17,7 +17,9 @@ const out = document.getElementById('out')!;
 function setup(): Battle {
   const s = newSave();
   for (const u of GACHA_UNITS) s.gear.owned[u.id] = 1;
-  s.loadout = ['grunt', ...GACHA_UNITS.slice(0, 8).map((u) => u.id)];
+  // 렙장(오로라)을 쓰려면 5-3 클리어가 필요하다
+  for (const st of STAGES) s.stars[st.id] = 3;
+  s.loadout = ['grunt', 'labchief', ...GACHA_UNITS.slice(0, 7).map((u) => u.id)];
   const b = new Battle(endlessStage(40), makeLoadout(s), 7, { cards: false });
   b.ally.hp = b.ally.maxHp = 1e12;
   b.enemy.hp = b.enemy.maxHp = 1e12;
