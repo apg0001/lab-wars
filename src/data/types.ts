@@ -1,3 +1,4 @@
+import type { ProfVariant } from './major';
 /** 사거리가 이 값 이상이면 원거리로 보고 공중 공격이 가능하다. */
 export const RANGED_THRESHOLD = 100;
 
@@ -29,7 +30,9 @@ export type LookKind =
   /** 무한 모드 전용 버그·장애 군단. 어떤 버그인지는 look.variant */
   | 'glitch'
   /** 외전 4~7 전용 적·보스. 어떤 적인지는 look.variant */
-  | 'sidefoe';
+  | 'sidefoe'
+  /** 전공 모드 교수님 (가상 인물). 누구인지는 look.variant (src/data/major.ts ProfVariant) */
+  | 'lecturer';
 
 /** 장비 그림 종류 (look.kind === 'gear') */
 export type GearVariant =
@@ -69,7 +72,7 @@ export interface Look {
   /** 크기 배율 (기본 1) */
   scale?: number;
   /** 장비·버그 그림 종류 */
-  variant?: GearVariant | GlitchVariant | SideVariant;
+  variant?: GearVariant | GlitchVariant | SideVariant | ProfVariant;
 }
 
 /** 맞힌 상대에게 거는 상태 이상 */

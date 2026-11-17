@@ -596,6 +596,11 @@ function notif(ctx: Ctx, look: Look, pose: Pose): void {
   label(ctx, '99+', 7, -15.5);
 }
 
+/** 전공 모드 교수님 (가상 인물): look.variant마다 머리·소품이 다르다 */
+function lecturer(ctx: Ctx, look: Look, pose: Pose): void {
+  professor(ctx, look, pose, '');
+}
+
 function professor(ctx: Ctx, look: Look, pose: Pose, variant: string): void {
   const isDean = variant === 'dean';
   const isPresident = variant === 'president';
@@ -2935,6 +2940,7 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'gear': gear(ctx, look, pose); break;
     case 'glitch': glitch(ctx, look, pose); break;
     case 'sidefoe': drawSideFoe(ctx, look, pose); break;
+    case 'lecturer': lecturer(ctx, look, pose); break;
   }
   if (hat) {
     const a = headAnchor(look.kind, pose.tier);

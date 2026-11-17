@@ -1,4 +1,5 @@
 import { localizeAll, tr } from '../i18n';
+import type { CourseMods } from '../sim/course-rules';
 
 export interface Chapter {
   id: number;
@@ -82,6 +83,8 @@ export interface StageMods {
   burnRate?: { to: number };
   /** 순간 정전 (외전 7): every초마다 아군 전원 stun초 기절, 각자 vanish 확률로 사라짐. warn초 전에 경고 */
   blip?: { every: number; stun: number; vanish: number; warn: number };
+  /** 전공 과목 규칙 (src/sim/course-rules.ts) */
+  course?: CourseMods;
 }
 
 export const CHAPTERS: Chapter[] = [
