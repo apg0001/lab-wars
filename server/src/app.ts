@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { cleanNickname, hashPassword, newRefreshToken, sha256, signAccess, validateCredentials, verifyAccess, verifyPassword } from './auth.ts';
-import type { FeedbackCategory, Store, UserRow } from './db.ts';
+import type { FeedbackCategory, GiftRow, Store, UserRow } from './db.ts';
 
 export interface Config {
   secret: string;
@@ -63,6 +63,11 @@ export interface RankRow {
 }
 
 const FEEDBACK_CATEGORIES: FeedbackCategory[] = ['문의', '건의', '버그'];
+
+/** 선물 한 번에 넣을 수 있는 최대치 */
+export const GIFT_MAX = { money: 10_000_000, tickets: 1000 };
+
+const giftOut = (g: GiftRow) => ({ id: g.id, money: g.money, tickets: g.tickets, message: g.message, sender: g.sender, createdAt: g.created_at });
 
 const TITLES =['학부생', '학연생', '학석사', '석사', '석박', '박사', '포닥'];
 const CAMPAIGN_ID = /^([1-7])-([1-9]|10)$/;
@@ -310,6 +315,67 @@ export function createApp(store: Store, cfg: Config) {
       if (typeof b.id !== 'number' || typeof b.done !== 'boolean') throw new HttpError(400, '잘못된 요청이에요.');
       if (!store.markFeedback(b.id, b.done, cfg.now())) throw new HttpError(404, '없는 의견이에요.');
       return { ok: true, id: b.id, done: b.done };
+    },
+
+    // 선물 보낼 플레이어 목록: 관리자만, 최근에 저장한 순
+    'GET /api/admin/players': (req) => {
+      adminOnly(req);
+      const players = store.listPlayers().map((p) => {
+        let data: Record<string, unknown> = {};
+        try {
+          const v = p.data ? JSON.parse(p.data) : null;
+          if (v && typeof v === 'object') data = v;
+        } catch {
+          /* 깨진 저장 */
+        }
+        const gear = (data.gear && typeof data.gear === 'object' ? data.gear : {}) as { tickets?: unknown };
+        const num = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.floor(x)) : 0);
+        const st = rankStats(data);
+        return {
+          id: p.id, username: p.username, nickname: p.nickname || p.username, createdAt: p.created_at, lastSave: p.updated_at ?? null,
+          money: num(data.money), tickets: num(gear.tickets), cleared: st.cleared, endless: st.endless, title: st.title,
+        };
+      });
+      return { players };
+    },
+
+    // 선물 보내기: {userIds, money, tickets, message?}. 받는 사람이 선물함에서 받는다 (거절 없음)
+    'POST /api/admin/gifts': (req, b) => {
+      const admin = adminOnly(req);
+      const ids = Array.isArray(b.userIds) ? b.userIds.filter((x): x is number => Number.isInteger(x)) : [];
+      if (!ids.length || ids.length > 1000) throw new HttpError(400, '받는 사람을 골라 주세요.');
+      const amount = (x: unknown, max: number): number => (Number.isInteger(x) && (x as number) >= 0 && (x as number) <= max ? x as number : -1);
+      const money = amount(b.money ?? 0, GIFT_MAX.money);
+      const tickets = amount(b.tickets ?? 0, GIFT_MAX.tickets);
+      if (money < 0 || tickets < 0 || money + tickets === 0) throw new HttpError(400, `선물은 연구비 0~${GIFT_MAX.money}, 뽑기권 0~${GIFT_MAX.tickets} 사이로, 하나 이상 넣어 주세요.`);
+      const message = typeof b.message === 'string' ? b.message.trim().slice(0, 100) : '';
+      const sent = store.addGifts(ids, { money, tickets, message, sender: admin.nickname || admin.username, now: cfg.now() });
+      return { ok: true, sent };
+    },
+
+    // 보낸 선물 기록: 관리자만, 최신순 100건
+    'GET /api/admin/gifts': (req) => {
+      adminOnly(req);
+      return {
+        items: store.recentGifts(100).map((g) => ({
+          id: g.id, to: g.nickname || g.username, money: g.money, tickets: g.tickets, message: g.message, createdAt: g.created_at, claimedAt: g.claimed_at,
+        })),
+      };
+    },
+
+    // 내 선물함: 아직 받지 않은 선물
+    'GET /api/gifts': (req) => ({ items: store.pendingGifts(authed(req)).map(giftOut) }),
+
+    // 선물 받기: {ids?} (없으면 전부). 받은 선물과 합계를 돌려주고, 게임이 저장에 더한다
+    'POST /api/gifts/claim': (req, b) => {
+      const uid = authed(req);
+      const ids = Array.isArray(b.ids) ? b.ids.filter((x): x is number => Number.isInteger(x)) : null;
+      const got = store.claimGifts(uid, ids, cfg.now());
+      return {
+        items: got.map(giftOut),
+        money: got.reduce((a, g) => a + g.money, 0),
+        tickets: got.reduce((a, g) => a + g.tickets, 0),
+      };
     },
 
     // 순위표: 누구나 볼 수 있고, 로그인했으면 내 순위도 준다.
