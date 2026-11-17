@@ -5,24 +5,41 @@
  */
 import type { ActorId, Action, Bg, Line, Scene } from './script';
 
-type L = [ActorId | '', string, string?];
+export type L = [ActorId | '', string, string?, Action[]?];
 
 const SLOTS = [0.66, 0.84, 0.5];
 
 function st(id: string, bg: Bg, lines: L[], sign?: string): Scene {
-  const cast: Scene['cast'] = [{ id: 'hero', x: 0.28 }];
+  return quick(`st-${id}`, bg, lines, { sign });
+}
+
+/** 짧은 장면을 만든다. 처음 말하는 인물이 무대에 선다. */
+export function quick(id: string, bg: Bg, lines: L[], extra: Partial<Pick<Scene, 'title' | 'sign' | 'music'>> & { hero?: boolean; enter?: boolean } = {}): Scene {
+  const cast: Scene['cast'] = extra.hero === false ? [] : [{ id: 'hero', x: 0.28 }];
   for (const [who] of lines) {
     if (!who || who === 'hero' || cast.some((c) => c.id === who)) continue;
-    const x = SLOTS[cast.length - 1];
+    const x = SLOTS[cast.length - (extra.hero === false ? 0 : 1)];
     if (x !== undefined) cast.push({ id: who, x, face: -1 });
   }
+  // enter: 처음 말할 때 오른쪽에서 걸어 들어온다
+  const entered = new Set<string>();
+  const heroCount = extra.hero === false ? 0 : 1;
+  const firstCast = extra.enter ? cast.slice(0, heroCount) : cast;
+  const slotOf = (who: string): number => cast.find((c) => c.id === who)?.x ?? 0.7;
   return {
-    id: `st-${id}`,
+    id,
     bg,
-    sign,
-    cast,
-    lines: lines.map(([who, text, emote]): Line => {
+    title: extra.title,
+    sign: extra.sign,
+    music: extra.music,
+    cast: firstCast,
+    lines: lines.map(([who, text, emote, more]): Line => {
       const act: Action[] = [];
+      if (extra.enter && who && who !== 'hero' && !entered.has(who)) {
+        entered.add(who);
+        act.push({ a: 'enter', id: who, from: 'right', to: slotOf(who) });
+      }
+      act.push(...(more ?? []));
       if (who && (emote === '!' || emote === '♪')) act.push({ a: 'jump', id: who });
       if (emote === '💢') act.push({ a: 'shake' });
       return { ...(who ? { who } : {}), text, ...(emote ? { emote } : {}), ...(act.length ? { do: act } : {}) };

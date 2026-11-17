@@ -161,6 +161,21 @@ describe('성장 시스템', () => {
     expect(makeLoadout(s).cooldownMul).toBeCloseTo(0.68);
   });
 
+  it('외전은 엔딩 뒤에 열리고 외전마다 차례로 진행한다', () => {
+    const s = newSave();
+    const s21 = STAGE_BY_ID['S2-1']!;
+    expect(s21.side).toBe(2);
+    expect(isStageOpen(s, s21)).toBe(false);
+    s.stars[FINAL_STAGE.id] = 1;
+    expect(isStageOpen(s, s21)).toBe(true);
+    expect(isStageOpen(s, STAGE_BY_ID['S3-1']!)).toBe(true);
+    expect(isStageOpen(s, STAGE_BY_ID['S2-2']!)).toBe(false);
+    applyOutcome(s, s21, true, 0.9, 0);
+    expect(isStageOpen(s, STAGE_BY_ID['S2-2']!)).toBe(true);
+    // 저장했다 읽어도 외전 별이 남는다
+    expect(normalizeSave(JSON.parse(JSON.stringify(s))).stars['S2-1']).toBe(3);
+  });
+
   it('무한 모드는 캠페인 클리어 후 한 판씩 열리고 최고 기록을 남긴다', () => {
     const s = newSave();
     const e1 = endlessStage(1);

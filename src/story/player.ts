@@ -2,6 +2,8 @@ import type { Look } from '../data/types';
 import { UNIT_BY_ID } from '../data/units';
 import { ENEMY_BY_ID } from '../data/enemies';
 import { drawCharacter, INK } from '../render/characters';
+import { drawThemeBackdrop } from '../render/spooky';
+import type { Theme } from '../data/stages';
 import { audio } from '../audio/engine';
 import { music } from '../audio/music';
 import { h } from '../ui/dom';
@@ -46,6 +48,7 @@ function actorDef(id: ActorId, heroName: string, chapter: number, heroIsProf: bo
     case 'codexy': return unit('codexy', 2, '코덱시', 1.2);
     case 'jaeminai': return unit('jaeminai', 2, '재미나이', 1.35);
     case 'newbie': return unit('grunt', 1, '신입 학부생', 1.25);
+    case 'mom': return { name: '엄마', look: { kind: 'student', color: '#f48fb1', prop: 'none' }, tier: 3, defId: 'mom', voice: 1.15 };
     default: return boss(id, id === 'president' ? 0.6 : 0.75);
   }
 }
@@ -96,7 +99,8 @@ export function playCutscene(host: Element, scene: Scene, opt: CutsceneOptions):
   if (scene.music) music.play(scene.music);
 
   const fill = (s: string): string => s.replaceAll('{name}', opt.heroName);
-  let heroIsProf = false;
+  // 외전 1(조교수)은 처음부터 교수 모습
+  let heroIsProf = opt.chapter >= 8;
   let bg: Bg = scene.bg;
   let viewW = 960;
   const actors = new Map<ActorId, Actor>();
@@ -386,8 +390,15 @@ export function playMarathon(host: Element, scenes: Scene[], start: number, opt:
 
 // ─────────────── 배경 ───────────────
 
+const THEME_OF: Partial<Record<Bg, Theme>> = { haunted: 'haunted', tenure: 'tenure', rain: 'gloom' };
+
 function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sign?: string): void {
-  const sky: Record<Bg, [string, string]> = {
+  const theme = THEME_OF[bg];
+  if (theme) {
+    drawThemeBackdrop(ctx, theme, w, GROUND - 10, H, 0, t);
+    return;
+  }
+  const sky: Record<Exclude<Bg, 'haunted' | 'tenure' | 'rain'>, [string, string]> = {
     classroom: ['#fdf6e3', '#f1e6c8'],
     lab: ['#eef3f7', '#dfe7ee'],
     night: ['#1f2440', '#2e3561'],
@@ -396,7 +407,7 @@ function drawBg(ctx: CanvasRenderingContext2D, bg: Bg, w: number, t: number, sig
     hall: ['#f6efe2', '#eadcc0'],
     sunny: ['#bde8ff', '#fff3c4'],
   };
-  const [c0, c1] = sky[bg];
+  const [c0, c1] = sky[bg as keyof typeof sky];
   const g = ctx.createLinearGradient(0, 0, 0, GROUND);
   g.addColorStop(0, c0);
   g.addColorStop(1, c1);

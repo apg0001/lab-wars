@@ -1,5 +1,5 @@
 import { ENEMIES } from '../data/enemies';
-import { STAGES } from '../data/stages';
+import { SIDE_STAGES, STAGES } from '../data/stages';
 import { UNITS } from '../data/units';
 import { RANGED_THRESHOLD, type CombatStats, type Look } from '../data/types';
 import { drawCharacter } from '../render/characters';
@@ -15,7 +15,7 @@ const SKILL_KEYS = ['W', 'E', 'R', 'T'];
 /** 열린 스테이지에서 등장하는 적 = 만나 본 적 */
 function seenEnemies(save: SaveData): Set<string> {
   const seen = new Set<string>();
-  for (const s of STAGES) {
+  for (const s of [...STAGES, ...SIDE_STAGES]) {
     if (!isStageOpen(save, s)) continue;
     for (const p of s.pool) seen.add(p.id);
     if (s.boss) seen.add(s.boss);
