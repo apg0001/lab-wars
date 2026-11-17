@@ -1,10 +1,10 @@
 import type { CombatStats, UnitDef } from '../data/types';
 import { UNITS } from '../data/units';
-import { FINAL_STAGE, STAGES, legacyOrder, type StageDef } from '../data/stages';
+import { FINAL_STAGE, STAGES, legacyOrder, v2Order, type StageDef } from '../data/stages';
 import { FACILITIES, SKILLS, facilityCost, type FacilityId, type SkillDef } from '../data/upgrades';
 
 /** 2: 7챕터 캠페인 (0.8.0) */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface UnitProgress {
   level: number;
@@ -67,6 +67,26 @@ export function normalizeSave(raw: unknown): SaveData {
         const avg = Math.max(1, Math.round(oldStars.reduce((a, b) => a + b, 0) / oldStars.length));
         for (const s of STAGES) if (s.order <= reach) base.stars[s.id] = avg;
         migrationNotes.push(`📚 캠페인이 학부생~포닥 7챕터로 늘어났어요. 예전 진행도에 맞춰 ${STAGES[reach]!.id}까지 클리어로 옮겼어요.`);
+      }
+    } else if (num(r.v, 1) < 3) {
+      // 7챕터×6 → 7챕터×10: 깬 스테이지는 그대로 인정하고, 사이에 새로 생긴 스테이지도 클리어로 채운다.
+      let reach = -1;
+      const at: number[] = [];
+      for (const [id, v] of Object.entries(r.stars)) {
+        const o = v2Order(id);
+        const st = starOf(v);
+        if (o === null || st === 0) continue;
+        reach = Math.max(reach, o);
+        at[o] = st;
+      }
+      if (reach >= 0) {
+        // 새로 생긴 스테이지는 바로 다음에 있는 예전 스테이지의 별을 따른다
+        let carry = 3;
+        for (let o = reach; o >= 0; o--) {
+          if (at[o]) carry = at[o]!;
+          base.stars[STAGES[o]!.id] = at[o] ?? carry;
+        }
+        migrationNotes.push(`📚 챕터마다 스테이지가 10개로 늘었어요. 깬 진행도는 그대로 ${STAGES[reach]!.id}까지 인정했어요. 새 장면은 📜 스토리에서 볼 수 있어요.`);
       }
     } else {
       for (const s of STAGES) base.stars[s.id] = starOf(r.stars[s.id]);
