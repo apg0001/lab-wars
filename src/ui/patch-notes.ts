@@ -1,6 +1,7 @@
 import { GAME_VERSION, PATCH_NOTES, unseenNotes, type PatchNote } from '../data/patch-notes';
 import { kv } from '../save/store';
 import { h } from './dom';
+import { donateLink } from './donate';
 import { tr } from '../i18n';
 
 /** 마지막으로 본 패치노트 버전을 담는 키 (App 설정과 따로 둬서 서로 덮어쓰지 않게) */
@@ -20,6 +21,7 @@ function openPanel(host: Element, title: string, notes: PatchNote[], extra?: HTM
   overlay.append(h('div.panel.patch-panel', {},
     h('h2', {}, title),
     h('div.patch-list', {}, ...notes.map(noteCard)),
+    donateLink('patch-donate'),
     h('div.btn-row', {}, extra ?? null, h('button.btn.primary', { onclick: () => overlay.remove() }, tr('확인', 'OK'))),
   ));
   host.append(overlay);

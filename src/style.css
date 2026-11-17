@@ -308,8 +308,13 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .title-actions { display: flex; flex-direction: column; align-items: center; gap: calc(0.8 * var(--u)); }
 .btn.big { font-size: calc(2.4 * var(--u)); padding: calc(1 * var(--u)) calc(3.5 * var(--u)); }
 .title-foot { margin: 0; font-size: calc(1.2 * var(--u)); opacity: 0.6; }
+.title-credits { position: absolute; right: calc(1.4 * var(--u)); bottom: calc(1 * var(--u)); display: flex; gap: calc(0.6 * var(--u)); align-items: center; }
+.donate-link {
+  font-size: calc(1.2 * var(--u)); font-weight: 700; color: #3e2723; text-decoration: none; white-space: nowrap;
+  padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)); border: calc(0.2 * var(--u)) solid var(--ink); border-radius: 999px; background: #ffe812;
+}
+.donate-link.patch-donate { align-self: center; margin-bottom: calc(1 * var(--u)); font-size: calc(1.4 * var(--u)); }
 .title-credit {
-  position: absolute; right: calc(1.4 * var(--u)); bottom: calc(1 * var(--u));
   font-size: calc(1.2 * var(--u)); font-weight: 700; color: var(--ink); opacity: 0.75; text-decoration: none;
   padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)); border: calc(0.2 * var(--u)) solid var(--ink); border-radius: 999px; background: #fffbe8;
 }
@@ -930,7 +935,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .portrait .title-actions .btn.big { max-width: 100%; }
 .portrait .name-input { width: min(calc(34 * var(--u)), 100%); }
 .portrait .title-foot { text-align: center; padding: 0 calc(1 * var(--u)); }
-.portrait .title-credit { right: 50%; transform: translateX(50%); bottom: calc(1.4 * var(--u)); white-space: nowrap; }
+.portrait .title-credits { right: 50%; transform: translateX(50%); bottom: calc(1.4 * var(--u)); white-space: nowrap; }
 
 /* ── 공용 상단 바: 뒤로 · 오른쪽 버튼 / 제목 두 줄 ── */
 .portrait .topbar { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'back right' 'title title'; row-gap: calc(0.4 * var(--u)); padding: calc(1 * var(--u)) calc(1.2 * var(--u)) calc(0.6 * var(--u)); }
@@ -1045,3 +1050,7 @@ html[lang='en'] body { font-weight: 500; }
 .rank-avatar { width: calc(3.4 * var(--u)); height: calc(3.4 * var(--u)); object-fit: contain; flex: none; }
 .rank-badge { display: block; font-size: calc(1.1 * var(--u)); color: #8e5bd0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .portrait .rank-avatar { grid-area: avatar; }
+
+/* ── 장비 지원: 열정 설명 ── */
+.grant { overflow-y: auto; touch-action: pan-y; }
+.passion-help { background: #fff3e0; border: calc(0.2 * var(--u)) dashed #ef6c00; border-radius: calc(0.8 * var(--u)); padding: calc(0.5 * var(--u)) calc(0.8 * var(--u)); line-height: 1.35; }

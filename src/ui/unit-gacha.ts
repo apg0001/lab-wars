@@ -143,7 +143,7 @@ export function gearTab(ctx: GearCtx): HTMLElement {
       h('div.rate-list.gear-rates', {}, ...GACHA_RARITIES.slice().reverse().map((r) => h(`div.rate.u-${r}`, {},
         h('b', {}, rarityLabel(r)),
         h('span', {}, `${Math.round(UNIT_RATES[r] * 100)}%`),
-        h('small', {}, tr(`중복 열정 · 가득 차면 {coin}${DUP_REFUND[r]}`, `Dupes: Passion · then {coin}${DUP_REFUND[r]}`)),
+        h('small', {}, tr(`중복: 열정 +1 · 열정 ${MAX_PASSION} 뒤엔 {coin}${DUP_REFUND[r]}`, `Dupe: Passion +1 · after ${MAX_PASSION}, {coin}${DUP_REFUND[r]}`)),
       ))),
       h('div.gear-lineup', {}, ...GACHA_UNITS.map((u) => {
         const owned = isUnitOwned(s, u);
@@ -151,6 +151,7 @@ export function gearTab(ctx: GearCtx): HTMLElement {
           h('img', { src: pic(u, owned), alt: '' }),
           owned ? passionPips(passionOf(s, u.id)) : h('span.q', {}, '?'));
       })),
+      h('p.grant-note.passion-help', {}, tr(`{fire} 열정이란? 이미 가진 장비가 또 나오면 그 장비의 열정이 1 올라요. 열정 1마다 마지막 단계(Mk.III)의 레벨 상한이 1 올라가요 (15 → 최대 ${15 + MAX_PASSION}). 열정 ${MAX_PASSION}을 다 채운 뒤 또 나오면 연구비로 돌려받아요. 장비 아래 점이 지금 열정이에요.`, `{fire} What's Passion? Pulling gear you already own gives it +1 Passion. Each Passion raises its final-tier (Mk.III) level cap by 1 (15 → up to ${15 + MAX_PASSION}). Once Passion hits ${MAX_PASSION}, further dupes refund funding. The dots under each gear show its Passion.`)),
       h('p.muted.grant-note', {}, tr('{sparkle} 10회 뽑기는 에픽 이상 1개 보장 · {ticket} 무료 뽑기권: 보스 첫 클리어마다 1장, 무한 모드 10판마다 1장', '{sparkle} A 10-draw guarantees Epic or better · {ticket} Free tickets: 1 per first boss clear, 1 per 10 Endless rounds')),
     ),
     h('div.submit-box.gear-box', {},
