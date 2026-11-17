@@ -149,6 +149,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   let draftCards: HTMLElement[] = [];
   let draftReady = false;
   let draftTimer = 0;
+  /** 지금 눌려 있는 키, 그리고 추첨 창이 뜰 때 이미 눌려 있던 키 */
+  const held = new Set<string>();
+  let heldAtDraft = new Set<string>();
   const overlay = h('div.overlay');
   overlay.hidden = true;
 
@@ -188,6 +191,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   /** 뒤집힌 봉투 3장을 깔고, 차례로 뒤집어 공개한다. 전투는 고를 때까지 멈춰 있다. */
   function showDraft(hand: CardDef[]): void {
     armed = null;
+    // 창이 뜰 때 이미 누르고 있던 키(소환 연타)는 손을 뗄 때까지 카드 선택으로 받지 않는다
+    heldAtDraft = new Set(held);
     draftReady = false;
     draftCards = hand.map((c, i) => h(`button.draft-card.r-${c.rarity}`, { style: `--i:${i}`, onclick: () => tapCard(i), title: c.name },
       h('div.card-inner', {},
@@ -284,11 +289,13 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const onKey = (e: KeyboardEvent): void => {
     // 한글 입력 상태에서도 동작하도록 글자(e.key)가 아니라 물리 키 위치(e.code)로 판정한다.
     const k = keyOf(e);
+    held.add(k);
     if (k === 'escape' || k === 'p') return setPaused(!paused);
     if (paused) return;
     if (battle.draft && !draftLayer.hidden) {
       const di = ['1', '2', '3'].indexOf(k);
-      if (di >= 0) tapCard(di);
+      // 키 반복 입력이나 창이 뜨기 전부터 누르고 있던 키는 무시: 새로 누른 키만 카드를 고른다
+      if (di >= 0 && !e.repeat && !heldAtDraft.has(k)) tapCard(di);
       return;
     }
     if (k === 'q') battle.brew();
@@ -299,7 +306,16 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (k === 'arrowleft' || k === 'a') camX = clamp(camX - 60, 0, maxCam);
     if (k === 'arrowright' || k === 'd') camX = clamp(camX + 60, 0, maxCam);
   };
+  const onKeyUp = (e: KeyboardEvent): void => {
+    const k = keyOf(e);
+    held.delete(k);
+    heldAtDraft.delete(k);
+  };
+  // 창을 벗어나면 keyup을 못 받으니 눌림 기록을 비운다
+  const onBlur = (): void => { held.clear(); heldAtDraft.clear(); };
   window.addEventListener('keydown', onKey);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
 
   // ── 캔버스 해상도 ──
   const resize = (): void => {
@@ -450,6 +466,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     window.clearTimeout(draftTimer);
     ro.disconnect();
     window.removeEventListener('keydown', onKey);
+    window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('blur', onBlur);
     document.removeEventListener('visibilitychange', onVis);
     audio.duck(false);
   }
