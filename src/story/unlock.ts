@@ -1,0 +1,28 @@
+import { FINAL_STAGE, STAGES, type StageDef } from '../data/stages';
+import { SCENE_ORDER, SCENES } from './script';
+
+/** 이 스테이지 앞뒤로 나오는 장면 id들 */
+export function scenesOfStage(stage: StageDef): { before: string[]; after: string[] } {
+  if (stage.kind === 'endless') return { before: [], after: [] };
+  const before = [
+    stage.index === 1 ? `ch${stage.chapter}-intro` : '',
+    stage.kind !== 'normal' && stage.kind !== 'boss' ? `ev-${stage.kind}` : '',
+    stage.kind === 'boss' ? `ch${stage.chapter}-boss` : '',
+  ].filter((id) => id && SCENES[id]);
+  const after = stage.kind === 'boss' ? [stage.id === FINAL_STAGE.id ? 'ending' : `ch${stage.chapter}-clear`].filter((id) => SCENES[id]) : [];
+  return { before, after };
+}
+
+/**
+ * 다시 보기에 열 장면: 직접 본 장면 + 이미 클리어한 스테이지의 장면.
+ * (예전 진행도를 옮겨 온 계정도 깬 만큼 스토리를 볼 수 있게)
+ */
+export function unlockedScenes(save: { seen: string[]; stars: Record<string, number> }): string[] {
+  const open = new Set(save.seen);
+  for (const st of STAGES) {
+    if (!(save.stars[st.id] ?? 0)) continue;
+    const { before, after } = scenesOfStage(st);
+    for (const id of [...before, ...after]) open.add(id);
+  }
+  return SCENE_ORDER.filter((id) => open.has(id));
+}

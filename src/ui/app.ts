@@ -1,4 +1,4 @@
-import { CHAPTERS, FINAL_STAGE, STAGES, STAGE_BY_ID, endlessStage, type StageDef, type StageKind } from '../data/stages';
+import { CHAPTERS, STAGES, STAGE_BY_ID, endlessStage, type StageDef, type StageKind } from '../data/stages';
 import { ENEMY_BY_ID } from '../data/enemies';
 import { UNITS } from '../data/units';
 import { FACILITIES, SKILLS, facilityCost } from '../data/upgrades';
@@ -18,7 +18,8 @@ import { mountGallery } from './gallery';
 import { isFullscreen, onFullscreenChange, shouldOfferFullscreen, toggleFullscreen } from './fullscreen';
 import { h, fmt } from './dom';
 import { portrait } from './icons';
-import { SCENES, SCENE_ORDER, type Scene } from '../story/script';
+import { SCENES, type Scene } from '../story/script';
+import { scenesOfStage, unlockedScenes } from '../story/unlock';
 import { playScenes } from '../story/player';
 
 const KIND_ICON: Partial<Record<StageKind, string>> = { vacation: '🏖️', conference: '🎤', thesis: '📝' };
@@ -383,13 +384,8 @@ export class App {
 
   /** 이 스테이지에 들어가기 전에 볼 장면 (아직 안 본 것만) */
   private scenesBefore(stage: StageDef): Scene[] {
-    if (stage.kind === 'endless') return [];
-    const ids = [
-      stage.index === 1 ? `ch${stage.chapter}-intro` : '',
-      stage.kind !== 'normal' && stage.kind !== 'boss' ? `ev-${stage.kind}` : '',
-      stage.kind === 'boss' ? `ch${stage.chapter}-boss` : '',
-    ];
-    return ids.filter((id) => id && SCENES[id] && !this.save.seen.includes(id)).map((id) => SCENES[id]!);
+    const ids = scenesOfStage(stage).before;
+    return ids.filter((id) => !this.save.seen.includes(id)).map((id) => SCENES[id]!);
   }
 
   private play(scenes: Scene[], then: () => void, chapter: number): void {
@@ -407,7 +403,7 @@ export class App {
   private showStory(): void {
     const overlay = h('div.overlay');
     const close = (): void => overlay.remove();
-    const seen = SCENE_ORDER.filter((id) => this.save.seen.includes(id));
+    const seen = unlockedScenes(this.save);
     const chapterOf = (id: string): number => Number(/^ch(\d)/.exec(id)?.[1] ?? this.chapter);
     overlay.append(h('div.panel.story-list', {},
       h('h2', {}, '📜 스토리 다시 보기'),
@@ -449,7 +445,7 @@ export class App {
       actions: (win) => {
         const next = stage.kind === 'endless' ? endlessStage(stage.index + 1) : STAGES[stage.order + 1];
         // 보스를 처음 이기면 챕터 마무리 장면, 마지막 보스면 엔딩
-        const clearId = stage.kind === 'boss' ? (stage.id === FINAL_STAGE.id ? 'ending' : `ch${stage.chapter}-clear`) : '';
+        const clearId = scenesOfStage(stage).after[0] ?? '';
         const clearScene = win && clearId && !this.save.seen.includes(clearId) ? SCENES[clearId] : undefined;
         if (clearScene?.id === 'ending') {
           return [{ label: '🎓 엔딩 보기', primary: true, run: () => {
