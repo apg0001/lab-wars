@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.20.2',
+    date: '2026-11-18',
+    title: '교수님들의 연륜',
+    items: [
+      '{prof} 전공 모드 교수님들이 연륜 있어졌어요. 흰머리와 주름, 안경까지. 젊은 교수님은 두 분만 남았어요',
+    ],
+    en: {
+      title: 'Seasoned Faculty',
+      items: [
+        '{prof} Major Mode professors now look their years: grey hair, wrinkles, glasses. Only two young professors remain',
+      ],
+    },
+  },
+  {
     version: '0.20.1',
     date: '2026-11-18',
     title: '화이트보드가 날아온다',

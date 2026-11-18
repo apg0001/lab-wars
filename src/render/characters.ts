@@ -609,26 +609,30 @@ interface LecSpec {
   /** 속눈썹 */
   lash?: boolean;
   tie?: string;
+  /** 연륜: 눈가·팔자 주름, 눈 밑 그늘 (젊은 교수님 둘만 빠진다) */
+  old?: boolean;
 }
 
 /** 교수님 16명의 생김새: 머리·옷·안경·수염. 옷 색은 look.color */
 const LEC: Record<ProfVariant, LecSpec> = {
+  // 젊은 교수님 둘: 새내기 담당, 금요일 배포 담당
   hanbit: { hair: 'bowl', hc: '#212121', wear: 'hoodie' },
-  jeonggyu: { hair: 'bob', hc: '#6d4c41', wear: 'cardigan', specs: 'square', lash: true },
   baepo: { hair: 'buzz', hc: '#ffe082', wear: 'hoodie', beard: 'stubble' },
-  gomin: { hair: 'curly', hc: '#8d6e63', wear: 'cardigan', lash: true },
-  parksort: { hair: 'side', hc: '#263238', wear: 'suit', specs: 'square', tie: '#c62828' },
-  leebin: { hair: 'flat', hc: '#9e9e9e', wear: 'turtle', specs: 'round' },
-  bangeq: { hair: 'bald', hc: '#f5f5f5', wear: 'vest', beard: 'full', specs: 'round' },
-  jocond: { hair: 'long', hc: '#1c1c1c', wear: 'blazer', lash: true },
-  sangsok: { hair: 'bun', hc: '#bdbdbd', wear: 'blazer', specs: 'round', lash: true },
-  shinsig: { hair: 'messy', hc: '#795548', wear: 'coat' },
-  woopri: { hair: 'pony', hc: '#a1662f', wear: 'vest', lash: true },
-  jeonrate: { hair: 'quiff', hc: '#37474f', wear: 'turtle' },
-  noise: { hair: 'cloud', hc: '#eeeeee', wear: 'cardigan', beard: 'mus' },
-  yangq: { hair: 'pixie', hc: '#c0562b', wear: 'coat', specs: 'square', lash: true },
-  baekprop: { hair: 'wavy', hc: '#5d4037', wear: 'hoodie', beard: 'goatee' },
-  seoboan: { hair: 'slick', hc: '#212121', wear: 'suit', specs: 'shades', tie: '#00e676' },
+  // 나머지는 연륜 있게: 흰머리·희끗한 머리, 주름
+  jeonggyu: { hair: 'bob', hc: '#9e9e9e', wear: 'cardigan', specs: 'square', lash: true, old: true },
+  gomin: { hair: 'curly', hc: '#a1a1a1', wear: 'cardigan', specs: 'round', lash: true, old: true },
+  parksort: { hair: 'side', hc: '#757575', wear: 'suit', specs: 'square', tie: '#c62828', old: true },
+  leebin: { hair: 'flat', hc: '#bdbdbd', wear: 'turtle', specs: 'round', old: true },
+  bangeq: { hair: 'bald', hc: '#f5f5f5', wear: 'vest', beard: 'full', specs: 'round', old: true },
+  jocond: { hair: 'long', hc: '#8e8e8e', wear: 'blazer', specs: 'square', lash: true, old: true },
+  sangsok: { hair: 'bun', hc: '#d6d6d6', wear: 'blazer', specs: 'round', lash: true, old: true },
+  shinsig: { hair: 'messy', hc: '#e0e0e0', wear: 'coat', old: true },
+  woopri: { hair: 'pony', hc: '#8d8d8d', wear: 'vest', specs: 'round', lash: true, old: true },
+  jeonrate: { hair: 'quiff', hc: '#9e9e9e', wear: 'turtle', specs: 'square', old: true },
+  noise: { hair: 'cloud', hc: '#eeeeee', wear: 'cardigan', beard: 'mus', old: true },
+  yangq: { hair: 'pixie', hc: '#a7a7a7', wear: 'coat', specs: 'square', lash: true, old: true },
+  baekprop: { hair: 'wavy', hc: '#9e9e9e', wear: 'cardigan', beard: 'goatee', specs: 'round', old: true },
+  seoboan: { hair: 'slick', hc: '#757575', wear: 'suit', specs: 'shades', tie: '#00e676', old: true },
 };
 
 /** 앞머리 덮개: 뒤쪽은 back까지, 이마 쪽은 front에서 fringe 높이로 */
@@ -949,6 +953,27 @@ function lecFace(ctx: Ctx, s: LecSpec, hy: number, accent: string): void {
     blob(ctx, 6, hy + 12, 3.2, 3.5, s.hc);
   }
   if (s.specs !== 'shades') eyes(ctx, 3, hy, 4.5, false, 1.8);
+  if (s.old) {
+    // 연륜: 눈가 주름, 눈 밑 그늘, 팔자 주름
+    ctx.strokeStyle = 'rgba(120,80,60,.55)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    for (const [x, d] of [[-6.5, -1], [12.5, 1]] as const) {
+      ctx.moveTo(x, hy - 1.5);
+      ctx.lineTo(x + d * 2.2, hy - 2.6);
+      ctx.moveTo(x, hy + 0.2);
+      ctx.lineTo(x + d * 2.4, hy + 0.4);
+    }
+    for (const ex of [-1.5, 7.5]) {
+      ctx.moveTo(ex - 1.8, hy + 3);
+      ctx.quadraticCurveTo(ex, hy + 4.2, ex + 1.8, hy + 3);
+    }
+    ctx.moveTo(-1, hy + 5);
+    ctx.quadraticCurveTo(-2.5, hy + 8, -1, hy + 10.5);
+    ctx.moveTo(11, hy + 6);
+    ctx.quadraticCurveTo(12.5, hy + 8.5, 11, hy + 11);
+    ctx.stroke();
+  }
   if (s.lash) {
     line(ctx, 1.2);
     ctx.beginPath();
