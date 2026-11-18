@@ -378,6 +378,17 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 
 .stage-info { max-width: calc(70 * var(--u)); }
 .boss-warn { color: #c62828; }
+.power-badge { display: inline-flex; align-items: center; gap: calc(0.3 * var(--u)); padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)); border: calc(0.2 * var(--u)) solid #37323d; border-radius: calc(2 * var(--u)); background: #fff3c4; font-weight: 700; font-size: calc(1.5 * var(--u)); white-space: nowrap; }
+.lab-tabs .power-badge { margin-left: auto; align-self: center; }
+.power-compare { display: flex; flex-direction: column; align-items: center; gap: calc(0.4 * var(--u)); margin: calc(0.4 * var(--u)) 0; }
+.power-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: calc(0.5 * var(--u)); font-size: calc(1.6 * var(--u)); }
+.power-verdict { padding: calc(0.15 * var(--u)) calc(0.8 * var(--u)); border-radius: calc(2 * var(--u)); font-weight: 700; font-size: calc(1.4 * var(--u)); border: calc(0.2 * var(--u)) solid currentColor; }
+.power-verdict.v-easy { color: #2e7d32; background: #e8f5e9; }
+.power-verdict.v-fair { color: #a86a00; background: #fff8e1; }
+.power-verdict.v-hard { color: #c62828; background: #ffebee; }
+.power-tip { margin: 0; font-size: calc(1.35 * var(--u)); }
+.power-hints { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(0.4 * var(--u)); }
+.power-hint { padding: calc(0.15 * var(--u)) calc(0.7 * var(--u)); border: calc(0.15 * var(--u)) dashed #8d8494; border-radius: calc(1 * var(--u)); font-size: calc(1.35 * var(--u)); }
 .enemy-row { display: flex; gap: calc(0.5 * var(--u)); justify-content: center; flex-wrap: wrap; margin: calc(0.5 * var(--u)) 0 calc(1 * var(--u)); }
 .enemy-row figure { margin: 0; width: calc(7.5 * var(--u)); }
 .enemy-row img { width: calc(6 * var(--u)); height: calc(6 * var(--u)); object-fit: contain; }

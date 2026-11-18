@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.21.0',
+    date: '2026-11-18',
+    title: '전투력 측정기 도입',
+    items: [
+      '{bolt} 전투력이 생겼어요. 편성한 동료의 레벨·진화·장비와 연구실 시설로 계산하고, 편성·연구실 화면 위에 보여요',
+      '{map} 스테이지·과목 정보에 권장 전투력과 판정(여유 · 적정 · 도전)이 나와요. 지면 실력 탓인지 성장 탓인지 가늠해 보세요',
+      '{warn} 공중 적 · 원거리 적 · 맷집 센 적 · 물량 공세 같은 상성 힌트도 함께 보여요',
+    ],
+    en: {
+      title: 'The Power Meter',
+      items: [
+        '{bolt} Introducing Power: calculated from your squad\'s levels, evolutions, gear and Lab facilities, shown at the top of the Squad and Lab screens',
+        '{map} Stage and course info now show recommended power and a verdict (Comfortable · Fair · Tough), so you can tell whether a loss was skill or growth',
+        '{warn} Matchup hints too: flyers, ranged foes, tanky foes and swarms',
+      ],
+    },
+  },
+  {
     version: '0.20.3',
     date: '2026-11-18',
     title: '복합기 도입',
