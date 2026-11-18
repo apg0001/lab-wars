@@ -35,6 +35,7 @@ import { audioIcon, showAudioSettings } from './audio-settings';
 import { mountGallery, statTags } from './gallery';
 import { RARITY_RANK, loadPref, sortBar, sortByPref, type SortKey } from './sort';
 import { maybeShowUpdates, showPatchNotes } from './patch-notes';
+import { powerBadge, powerCompare } from './power';
 import { fullscreenButton } from './fullscreen';
 import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
@@ -659,7 +660,8 @@ export class App {
       s.kind === 'endless'
         ? h('p', {}, s.index > this.save.endless ? tr(`첫 돌파 보상 {coin} ${fmt(s.reward)}`, `New record reward {coin} ${fmt(s.reward)}`) : tr(`재도전 보상 {coin} ${fmt(s.reward * 0.4)} + 처치 보상`, `Replay reward {coin} ${fmt(s.reward * 0.4)} + kill rewards`))
         : h('p', {}, first ? tr(`첫 클리어 보상 {coin} 최대 ${fmt(s.reward * 1.2)}`, `First clear reward {coin} up to ${fmt(s.reward * 1.2)}`) : tr(`재도전 보상 {coin} 최대 ${fmt(s.reward * 1.2 * REPLAY_MUL)} + 처치 보상`, `Replay reward {coin} up to ${fmt(s.reward * 1.2 * REPLAY_MUL)} + kill rewards`)),
-      h('p.muted', {}, tr(`출전 유닛 ${deck.length}종`, `Deploying ${deck.length} unit types`)),
+      powerCompare(this.save, s),
+      h('p.muted', {}, tr(`출전 유닛 ${deck.length}종`, `Deploying ${deck.length} unit types`), ' ', h('button.btn.small', { onclick: () => { close(); this.showSquad(); } }, tr('{swords} 편성', '{swords} Squad'))),
       h('div.btn-row', {},
         h('button.btn', { onclick: close }, tr('닫기', 'Close')),
         h('button.btn.primary', { onclick: () => { close(); this.startBattle(s); } }, tr('출전!', 'Fight!')),
@@ -921,6 +923,7 @@ export class App {
       h('div.lab-tabs', {},
         h(`button.chapter-tab${tab === 'units' ? '.on' : ''}`, { onclick: () => this.showLab('units') }, tr('{student} 동료', '{student} Labmates')),
         h(`button.chapter-tab${tab === 'facilities' ? '.on' : ''}`, { onclick: () => this.showLab('facilities') }, tr('{remodel} 시설', '{remodel} Facilities')),
+        powerBadge(this.save),
       ),
       grid,
     ));
@@ -984,6 +987,7 @@ export class App {
     return h('div.squad', {},
       h('div.squad-head', {},
         h('b', {}, tr(`전투에 데려갈 동료 (${s.loadout.length}/${LOADOUT_MAX}) · 단축키 1~9`, `Squad for battle (${s.loadout.length}/${LOADOUT_MAX}) · keys 1–9`)),
+        powerBadge(s),
         h('div.presets', {}, ...s.presets.map((pr, i) => h('div.preset', {},
           h('button.btn.small', { disabled: pr.length ? undefined : 'true', onclick: () => act(() => loadPreset(s, i)), title: tr('불러오기', 'Load') }, tr(`프리셋 ${i + 1} (${pr.length})`, `Preset ${i + 1} (${pr.length})`)),
           h('button.btn.small.save-preset', { onclick: () => act(() => savePreset(s, i)), title: tr('지금 편성 저장', 'Save current squad') }, tr('저장', 'Save')),

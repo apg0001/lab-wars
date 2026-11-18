@@ -136,6 +136,8 @@ npm run build      # dist/ 정적 빌드
 
 # 자동 플레이 봇으로 캠페인·외전 전체 밸런스 리포트
 BALANCE_REPORT=1 npx vitest run tests/balance-report.test.ts --disable-console-intercept
+# 밸런스를 바꾼 뒤 스테이지 권장 전투력 표 다시 만들기
+STAGE_POWER_GEN=1 npx vitest run tests/stage-power.test.ts
 ```
 
 - `main`에 병합되면 GitHub Pages로 자동 배포됩니다.
