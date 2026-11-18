@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.22.0',
+    date: '2026-11-18',
+    title: '스펙 시트 공개',
+    items: [
+      '{book} 도감에서 동료를 누르면 레벨·진화별 체력 · 공격력 · 초당 피해 · 전투력 표가 나와요. 지금 내 동료 줄은 칠해져 있어요',
+      '{paper} 도감에서 적을 누르면 그 적이 나오는 스테이지마다 실제 체력 · 공격력을 볼 수 있어요',
+      '{map} 스테이지·과목 정보의 적 그림 아래에 그 판의 체력 · 공격력이 나와요',
+    ],
+    en: {
+      title: 'Spec Sheets Released',
+      items: [
+        '{book} Tap a labmate in the Codex to see HP · ATK · DPS · Power for every level and evolution, with your current row highlighted',
+        '{paper} Tap an enemy in the Codex to see its actual HP · ATK on every stage it appears in',
+        '{map} Stage and course info now show each enemy\'s HP · ATK for that stage',
+      ],
+    },
+  },
+  {
     version: '0.21.0',
     date: '2026-11-18',
     title: '전투력 측정기 도입',

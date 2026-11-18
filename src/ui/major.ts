@@ -1,5 +1,6 @@
 import { h, fmt } from './dom';
 import { powerCompare } from './power';
+import { enemyStatLine } from './stat-tables';
 import { tr } from '../i18n';
 import { portrait } from './icons';
 import { ENEMY_BY_ID } from '../data/enemies';
@@ -108,7 +109,7 @@ export function showCourseInfo(ctx: MajorCtx, co: CourseDef): void {
     h('p.course-desc', {}, ct.desc),
     h('p.stage-note', {}, ct.rule),
     h('p.muted', {}, tr('등장하는 적', 'Enemies')),
-    h('div.enemy-row', {}, ...enemyIds.filter((id) => ENEMY_BY_ID[id]).map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name)))),
+    h('div.enemy-row', {}, ...enemyIds.filter((id) => ENEMY_BY_ID[id]).map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name), enemyStatLine(id, st)))),
     powerCompare(ctx.save, st),
     h('p', {}, status),
     h('p.muted', {}, tr(`첫 이수 보상 {coin} 최대 ${fmt(st.reward * 1.2)}`, `First pass reward {coin} up to ${fmt(st.reward * 1.2)}`)),
