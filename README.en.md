@@ -132,6 +132,8 @@ npm run build      # static build in dist/
 
 # Full campaign + Side Story balance report via the auto-play bot
 BALANCE_REPORT=1 npx vitest run tests/balance-report.test.ts --disable-console-intercept
+# Regenerate the per-stage recommended power table after balance changes
+STAGE_POWER_GEN=1 npx vitest run tests/stage-power.test.ts
 ```
 
 - Merging into `main` deploys to GitHub Pages automatically.
