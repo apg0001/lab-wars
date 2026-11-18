@@ -117,7 +117,9 @@ export interface Fighter {
 }
 
 export type ProjectileKind =
-  | 'bug' | 'flask' | 'paper' | 'laser' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt' | 'wave' | 'coolant'
+  | 'bug' | 'flask' | 'paper' | 'laser'
+  // 프린터 포탑 단계별: 잉크 방울 · 토너 출력물 · 복합기 문서 뭉치
+  | 'ink' | 'toner' | 'scan' | 'comment' | 'code' | 'bomb' | 'notif' | 'heal' | 'book' | 'bolt' | 'wave' | 'coolant'
   // 장비 22종·버그 군단
   | 'beam' | 'pulse' | 'spark' | 'dot' | 'solder' | 'photon' | 'qubit'
   // 무한 모드 화이트보드 전초기지의 보드마커
@@ -1281,11 +1283,14 @@ export class Battle {
     if (!best) return;
     b.towerCd = ally ? 0.8 : 1.2;
     const x0 = ally ? 105 : WORLD_W - 105;
-    this.emit({ type: 'shoot', kind: ally ? 'paper' : 'laser', x: x0, side: b.side, tower: true });
+    // 프린터는 강화 단계마다 외형과 투사체가 바뀐다 (피해량은 그대로, 복합기만 작은 범위 피해)
+    const tier = this.loadout.printerTier ?? 1;
+    const shot: ProjectileKind = ally ? (tier === 3 ? 'scan' : tier === 2 ? 'toner' : 'ink') : 'laser';
+    this.emit({ type: 'shoot', kind: shot, x: x0, side: b.side, tower: true });
     this.projectiles.push({
-      kind: ally ? 'paper' : 'laser', side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
-      t: 0, dur: 0.1 + bestD / 900, dmg: ally ? this.loadout.printerAtk * this.cardMods.printerAtk : this.towerDmg(),
-      splash: 0, buildingMul: 1, targetUid: best.uid, hitsBase: false, arc: 0,
+      kind: shot, side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
+      t: 0, dur: (ally && tier === 2 ? 0.05 : 0.1) + bestD / (ally && tier === 2 ? 1300 : 900), dmg: ally ? this.loadout.printerAtk * this.cardMods.printerAtk : this.towerDmg(),
+      splash: ally && tier === 3 ? 40 : 0, buildingMul: 1, targetUid: best.uid, hitsBase: false, arc: 0,
       power: ally ? undefined : this.laserTier,
     });
   }

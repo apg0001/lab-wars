@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.20.3',
+    date: '2026-11-18',
+    title: '복합기 도입',
+    items: [
+      '{retry} 전공 모드 재수강 제한을 없앴어요. 어떤 학점이든 몇 번이든 다시 들을 수 있고, A+까지 받을 수 있어요. 더 좋은 학점이 남아요',
+      '{printer} 프린터 포탑이 강화 단계마다 바뀌어요: 잉크젯(0~3강) → 레이저 프린터(4~7강) → 복합기(8강~)',
+      '{paper} 투사체도 잉크 방울 → 빠른 토너 출력물 → 문서 뭉치로 바뀌고, 복합기는 작은 범위 피해를 줘요',
+    ],
+    en: {
+      title: 'The Multifunction Upgrade',
+      items: [
+        '{retry} Major mode retakes are now unlimited: retake any course as often as you like, up to an A+. Your best grade stays',
+        '{printer} The printer turret now changes as you upgrade it: inkjet (Lv0–3) → laser printer (Lv4–7) → multifunction printer (Lv8+)',
+        '{paper} Its shots change too: ink drops → fast toner printouts → stapled document stacks, and the multifunction printer deals small splash damage',
+      ],
+    },
+  },
+  {
     version: '0.20.2',
     date: '2026-11-18',
     title: '교수님들의 연륜',

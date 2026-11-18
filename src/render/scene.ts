@@ -60,7 +60,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   else drawBackdrop(ctx, camX);
   ctx.translate(-camX, 0);
   drawPrinterRange(ctx, ALLY_FRONT + b.loadout.printerRange);
-  withBaseShake(ctx, b.ally, () => drawLab(ctx, b.ally, time));
+  withBaseShake(ctx, b.ally, () => drawLab(ctx, b.ally, time, b.loadout.printerTier ?? 1));
   withBaseShake(ctx, b.enemy, () => drawOffice(ctx, b.enemy, time));
 
   // 지상 → 공중 순, 같은 층은 깊이(y) 순으로 그린다
@@ -280,7 +280,7 @@ function crack(ctx: Ctx, base: Base, x: number, w: number): void {
   ctx.stroke();
 }
 
-function drawLab(ctx: Ctx, base: Base, time: number): void {
+function drawLab(ctx: Ctx, base: Base, time: number, printerTier: 1 | 2 | 3 = 1): void {
   const x = 30;
   const w = ALLY_FRONT - x;
   const top = GROUND_Y - 230;
@@ -318,20 +318,101 @@ function drawLab(ctx: Ctx, base: Base, time: number): void {
   ctx.fillStyle = INK;
   ctx.font = 'bold 13px Jua, sans-serif';
   ctx.fillText(tr('연구실', 'LAB'), x + 25, top + 106);
-  // 지붕의 프린터 포탑
-  ctx.fillStyle = '#eceff1';
-  ctx.beginPath();
-  ctx.roundRect(x + 45, top - 30, 60, 30, 5);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(x + 58, top - 40, 34, 12);
-  ctx.strokeRect(x + 58, top - 40, 34, 12);
-  ctx.fillStyle = '#66bb6a';
-  ctx.beginPath();
-  ctx.arc(x + 95, top - 15, 3, 0, Math.PI * 2);
-  ctx.fill();
+  // 지붕의 프린터 포탑: 강화 단계마다 잉크젯 → 레이저 → 복합기
+  drawRoofPrinter(ctx, x + 75, top, printerTier, time);
   crack(ctx, base, x, w);
+  ctx.restore();
+}
+
+/** 지붕 프린터 (cx: 가운데, roof: 지붕 높이). 1 잉크젯 · 2 레이저 · 3 복합기 */
+function drawRoofPrinter(ctx: Ctx, cx: number, roof: number, tier: 1 | 2 | 3, time: number): void {
+  ctx.save();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  const blink = Math.sin(time * 4) > 0;
+  if (tier === 1) {
+    // 잉크젯: 작고 둥근 가정용, 뒤에 용지 받침, 앞에 CMYK 잉크 창
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 14, roof - 44, 28, 16);
+    ctx.strokeRect(cx - 14, roof - 44, 28, 16);
+    ctx.fillStyle = '#eceff1';
+    ctx.beginPath();
+    ctx.roundRect(cx - 30, roof - 30, 60, 30, 8);
+    ctx.fill();
+    ctx.stroke();
+    ['#00bcd4', '#e91e63', '#ffeb3b', '#212121'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(cx - 22 + i * 8, roof - 20, 6, 8);
+    });
+    ctx.fillStyle = blink ? '#66bb6a' : '#a5d6a7';
+    ctx.beginPath();
+    ctx.arc(cx + 20, roof - 16, 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (tier === 2) {
+    // 레이저: 각진 진회색 사무용, 앞 패널 화면과 빨간 레이저 표시등
+    ctx.fillStyle = '#546e7a';
+    ctx.beginPath();
+    ctx.roundRect(cx - 34, roof - 40, 68, 40, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#37474f';
+    ctx.fillRect(cx - 34, roof - 46, 68, 8);
+    ctx.strokeRect(cx - 34, roof - 46, 68, 8);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 20, roof - 52, 40, 7);
+    ctx.strokeRect(cx - 20, roof - 52, 40, 7);
+    ctx.fillStyle = '#b2ff59';
+    ctx.fillRect(cx - 26, roof - 32, 22, 11);
+    ctx.strokeRect(cx - 26, roof - 32, 22, 11);
+    ctx.fillStyle = blink ? '#ff1744' : '#ff8a80';
+    ctx.beginPath();
+    ctx.arc(cx + 24, roof - 26, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#eceff1';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillText('LASER', cx + 2, roof - 8);
+  } else {
+    // 복합기: 크고 높은 몸체 + 스캐너 덮개 + 자동 급지대 + 터치 패널 + 배출 트레이
+    ctx.fillStyle = '#eceff1';
+    ctx.beginPath();
+    ctx.roundRect(cx - 40, roof - 58, 80, 58, 5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(cx - 40, roof - 30, 80, 6);
+    ctx.strokeRect(cx - 40, roof - 30, 80, 6);
+    ctx.fillStyle = '#cfd8dc';
+    ctx.fillRect(cx - 40, roof - 18, 80, 6);
+    ctx.strokeRect(cx - 40, roof - 18, 80, 6);
+    // 스캐너 덮개와 자동 급지대(종이 몇 장)
+    ctx.fillStyle = '#607d8b';
+    ctx.fillRect(cx - 42, roof - 66, 84, 9);
+    ctx.strokeRect(cx - 42, roof - 66, 84, 9);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 30, roof - 76, 36, 10);
+    ctx.strokeRect(cx - 30, roof - 76, 36, 10);
+    // 스캔 불빛
+    ctx.fillStyle = 'rgba(105, 240, 174, 0.8)';
+    ctx.fillRect(cx - 40 + ((time * 50) % 80), roof - 58, 4, 26);
+    // 터치 패널
+    ctx.fillStyle = '#263238';
+    ctx.fillRect(cx + 10, roof - 54, 24, 16);
+    ctx.strokeRect(cx + 10, roof - 54, 24, 16);
+    ctx.fillStyle = blink ? '#40c4ff' : '#80d8ff';
+    ctx.fillRect(cx + 13, roof - 51, 18, 10);
+    // 배출 트레이
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(cx + 40, roof - 40);
+    ctx.lineTo(cx + 56, roof - 46);
+    ctx.lineTo(cx + 56, roof - 38);
+    ctx.lineTo(cx + 40, roof - 32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -760,6 +841,47 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
       ctx.fill();
       ctx.stroke();
       break;
+    case 'ink': {
+      // 잉크 방울: CMYK 색이 번갈아
+      const c = ['#00bcd4', '#e91e63', '#fdd835', '#212121'][Math.floor(p.x0 + p.x1) % 4]!;
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(0, -8);
+      ctx.quadraticCurveTo(7, 2, 0, 6);
+      ctx.quadraticCurveTo(-7, 2, 0, -8);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'toner': {
+      // 레이저 출력물: 빠르게 날아가는 인쇄된 종이 + 토너 잔상
+      ctx.fillStyle = 'rgba(33,33,33,0.25)';
+      ctx.fillRect(-22, -2, 16, 4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-7, -9, 14, 18);
+      ctx.strokeRect(-7, -9, 14, 18);
+      ctx.fillStyle = '#212121';
+      for (let i = 0; i < 4; i++) ctx.fillRect(-4, -6 + i * 4, i === 3 ? 5 : 8, 1.6);
+      break;
+    }
+    case 'scan': {
+      // 복합기 문서 뭉치: 세 장이 부채꼴로 + 스테이플러 심
+      ctx.rotate(k * 4);
+      for (let i = -1; i <= 1; i++) {
+        ctx.save();
+        ctx.rotate(i * 0.35);
+        ctx.fillStyle = i === 0 ? '#fff' : '#f1f8e9';
+        ctx.fillRect(-7, -10, 14, 18);
+        ctx.strokeRect(-7, -10, 14, 18);
+        ctx.restore();
+      }
+      ctx.strokeStyle = '#90a4ae';
+      ctx.beginPath();
+      ctx.moveTo(-4, -8);
+      ctx.lineTo(1, -8);
+      ctx.stroke();
+      break;
+    }
     case 'paper':
       ctx.rotate(k * 6);
       ctx.fillStyle = '#fff';
