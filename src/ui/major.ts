@@ -88,7 +88,9 @@ export function showCourseInfo(ctx: MajorCtx, co: CourseDef): void {
   const status = !g
     ? tr('처음 듣는 과목이에요. 이기면 연구실 체력으로 학점이 매겨지고, 지면 F예요.', 'First time taking this. Win and your Lab\'s HP sets the grade; lose and it\'s an F.')
     : mode === 'retake'
-      ? tr(`지금 학점 ${g}. 재수강할 수 있어요 (재수강은 최고 ${RETAKE_CAP}).`, `Current grade ${g}. You can retake it (retakes cap at ${RETAKE_CAP}).`)
+      ? (g === RETAKE_CAP
+        ? tr(`지금 학점 ${g}. 이미 최고 학점이지만 몇 번이든 다시 들을 수 있어요.`, `Current grade ${g}. Already the top grade, but you can retake it any time.`)
+        : tr(`지금 학점 ${g}. 몇 번이든 재수강할 수 있고, 더 좋은 학점이 남아요.`, `Current grade ${g}. Retake as many times as you like; your best grade stays.`))
       : tr(`지금 학점 ${g}. 다시 들어도 학점은 그대로예요 (복습).`, `Current grade ${g}. Taking it again won't change the grade (review).`);
   const btn = !g ? tr('{pencil} 수강하기', '{pencil} Take the course') : mode === 'retake' ? tr('{retry} 재수강', '{retry} Retake') : tr('{book} 복습하기', '{book} Review');
   overlay.append(h('div.panel.stage-info.course-info', {},
@@ -121,7 +123,7 @@ export function gradeLines(save: SaveData, r: GradeResult): string[] {
   const g = gpa(save);
   const lines = [
     r.got === 'F'
-      ? tr('{warn} 학점 F… 재수강할 수 있어요 (재수강은 최고 A0).', '{warn} Grade F… you can retake it (retakes cap at A0).')
+      ? tr('{warn} 학점 F… 몇 번이든 재수강할 수 있어요.', '{warn} Grade F… you can retake it as many times as you like.')
       : tr(`{cap} 학점 ${r.got}${r.raw !== r.got ? ` (재수강 상한, 원래 ${r.raw})` : ''} · ${GRADE_POINT[r.got].toFixed(1)}점`, `{cap} Grade ${r.got}${r.raw !== r.got ? ` (retake cap, earned ${r.raw})` : ''} · ${GRADE_POINT[r.got].toFixed(1)} pts`),
   ];
   if (r.mode === 'review') lines.push(tr(`복습이라 학점은 ${r.best} 그대로예요.`, `Review run: your grade stays ${r.best}.`));

@@ -13,10 +13,10 @@ export type Grade = 'A+' | 'A0' | 'B+' | 'B0' | 'C+' | 'C0' | 'D+' | 'D0' | 'F';
 /** 높은 학점부터 */
 export const GRADES: Grade[] = ['A+', 'A0', 'B+', 'B0', 'C+', 'C0', 'D+', 'D0', 'F'];
 export const GRADE_POINT: Record<Grade, number> = { 'A+': 4.5, A0: 4.0, 'B+': 3.5, B0: 3.0, 'C+': 2.5, C0: 2.0, 'D+': 1.5, D0: 1.0, F: 0 };
-/** 재수강하면 받을 수 있는 최고 학점 */
-export const RETAKE_CAP: Grade = 'A0';
-/** 재수강할 수 있는 학점 (이 학점 이하). 그보다 높으면 복습(학점 그대로) */
-export const RETAKE_FROM: Grade = 'C+';
+/** 재수강하면 받을 수 있는 최고 학점 (0.20.3부터 제한 없음: A+까지) */
+export const RETAKE_CAP: Grade = 'A+';
+/** 재수강할 수 있는 학점 (이 학점 이하). 0.20.3부터 모든 학점을 재수강할 수 있다 */
+export const RETAKE_FROM: Grade = 'A+';
 
 /** 교수님 생김새 (src/render/characters.ts 의 lecturer 그림) */
 export type ProfVariant =

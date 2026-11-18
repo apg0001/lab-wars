@@ -457,11 +457,16 @@ export interface BattleLoadout {
   mentalRegen: number;
   printerAtk: number;
   printerRange: number;
+  /** 프린터 포탑 외형 단계: 1 잉크젯(0~3강) · 2 레이저(4~7강) · 3 복합기(8강~) */
+  printerTier?: 1 | 2 | 3;
   /** 동료 재소환 대기시간 배율 */
   cooldownMul: number;
   deck: DeckEntry[];
   skills: SkillDef[];
 }
+
+/** 프린터 강화 단계 → 외형 단계 (잉크젯 → 레이저 → 복합기) */
+export const printerTierOf = (level: number): 1 | 2 | 3 => (level >= 8 ? 3 : level >= 4 ? 2 : 1);
 
 export function makeLoadout(save: SaveData): BattleLoadout {
   const f = save.facilities;
@@ -474,6 +479,7 @@ export function makeLoadout(save: SaveData): BattleLoadout {
     mentalRegen: 1.5 + 0.25 * f.meditate,
     printerAtk: 20 * (1 + 0.2 * f.printer),
     printerRange: 300 + 25 * f.printerRange,
+    printerTier: printerTierOf(f.printer),
     cooldownMul: 1 - 0.04 * f.planner,
     deck: squadDefs(save).map((def) => {
       const p = unitProgress(save, def.id);

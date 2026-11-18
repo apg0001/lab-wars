@@ -55,7 +55,7 @@ export const FACILITIES: FacilityDef[] = [
   { id: 'tumbler', name: '대용량 텀블러', icon: 'tumbler', desc: '최대 카페인 +15. 설거지는 아무도 안 한다.', max: 8, baseCost: 90, en: { name: 'Jumbo Tumbler', desc: 'Max Caffeine +15. Nobody ever washes it.' } },
   { id: 'meditate', name: '명상 앱', icon: 'meditate', desc: '멘탈 충전 +0.25/초 (스킬을 더 자주). 알림은 꺼 두지 않았다.', max: 8, baseCost: 110, en: { name: 'Meditation App', desc: 'Sanity charge +0.25/s (skills more often). Notifications are still on.' } },
   { id: 'planner', name: '일정 관리 앱', icon: 'planner', desc: '동료 재소환 대기시간 −4%. 일정표에 "일정표 정리"가 들어 있다.', max: 8, baseCost: 120, en: { name: 'Planner App', desc: 'Labmate redeploy cooldown −4%. The schedule includes "organize schedule."' } },
-  { id: 'printer', name: '자동 프린터 포탑', icon: 'printer', desc: '포탑 피해 +20%. 용지 걸림도 공격으로 친다.', max: 10, baseCost: 90, en: { name: 'Auto Printer Turret', desc: 'Turret damage +20%. Paper jams count as attacks.' } },
+  { id: 'printer', name: '자동 프린터 포탑', icon: 'printer', desc: '포탑 피해 +20%. 4강에 레이저 프린터, 8강에 복합기로 바뀐다 (복합기는 범위 피해). 용지 걸림도 공격으로 친다.', max: 10, baseCost: 90, en: { name: 'Auto Printer Turret', desc: 'Turret damage +20%. Becomes a laser printer at Lv4 and a multifunction printer at Lv8 (splash). Paper jams count as attacks.' } },
   { id: 'printerRange', name: '프린터 사거리 연장', icon: 'ruler', desc: '포탑 사거리 +25 (기본 300, 최대 600)', max: 12, baseCost: 160, en: { name: 'Printer Range Extender', desc: 'Turret range +25 (base 300, max 600)' } },
 ];
 localizeAll(FACILITIES);

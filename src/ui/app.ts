@@ -467,7 +467,7 @@ export class App {
     overlay.append(h('div.panel.squad-guide.major-intro', {},
       h('h2', {}, tr('{cap} 전공 배정: 정보통신공학', '{cap} Major Assigned: Information & Communication Engineering')),
       h('p', {}, tr('전공 교수님 면담을 무사히 마쳤어요. 이제 진짜 전공 수업이 시작돼요! 과목마다 그 과목다운 규칙이 있어요: 자료구조 시간엔 잡무가 스택처럼 끼어들고, 신호와시스템 시간엔 적이 깜빡이며 보여요.', 'You survived office hours with the Prof. Now the real major courses begin! Every course has a rule true to its subject: in Data Structures, busywork cuts in like a stack; in Signals and Systems, enemies flicker in and out of view.')),
-      h('p', {}, tr('이기면 연구실 체력으로 A+~D0 학점, 지면 F예요. C+ 이하는 재수강할 수 있지만 재수강은 최고 A0. 선수과목을 이수해야 다음 과목이 열리고, 평점(GPA)은 순위표에 공개돼요.', 'Win and your Lab\'s HP earns an A+~D0; lose and it\'s an F. C+ or lower can be retaken, but retakes cap at A0. Pass prerequisites to unlock later courses, and your GPA shows on the leaderboard.')),
+      h('p', {}, tr('이기면 연구실 체력으로 A+~D0 학점, 지면 F예요. 들었던 과목은 몇 번이든 재수강할 수 있고 더 좋은 학점이 남아요. 선수과목을 이수해야 다음 과목이 열리고, 평점(GPA)은 순위표에 공개돼요.', 'Win and your Lab\'s HP earns an A+~D0; lose and it\'s an F. You can retake any course as many times as you like; your best grade stays. Pass prerequisites to unlock later courses, and your GPA shows on the leaderboard.')),
       h('p.muted', {}, tr('교수님들은 모두 가상 인물이에요.', 'All professors are fictional.')),
       h('button.btn.primary', { onclick: () => overlay.remove() }, tr('{pencil} 수강 신청하러 가기', '{pencil} Go register for courses')),
     ));

@@ -86,7 +86,7 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 
 Clear 1-10 to get your **major assigned**. Pick courses on the curriculum map (Years 1–4 × two terms), beat the course's professor (all fictional) in the final, and earn a **grade (A+~F)**. **Each course's core idea is its battle rule**: Data Structures pushes new enemies to the front like a stack (LIFO), Computer Organization rewards cache hits and stalls the enemy pipeline, Algorithms makes the professor hit n² harder, Signals and Systems samples enemies so they flicker in and out of view, and so on.
 
-- C+ or lower can be **retaken** (capped at A0); prerequisites unlock later courses. Pass everything to graduate!
+- Any course can be **retaken** as many times as you like (your best grade stays); prerequisites unlock later courses. Pass everything to graduate!
 - Your GPA shows on the **leaderboard**.
 
 ### 🎨 And also
