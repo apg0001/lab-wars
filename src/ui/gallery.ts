@@ -1,4 +1,5 @@
 import { ENEMIES as ALL_ENEMIES } from '../data/enemies';
+import { allyLevelTable, enemyStageTable } from './stat-tables';
 
 /** 도감에 싣는 적: 전공 모드 과목 적·교수님은 과목 정보 창에서 본다 */
 const ENEMIES = ALL_ENEMIES.filter((e) => !e.id.startsWith('ce-') && !e.id.startsWith('boss-'));
@@ -99,7 +100,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
         const owned = isUnitOwned(save, u);
         // 아직 못 얻은 뽑기 장비는 실루엣과 '?'로만
         const hidden = hiddenOf(u);
-        const show = (tier: number): void => { if (!hidden) preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: [u.desc, u.lore ? `"${u.lore}"` : ''].filter(Boolean).join(' '), stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`) }); };
+        const show = (tier: number): void => { if (!hidden) preview({ look: u.look, tier, defId: u.id, facing: 1, name: u.names[tier - 1]!, role: u.role, desc: [u.desc, u.lore ? `"${u.lore}"` : ''].filter(Boolean).join(' '), stats: unitStats(u, { level: tier * 5, tier }), extra: tr(`{coffee}${u.cost} · 재소환 ${u.cooldown}초${u.count ? ` · ${u.count}명 소환` : ''}`, `{coffee}${u.cost} · cooldown ${u.cooldown}s${u.count ? ` · deploys ${u.count}` : ''}`), table: allyLevelTable(save, u) }); };
         if (allyPref.compact) {
           // 간단히: 1단계 그림과 이름만, 누르면 미리보기
           grid.append(h(`button.dex-cell.dex-mini.u-${r}${hidden ? '.hidden' : ''}${owned ? '' : '.unowned'}`, { onclick: () => show(1) },
@@ -137,7 +138,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
       for (const e of list) {
         const known = seen.has(e.id);
         grid.append(h(`button.dex-cell.enemy${known ? '' : '.unknown'}${e.boss ? '.boss' : ''}`, {
-          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: [e.desc, bossDesc(e.boss)].filter(Boolean).join(' '), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`) }),
+          onclick: () => known && preview({ look: e.look, tier: 1, defId: e.id, facing: -1, name: e.name, role: e.role, desc: [e.desc, bossDesc(e.boss)].filter(Boolean).join(' '), stats: e, extra: tr(`처치 연구비 {coin}${e.reward}`, `Kill funding {coin}${e.reward}`), table: enemyStageTable(save, e) }),
         }, h('img', { src: portrait(e.look, 1, e.id, -1), alt: '' }), h('span', {}, known ? e.name : '???'),
         enemyPref.compact ? null : h('small.muted', {}, known ? e.role : tr('아직 만나지 않음', 'Not met yet')),
         // 자세히: 능력치와 능력
@@ -159,7 +160,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
     ));
   };
 
-  interface PreviewInfo { look: Look; tier: number; defId: string; facing: 1 | -1; name: string; role: string; desc: string; stats: CombatStats; extra: string }
+  interface PreviewInfo { look: Look; tier: number; defId: string; facing: 1 | -1; name: string; role: string; desc: string; stats: CombatStats; extra: string; table?: HTMLElement }
 
   /** 큰 캔버스에서 걷기·공격 동작을 반복 재생한다. */
   const preview = (p: PreviewInfo): void => {
@@ -209,6 +210,7 @@ export function mountGallery(root: HTMLElement, save: SaveData, onBack: () => vo
         h('div.stats', {}, `{heart} ${fmt(p.stats.hp)}  {sword} ${Math.round(p.stats.atk)}  {target} ${p.stats.range}  {boot} ${p.stats.speed}  {clock} ${p.stats.interval}${tr('초', 's')}`),
         h('p.muted', {}, p.extra),
         p.desc ? h('p', {}, p.desc) : null,
+        p.table ?? null,
         h('button.btn', { onclick: close }, tr('닫기', 'Close')),
       ),
     ));

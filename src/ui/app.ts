@@ -36,6 +36,7 @@ import { mountGallery, statTags } from './gallery';
 import { RARITY_RANK, loadPref, sortBar, sortByPref, type SortKey } from './sort';
 import { maybeShowUpdates, showPatchNotes } from './patch-notes';
 import { powerBadge, powerCompare } from './power';
+import { enemyStatLine } from './stat-tables';
 import { fullscreenButton } from './fullscreen';
 import { h, fmt, setRich } from './dom';
 import { iconEl } from '../render/doodle';
@@ -656,7 +657,7 @@ export class App {
       s.boss ? h('p.boss-warn', {}, tr(`{warn} 보스: ${ENEMY_BY_ID[s.boss]!.name}`, `{warn} Boss: ${ENEMY_BY_ID[s.boss]!.name}`)) : null,
       s.note ? h('p.stage-note', {}, s.note) : null,
       h('p.muted', {}, tr('등장하는 적', 'Enemies')),
-      h('div.enemy-row', {}, ...enemyIds.map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name)))),
+      h('div.enemy-row', {}, ...enemyIds.map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name), enemyStatLine(id, s)))),
       s.kind === 'endless'
         ? h('p', {}, s.index > this.save.endless ? tr(`첫 돌파 보상 {coin} ${fmt(s.reward)}`, `New record reward {coin} ${fmt(s.reward)}`) : tr(`재도전 보상 {coin} ${fmt(s.reward * 0.4)} + 처치 보상`, `Replay reward {coin} ${fmt(s.reward * 0.4)} + kill rewards`))
         : h('p', {}, first ? tr(`첫 클리어 보상 {coin} 최대 ${fmt(s.reward * 1.2)}`, `First clear reward {coin} up to ${fmt(s.reward * 1.2)}`) : tr(`재도전 보상 {coin} 최대 ${fmt(s.reward * 1.2 * REPLAY_MUL)} + 처치 보상`, `Replay reward {coin} up to ${fmt(s.reward * 1.2 * REPLAY_MUL)} + kill rewards`)),

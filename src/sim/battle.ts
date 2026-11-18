@@ -5,6 +5,7 @@ import type { StageDef } from '../data/stages';
 import type { SkillId } from '../data/upgrades';
 import type { BattleLoadout } from './progression';
 import { makeCourseRules, type CourseRule } from './course-rules';
+import { enemyStatsAt } from './enemy-stats';
 import { CARDS, DRAFT_FALLBACK, DRAFT_GAP, DRAFT_MIN_T, MAX_DRAWS, RARITY_ODDS, type CardDef, type CardId, type CardRarity } from '../data/cards';
 
 export const WORLD_W = 1800;
@@ -19,8 +20,6 @@ export const ENEMY_FRONT = WORLD_W - 30 - BASE_W;
 const STEP = 1 / 60;
 const MAX_ENEMIES = 45;
 const ENEMY_TOWER_RANGE = 260;
-/** 일반 적 HP 배율 (머그컵 제거 후 화력 보정) */
-const ENEMY_HP_MUL = 0.85;
 /** 처치 보상 배율 */
 const KILL_REWARD_MUL = 1.3;
 export const BREW_MAX = 6;
@@ -737,10 +736,7 @@ export class Battle {
     const def = ENEMY_BY_ID[id];
     if (!def) return null;
     if (!boss && this.alive('enemy').length >= MAX_ENEMIES) return null;
-    const scale = def.boss ? 1 : this.stage.scale;
-    const atkScale = 1 + (scale - 1) * 0.7;
-    const bs = def.boss ? (this.stage.bossScale ?? 1) : 1;
-    const stats: CombatStats = { ...def, hp: Math.round(def.hp * scale * bs * (def.boss ? 1 : ENEMY_HP_MUL)), atk: def.atk * atkScale * (1 + (bs - 1) * 0.6) };
+    const stats = enemyStatsAt(def, this.stage);
     const f = this.addFighter('enemy', id, def.name, def.look, 1, stats, x, Math.round(def.reward * KILL_REWARD_MUL * (this.stage.killMul ?? 1)));
     f.isBoss = !!def.boss;
     f.summonCd = def.boss?.summon?.every ?? 0;
