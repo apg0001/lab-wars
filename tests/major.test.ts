@@ -26,16 +26,18 @@ describe('전공 모드 학점', () => {
     expect(gradeFor(false, 1)).toBe('F');
   });
 
-  it('F·C+ 이하는 재수강(최고 A0), B0 이상은 복습(학점 그대로)', () => {
+  it('재수강은 학점과 상관없이 몇 번이든, 상한 없이 더 좋은 학점이 남는다', () => {
     const s = opened();
     expect(takeMode(s, 'ict')).toBe('first');
     expect(recordGrade(s, 'ict', false, 0.5).best).toBe('F');
     expect(takeMode(s, 'ict')).toBe('retake');
+    recordGrade(s, 'ict', true, 0.65); // B0
+    expect(takeMode(s, 'ict')).toBe('retake'); // B0이어도 재수강
     const r = recordGrade(s, 'ict', true, 1);
-    expect(r).toMatchObject({ raw: 'A+', got: 'A0', best: 'A0', improved: true });
-    expect(takeMode(s, 'ict')).toBe('review');
-    // 복습은 더 잘해도 못해도 그대로
-    expect(recordGrade(s, 'ict', false, 0).best).toBe('A0');
+    expect(r).toMatchObject({ raw: 'A+', got: 'A+', best: 'A+', improved: true }); // 상한 없음
+    expect(takeMode(s, 'ict')).toBe('retake'); // A+도 다시 들을 수 있다
+    // 못 받으면 기존 최고 학점 유지
+    expect(recordGrade(s, 'ict', false, 0).best).toBe('A+');
     // 재수강에서 더 못 받으면 기존 학점 유지
     recordGrade(s, 'progbasic', true, 0.45); // C0
     expect(recordGrade(s, 'progbasic', true, 0.1)).toMatchObject({ got: 'D0', best: 'C0', improved: false });

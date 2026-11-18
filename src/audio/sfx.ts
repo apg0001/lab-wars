@@ -51,6 +51,9 @@ export const sfx = {
     if (!o) return;
     switch (kind) {
       case 'paper':
+      case 'ink':
+      case 'toner':
+      case 'scan':
         audio.noise(o, { filter: 'highpass', freq: 3500, dur: 0.06, gain: 0.14 });
         audio.tone(o, { type: 'triangle', f0: 1100, f1: 1500, dur: 0.04, gain: 0.05 });
         break;

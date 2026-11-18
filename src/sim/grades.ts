@@ -3,7 +3,7 @@ import { isCleared, type SaveData } from './progression';
 
 /**
  * 전공 모드 학점: 이기면 연구실 체력으로 A+~D0, 지면 F.
- * C+ 이하(F 포함)는 재수강할 수 있고 재수강 학점은 최고 A0. B0 이상은 복습(학점 그대로).
+ * 들었던 과목은 학점과 상관없이 몇 번이든 재수강할 수 있고, 더 좋은 학점이 남는다 (상한 없음).
  */
 
 /** 전공 모드가 열리는 때: 1장 보스(전공 교수님 면담)를 깬 뒤 = 전공 배정 */
@@ -23,7 +23,7 @@ export function gradeFor(win: boolean, baseHpRatio: number): Grade {
 
 export const passed = (g: Grade | undefined): boolean => !!g && g !== 'F';
 
-/** 수강 방식: 처음 듣기 / 재수강(C+ 이하, 최고 A0) / 복습(학점 그대로) */
+/** 수강 방식: 처음 듣기 / 재수강(몇 번이든, 더 좋은 학점이 남음). 'review'는 예전 규칙의 흔적으로 지금은 쓰지 않는다 */
 export type TakeMode = 'first' | 'retake' | 'review';
 export function takeMode(save: SaveData, courseId: string): TakeMode {
   const g = save.grades[courseId];
