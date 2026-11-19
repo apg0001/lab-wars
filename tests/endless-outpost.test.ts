@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { Battle, ENEMY_FRONT, type Fighter } from '../src/sim/battle';
 import {
-  ENDLESS_LASER_STEP, ENDLESS_TOWER_RAMP, OUTPOST_DIST, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessStage, type StageDef,
+  ENDLESS_LASER_STEP, ENDLESS_TOWER_RAMP, OUTPOST_DIST, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessBoss, endlessProfessors, endlessSideEnemies, endlessStage, sideJoinRound, type StageDef,
 } from '../src/data/stages';
 import { ENEMY_BY_ID } from '../src/data/enemies';
+import { enemyStatsAt } from '../src/sim/enemy-stats';
 import { makeLoadout, newSave } from '../src/sim/progression';
 
 /** 적이 새로 나오지 않는 무한 n판 (전초기지·레이저만 확인) */
 function quiet(n: number): StageDef {
   const s = endlessStage(n);
-  return { ...s, spawnEvery: 1e9, rush: { first: 1e9, every: 1e9, size: 0 }, boss: undefined };
+  return { ...s, spawnEvery: 1e9, rush: { first: 1e9, every: 1e9, size: 0 }, boss: undefined, extraBosses: [] };
 }
 
 const run = (b: Battle, sec: number) => {
@@ -189,5 +190,61 @@ describe('무한 모드 교수님 레이저 강화', () => {
     }
     expect(laser?.power).toBe(3);
     expect(laser!.dmg).toBeCloseTo(b.towerDmg(), 0);
+  });
+});
+
+describe('무한 모드 외전 적·교수님', () => {
+  it('외전 적은 외전 순서대로 5·8·…·23판부터 합류한다', () => {
+    const side = endlessSideEnemies();
+    expect(side.length).toBeGreaterThan(10);
+    for (const e of side) expect(ENEMY_BY_ID[e.id], e.id).toBeTruthy();
+    const ids = (n: number) => new Set(endlessStage(n).pool.map((p) => p.id));
+    const first = side.find((e) => e.from === sideJoinRound(1))!;
+    expect(ids(sideJoinRound(1) - 1).has(first.id)).toBe(false);
+    expect(ids(sideJoinRound(1)).has(first.id)).toBe(true);
+    for (const e of side) expect(ids(30).has(e.id)).toBe(true);
+  });
+
+  it('외전 보스도 보스 순환에 들어간다', () => {
+    const bosses = new Set(Array.from({ length: 80 }, (_, i) => endlessBoss((i + 1) * 5)));
+    for (const id of ['tenure', 'ghost13', 'reviewer3', 'submitsys', 'autoreview', 'vc', 'mainbreaker']) expect(bosses.has(id), id).toBe(true);
+  });
+
+  it('교수님 16명이 모두 나오고, 보스 판엔 판이 오를수록 여러 명이 동행한다', () => {
+    expect(endlessProfessors()).toHaveLength(16);
+    expect(endlessStage(5).extraBosses).toEqual([]);
+    expect(endlessStage(10).extraBosses).toHaveLength(1);
+    expect(endlessStage(30).extraBosses).toHaveLength(2);
+    expect(endlessStage(70).extraBosses).toHaveLength(4);
+    expect(endlessStage(95).extraBosses).toHaveLength(4);
+    // 7로 끝나는 판은 초청 강연 1명 (17판부터)
+    expect(endlessStage(7).extraBosses).toEqual([]);
+    expect(endlessStage(17).extraBosses).toHaveLength(1);
+    // 같은 판에 같은 교수님이 겹치지 않는다
+    for (let n = 10; n <= 200; n += 5) {
+      const ids = endlessStage(n).extraBosses!.map((x) => x.id);
+      expect(new Set(ids).size, `E-${n}`).toBe(ids.length);
+    }
+    const seen = new Set<string>();
+    for (let n = 1; n <= 200; n++) for (const x of endlessStage(n).extraBosses ?? []) seen.add(x.id);
+    expect(seen.size).toBe(16);
+  });
+
+  it('교수님은 학년과 상관없이 같은 체력 기준으로 맞춘다', () => {
+    const st = endlessStage(50);
+    const hps = st.extraBosses!.map((x) => enemyStatsAt(ENEMY_BY_ID[x.id]!, st, x.mul).hp);
+    for (const hp of hps) expect(hp).toBeGreaterThan(3500 * 2.9);
+    expect(Math.max(...hps) / Math.min(...hps)).toBeLessThan(1.05);
+  });
+
+  it('보스 판에 교수님이 정해진 시각에 실제로 나온다', () => {
+    const st = { ...endlessStage(30), spawnEvery: 1e9, rush: { first: 1e9, every: 1e9, size: 0 } };
+    const b = new Battle(st, makeLoadout(newSave()), 1, { cards: false });
+    const profs = () => b.alive('enemy').filter((f) => f.defId.startsWith('boss-')).length;
+    run(b, 7);
+    expect(profs()).toBe(0);
+    run(b, 14);
+    expect(profs()).toBe(2);
+    expect(b.alive('enemy').filter((f) => f.isBoss).length).toBe(3);
   });
 });

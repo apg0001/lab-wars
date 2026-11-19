@@ -9,9 +9,10 @@ export const ENEMY_HP_MUL = 0.85;
  * 일반 적: HP ×scale×0.85, 공격력 ×(1 + (scale−1)×0.7). 보스: 스테이지 배율 대신 bossScale (무한 모드에서 커진다).
  * 외전·전공 특수 규칙이 소환 뒤에 바꾸는 값은 들어가지 않는다.
  */
-export function enemyStatsAt(def: EnemyDef, stage: StageDef): CombatStats {
+/** bossMul: 이 보스만의 배율 (무한 모드 동행 교수님). 없으면 stage.bossScale */
+export function enemyStatsAt(def: EnemyDef, stage: StageDef, bossMul?: number): CombatStats {
   const scale = def.boss ? 1 : stage.scale;
   const atkScale = 1 + (scale - 1) * 0.7;
-  const bs = def.boss ? (stage.bossScale ?? 1) : 1;
+  const bs = def.boss ? (bossMul ?? stage.bossScale ?? 1) : 1;
   return { ...def, hp: Math.round(def.hp * scale * bs * (def.boss ? 1 : ENEMY_HP_MUL)), atk: def.atk * atkScale * (1 + (bs - 1) * 0.6) };
 }

@@ -197,7 +197,7 @@ describe('무한 모드 버그 군단 능력', () => {
 
   it('버그 보스: 30판부터 10판마다 커널 패닉·레거시 코드가 번갈아, 사이 보스 판은 원래 순환', () => {
     expect([5, 10, 25].map(endlessBoss)).toEqual(['prof2', 'reviewer2', 'dean']);
-    expect([30, 35, 40, 45, 50, 60].map(endlessBoss)).toEqual(['kernelpanic', 'prof2', 'legacy', 'chair', 'kernelpanic', 'legacy']);
+    expect([30, 35, 40, 45, 50, 60].map(endlessBoss)).toEqual(['kernelpanic', 'tenure', 'legacy', 'reviewer3', 'kernelpanic', 'legacy']);
     expect(endlessBoss(31)).toBeUndefined();
     expect(endlessStage(40).boss).toBe('legacy');
     expect(ENEMY_BY_ID.kernelpanic!.boss && ENEMY_BY_ID.legacy!.boss).toBeTruthy();
