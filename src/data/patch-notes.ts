@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.28.0',
+    date: '2026-11-19',
+    title: '교수님이 연구실 문을 열었다',
+    items: [
+      '{anger} 보스가 호통칠 때(HP 66%·33%) 전선을 뚫고 연구실 문 앞까지 돌진해요. 지나가는 길의 동료를 치고 밀어내요',
+      '{warn} 들어온 보스는 연구실을 직접 때려요. 앞에 나가 있던 동료들은 돌아서서 막으러 와요',
+      '{book} 1장 보스와 무한 모드에 같이 오는 교수님들은 돌진하지 않아요',
+    ],
+    en: {
+      title: 'The Professor Opened the Lab Door',
+      items: [
+        '{anger} When a boss yells (at 66% and 33% HP), it now breaks through your line and charges all the way to the Lab door, smacking and shoving labmates on the way',
+        '{warn} Once inside, the boss hits the Lab directly, and labmates out front turn around to stop it',
+        '{book} Chapter 1 bosses and the professors who tag along in Endless Mode don\'t charge',
+      ],
+    },
+  },
+  {
     version: '0.27.2',
     date: '2026-11-19',
     title: '아이폰 버튼 구출 작전',
