@@ -145,6 +145,8 @@ export interface Projectile {
   hit?: HitEffects;
   /** 관통: 쏜 자리부터 대상 뒤 pierce까지 줄 위의 적을 모두 맞힌다 */
   pierce?: number;
+  /** 관통 감쇠 (CombatStats.pierceFalloff) */
+  pierceFalloff?: number;
   /** 관통 판정: 쏜 쪽이 공중을 맞힐 수 있는지 */
   antiAir?: boolean;
   /** 쏜 유닛 (흡혈·연쇄·대공 배율·카페인 흡수용) */
@@ -1343,6 +1345,7 @@ export class Battle {
       knockback: f.stats.knockback,
       hit: this.hitEffects(f.stats),
       pierce: f.stats.pierce,
+      pierceFalloff: f.stats.pierceFalloff,
       antiAir: f.stats.range >= RANGED_THRESHOLD,
       src: f,
     });
@@ -1493,12 +1496,14 @@ export class Battle {
       // 관통: 쏜 자리부터 대상 뒤 pierce까지 줄 위의 적을 모두 맞힌다
       const dir = p.side === 'ally' ? 1 : -1;
       const end = (p.x1 - p.x0) * dir + p.pierce;
-      for (const o of this.alive(foe)) {
-        if (o.stats.flying && !p.antiAir) continue;
-        const d = (o.x - p.x0) * dir;
-        if (d >= -12 && d <= end + bodyR(o)) this.hitFrom(p.src, o, p.dmg, p.side, p.knockback, false, p.hit);
-      }
-      if (p.hitsBase) this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul, p.x1);
+      // 가까운 적부터 차례로 뚫는다. 감쇠가 있으면 뚫을 때마다 약해진다 (최소 30%)
+      const line = this.alive(foe)
+        .filter((o) => (!o.stats.flying || p.antiAir) && (o.x - p.x0) * dir >= -12 && (o.x - p.x0) * dir <= end + bodyR(o))
+        .sort((a, b) => (a.x - b.x) * dir);
+      const fall = p.pierceFalloff ?? 1;
+      const mulAt = (k: number): number => Math.max(fall < 1 ? 0.3 : 1, fall ** k);
+      line.forEach((o, k) => this.hitFrom(p.src, o, p.dmg * mulAt(k), p.side, p.knockback, false, p.hit));
+      if (p.hitsBase) this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul * mulAt(line.length), p.x1);
       return;
     }
     if (p.hitsBase) {

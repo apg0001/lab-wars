@@ -228,6 +228,14 @@ export function numbersAt(c: number): Pick<StageDef, 'scale' | 'enemyBaseHp' | '
   };
 }
 
+/**
+ * 장별 추가 난이도: 3장부터 적 능력치 +5%, 장마다 +2.5%씩 올라 7장 +15% (0.27.0 너프).
+ * 막히면 전공·무한 모드에서 연구비를 벌어 오는 순환이 돌게 한다.
+ */
+export const chapterMul = (chapter: number): number => (chapter >= 3 ? 1.05 + 0.025 * (chapter - 3) : 1);
+/** 3장 이후 장 보스 배율 */
+export const CHAPTER_BOSS_SCALE = 1.1;
+
 function makeStage(chapter: number, index: number): StageDef {
   const order = (chapter - 1) * STAGES_PER_CHAPTER + (index - 1);
   const [name, kind, enName] = PLAN[chapter - 1]![index - 1]!;
@@ -245,7 +253,7 @@ function makeStage(chapter: number, index: number): StageDef {
     order,
     name,
     kind,
-    scale: enemyScale(c),
+    scale: enemyScale(c) * chapterMul(chapter),
     enemyBaseHp: Math.round((700 + c * 180) * (thesis ? 1.1 : 1)),
     towerAtk: Math.round(10 * (1 + c * 0.12) * (conference ? 1.08 : 1)),
     spawnEvery: Math.max(1.75, 2.8 - c * 0.06) * (isBoss ? 1.6 : vacation ? 1.3 : 1),
@@ -256,6 +264,7 @@ function makeStage(chapter: number, index: number): StageDef {
       size: Math.round(baseRush * (isBoss ? 0.5 : vacation ? 1.5 : 1)),
     },
     boss,
+    bossScale: isBoss && chapter >= 3 ? CHAPTER_BOSS_SCALE : undefined,
     caffeineMul: vacation ? 1.25 : undefined,
     killMul: KILL_MUL,
     note: KIND_NOTE[kind],
@@ -336,7 +345,8 @@ export function endlessBoss(n: number): string | undefined {
 /** 무한 모드 판당 곡선 상승폭 (캠페인 끝 c=19에서 시작) */
 const ENDLESS_STEP = 0.75;
 /** 무한 모드 추가 배율: 판이 쌓일수록 성장 속도를 앞지르게 */
-const endlessMul = (n: number): number => 1 + n * 0.01;
+/** 0.27.0: 13~30판이 너무 쉬워 25판까지 최대 +18%를 더한다 */
+const endlessMul = (n: number): number => 1 + n * 0.01 + 0.18 * Math.min(1, n / 25);
 
 /** 화이트보드 전초기지가 나오는 판: 15판부터 1개, 30판부터 2개 */
 export const OUTPOST_FROM = [15, 30];
@@ -368,6 +378,8 @@ export interface ExtraBoss {
   mul: number;
 }
 
+/** 외전 적이 합류 판부터 가중치가 다 차기까지 걸리는 판 수 (한꺼번에 몰려 벽이 생기지 않게) */
+export const SIDE_RAMP = 5;
 /** 외전 적이 무한 모드에 합류하는 판: 외전 k의 새 적은 2 + 3k판부터 (5·8·…·23) */
 export const sideJoinRound = (side: number): number => 2 + 3 * side;
 /** 무한 모드에 합류하는 외전 적 (외전마다 처음 나오는 적, 캠페인 적은 빼고) */
@@ -377,7 +389,7 @@ export function endlessSideEnemies(): { id: string; from: number; weight: number
   for (const sc of SIDE_CHAPTERS) {
     const first = SIDE_STAGES.find((st) => st.side === sc.id && st.index === 1);
     const ids = [...new Set(first?.pool.map((p) => p.id) ?? [])].filter((id) => !camp.has(id) && !out.some((o) => o.id === id));
-    for (const id of ids) out.push({ id, from: sideJoinRound(sc.id), weight: 1.2 / ids.length });
+    for (const id of ids) out.push({ id, from: sideJoinRound(sc.id), weight: 0.9 / ids.length });
   }
   return out;
 }
@@ -435,7 +447,12 @@ export function endlessStage(n: number): StageDef {
     towerRamp: ENDLESS_TOWER_RAMP,
     outposts: endlessOutposts(n, enemyScale(c) * endlessMul(n)),
     spawnEvery: Math.max(1.4, 2.8 - c * 0.06) * (isBoss ? 1.5 : 1),
-    pool: [...poolAt(c, kind === 'boss' ? 'normal' : kind), ...[...ENDLESS_ENEMIES, ...endlessSideEnemies()].filter((e) => e.from <= n).map(({ id, weight }) => ({ id, weight }))],
+    pool: [
+      ...poolAt(c, kind === 'boss' ? 'normal' : kind),
+      ...ENDLESS_ENEMIES.filter((e) => e.from <= n).map(({ id, weight }) => ({ id, weight })),
+      // 외전 적은 합류 판부터 SIDE_RAMP판에 걸쳐 가중치가 차오른다
+      ...endlessSideEnemies().filter((e) => e.from <= n).map(({ id, weight, from }) => ({ id, weight: weight * Math.min(1, (n - from + 1) / SIDE_RAMP) })),
+    ],
     rush: { first: 30, every: Math.max(18, 40 - c), size: Math.round((3 + Math.floor(c / 3)) * (isBoss ? 0.5 : 1)) },
     boss: endlessBoss(n),
     bossScale: isBoss ? 1 + n * 0.04 : undefined,
@@ -601,6 +618,13 @@ localizeAll(SIDE_CHAPTERS);
  */
 export const courseStageId = (courseId: string): string => `M-${courseId}`;
 
+/** 전공 학년별 추가 난이도 (적·교수님 모두): 1학년 그대로, 2학년 +15%, 3학년 +40%, 4학년 +60%. 학년마다 그 학년을 여는 장(2·4·6·7장)보다 한 걸음 앞서게 */
+const COURSE_YEAR_MUL = [1, 1.15, 1.4, 1.6];
+/** 학년별 출현 간격·러시 크기 배율: 고학년일수록 적이 자주, 많이 온다 */
+const COURSE_YEAR_SPAWN = [1.15, 1.05, 0.9, 0.85];
+const COURSE_YEAR_RUSH = [0.7, 0.8, 1.05, 1.15];
+export const courseYearMul = (year: number): number => COURSE_YEAR_MUL[year - 1] ?? 1;
+
 function makeCourseStage(co: CourseDef, i: number): StageDef | null {
   const ct = COURSE_CONTENT[co.id];
   if (!ct) return null;
@@ -615,10 +639,11 @@ function makeCourseStage(co: CourseDef, i: number): StageDef | null {
     order: 2000 + i,
     name: co.name,
     kind: 'boss',
-    // 규칙이 판을 흔드는 만큼 일반 스테이지보다 조금 순하게
-    scale: n.scale / 1.08,
-    spawnEvery: n.spawnEvery * 1.15,
-    rush: { ...n.rush, size: Math.max(2, Math.round(n.rush.size * 0.7)) },
+    // 규칙이 판을 흔드는 만큼 일반 스테이지보다 조금 순하게, 대신 학년이 오를수록 세게 (2학년 +15% … 4학년 +60%)
+    scale: (n.scale / 1.08) * courseYearMul(co.year),
+    bossScale: courseYearMul(co.year),
+    spawnEvery: n.spawnEvery * (COURSE_YEAR_SPAWN[co.year - 1] ?? 1.15),
+    rush: { ...n.rush, size: Math.max(2, Math.round(n.rush.size * (COURSE_YEAR_RUSH[co.year - 1] ?? 0.7))) },
     pool: [...Object.entries(ct.pool).map(([id, weight]) => ({ id, weight })), { id: `ce-${co.id}`, weight: ct.foe.weight }],
     boss: `boss-${co.id}`,
     killMul: KILL_MUL,

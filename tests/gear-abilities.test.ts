@@ -259,3 +259,29 @@ describe('봇 편성과 그림', () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe('입자 가속기 관통 감쇠', () => {
+  it('뚫을 때마다 ×0.8, 최소 30%, 교수실도 줄어든 피해', () => {
+    const b = new Battle({ ...STAGE_BY_ID['1-1']!, spawnEvery: 1e9, rush: { first: 1e9, every: 1e9, size: 0 } }, makeLoadout(newSave()), 1, { cards: false });
+    const spawn = (b as unknown as { spawnEnemy: (id: string, boss: boolean, x: number) => Fighter }).spawnEnemy;
+    const foes = Array.from({ length: 8 }, (_, i) => {
+      const f = spawn.call(b, 'memo', false, 500 + i * 30);
+      f.hp = f.maxHp = 1e6;
+      f.stats.speed = 0;
+      f.stats.atk = 0;
+      f.stats.knockback = undefined;
+      return f;
+    });
+    const before = b.enemy.hp;
+    (b as unknown as { impact: (p: unknown) => void }).impact.call(b, {
+      kind: 'beam', side: 'ally', x0: 400, y0: 0, x1: 500, y1: 0, t: 1, dur: 1, dmg: 100, splash: 0, buildingMul: 1, hitsBase: true,
+      pierce: 2000, pierceFalloff: 0.8, antiAir: true, hit: {},
+    });
+    const dealt = foes.map((f) => Math.round(1e6 - f.hp));
+    expect(dealt[0]).toBe(100);
+    expect(dealt[1]).toBe(80);
+    expect(dealt[2]).toBe(64);
+    expect(dealt[7]).toBe(30);
+    expect(before - b.enemy.hp).toBeCloseTo(30, 0);
+  });
+});
