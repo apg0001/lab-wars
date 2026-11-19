@@ -60,6 +60,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   else drawBackdrop(ctx, camX);
   ctx.translate(-camX, 0);
   drawPrinterRange(ctx, ALLY_FRONT + b.loadout.printerRange);
+  drawLaserRange(ctx, ENEMY_FRONT - b.laserRange());
   withBaseShake(ctx, b.ally, () => drawLab(ctx, b.ally, time, b.loadout.printerTier ?? 1));
   withBaseShake(ctx, b.enemy, () => drawOffice(ctx, b.enemy, time));
 
@@ -78,6 +79,7 @@ export function drawBattle(ctx: Ctx, b: Battle, camX: number, time: number, juic
   drawList.length = 0;
   sprites.endFrame();
   for (const p of b.projectiles) drawProjectile(ctx, p, time);
+  drawProfBeam(ctx, b, time);
   juice?.draw(ctx);
   drawFx(ctx, b, false);
   ctx.restore();
@@ -102,6 +104,8 @@ function battleLights(b: Battle, camX: number): Light[] {
     const k = Math.min(1, p.t / p.dur);
     lights.push({ x: p.x0 + (p.x1 - p.x0) * k - camX, y: p.y0 + (p.y1 - p.y0) * k, r: 45 });
   }
+  // 교수님 레이저가 지지는 자리는 어둠 속에서도 붉게 보인다
+  if (b.beam) lights.push({ x: b.beam.x - camX, y: b.beam.y, r: 55 });
   return lights;
 }
 
@@ -727,16 +731,7 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
     case 'laser': {
       ctx.restore();
       ctx.save();
-      if (p.power) {
-        drawLaserPower(ctx, p, x, y, p.power, time);
-        break;
-      }
-      ctx.strokeStyle = 'rgba(255,23,68,.85)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(p.x0 - 75, p.y0 + 14);
-      ctx.lineTo(x, y);
-      ctx.stroke();
+      drawLaserBeam(ctx, p.x0 - 75, p.y0 + 14, x, y, p.power ?? 0, time);
       break;
     }
     case 'marker':
@@ -936,19 +931,21 @@ function drawProjectile(ctx: Ctx, p: Projectile, time: number): void {
   ctx.restore();
 }
 
-/** 무한 모드 교수님 레이저 출력 단계 1~3: 노랑 → 주황 → 빨강, 점점 굵어지고 바깥 빛이 번진다 */
+/** 교수님 레이저 출력 단계 0~3: 빨강 기본 → (무한 모드) 노랑 → 주황 → 빨강, 점점 굵어지고 바깥 빛이 번진다 */
 const LASER_TIERS = [
+  { core: '#ffebee', glow: 'rgba(255,23,68,.8)', w: 3.5 },
   { core: '#fffde7', glow: 'rgba(255,214,0,.75)', w: 4.5 },
   { core: '#fff3e0', glow: 'rgba(255,145,0,.8)', w: 6.5 },
   { core: '#ffebee', glow: 'rgba(255,23,68,.85)', w: 9 },
 ];
 
-function drawLaserPower(ctx: Ctx, p: Projectile, x: number, y: number, power: number, time: number): void {
-  const tier = LASER_TIERS[Math.min(LASER_TIERS.length, power) - 1]!;
+/** 교수님 레이저 빔: 포탑 총구(x0,y0)에서 지지는 자리(x,y)까지, 지지는 자리에 불꽃 */
+function drawLaserBeam(ctx: Ctx, x0: number, y0: number, x: number, y: number, power: number, time: number): void {
+  const tier = LASER_TIERS[Math.max(0, Math.min(LASER_TIERS.length - 1, power))]!;
   const w = tier.w * (1 + Math.sin(time * 40) * 0.12);
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(p.x0 - 75, p.y0 + 14);
+  ctx.moveTo(x0, y0);
   ctx.lineTo(x, y);
   ctx.strokeStyle = tier.glow;
   ctx.lineWidth = w * 2;
@@ -960,11 +957,38 @@ function drawLaserPower(ctx: Ctx, p: Projectile, x: number, y: number, power: nu
   ctx.strokeStyle = tier.core;
   ctx.lineWidth = Math.max(1.5, w * 0.35);
   ctx.stroke();
-  // 맞는 자리 불꽃
+  // 지지는 자리: 일렁이는 불꽃과 튀는 불티
   ctx.fillStyle = tier.glow;
   ctx.beginPath();
-  ctx.arc(x, y, w * 0.9, 0, Math.PI * 2);
+  ctx.arc(x, y, w * (1.1 + Math.sin(time * 31) * 0.25), 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = tier.core;
+  for (let i = 0; i < 3; i++) {
+    const a = time * 9 + i * 2.1;
+    const r = w * (1.4 + ((time * 5 + i * 0.37) % 1) * 1.6);
+    ctx.fillRect(x + Math.cos(a) * r - 1, y + Math.sin(a) * r * 0.6 - 1, 2.5, 2.5);
+  }
+}
+
+/** 교수님 레이저 빔 (켜져 있을 때) */
+function drawProfBeam(ctx: Ctx, b: Battle, time: number): void {
+  if (!b.beam) return;
+  ctx.save();
+  drawLaserBeam(ctx, WORLD_W - 105 - 75, GROUND_Y - 250 + 14, b.beam.x, b.beam.y, b.laserTier, time);
+  ctx.restore();
+}
+
+/** 교수님 레이저 사거리: 교수실 앞 바닥의 붉은 점선 (출력이 오르면 앞으로 밀려난다) */
+function drawLaserRange(ctx: Ctx, edge: number): void {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(229,57,53,.45)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(edge, GROUND_Y);
+  ctx.lineTo(edge + 20, VIEW_H);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** 화이트보드 전초기지의 보드마커: 뚜껑 달린 마커가 빙글빙글 날아간다 */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Battle, ENEMY_FRONT, type Fighter } from '../src/sim/battle';
+import { Battle, ENEMY_FRONT, LASER, type Fighter } from '../src/sim/battle';
 import {
   ENDLESS_LASER_STEP, ENDLESS_TOWER_RAMP, OUTPOST_DIST, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessBoss, endlessProfessors, endlessSideEnemies, endlessStage, sideJoinRound, type StageDef,
 } from '../src/data/stages';
@@ -180,16 +180,15 @@ describe('무한 모드 교수님 레이저 강화', () => {
     expect(b.laserTier).toBe(3); // 단계는 3까지 (피해는 계속 오른다)
     expect(b.towerDmg()).toBeGreaterThan(st.towerAtk * 1.5);
 
-    // 레이저가 실제로 그 피해와 단계로 나간다
+    // 출력 단계마다 사거리도 늘어난다
+    expect(b.laserRange()).toBe(260 + 3 * LASER.rangeStep);
+    // 레이저 빔이 실제로 그 대상에 붙어 초당 towerDmg / 1.2 로 지진다
     const g = tankyGrunt(b);
-    g.x = ENEMY_FRONT - 100;
-    let laser = null as null | (typeof b.projectiles)[number];
-    for (let i = 0; i < 120 && !laser; i++) {
-      b.step(1 / 60);
-      laser = b.projectiles.find((p) => p.kind === 'laser') ?? null;
-    }
-    expect(laser?.power).toBe(3);
-    expect(laser!.dmg).toBeCloseTo(b.towerDmg(), 0);
+    g.x = ENEMY_FRONT - 400; // 기본 사거리(260) 밖이지만 3단계 사거리 안
+    const hp0 = g.hp;
+    for (let i = 0; i < 60; i++) b.step(1 / 60);
+    expect(b.beam?.uid).toBe(g.uid);
+    expect(hp0 - g.hp).toBeGreaterThan(0);
   });
 });
 
