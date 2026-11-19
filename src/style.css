@@ -363,8 +363,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .stage-node.boss { width: calc(13.5 * var(--u)); height: calc(13.5 * var(--u)); background: #ede7f6; }
 .node-kind { position: absolute; top: calc(-1.2 * var(--u)); right: calc(-0.4 * var(--u)); font-size: calc(2.4 * var(--u)); filter: drop-shadow(0 0 calc(0.3 * var(--u)) #fff); }
 .stage-note { background: #fff8e1; border: calc(0.2 * var(--u)) dashed #ffb300; border-radius: calc(1 * var(--u)); padding: calc(0.6 * var(--u)) calc(1 * var(--u)); font-size: calc(1.5 * var(--u)); }
-.endless-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(1.4 * var(--u)); }
-.endless-best { display: flex; flex-direction: column; align-items: center; background: var(--ink); color: #fff; border-radius: calc(1.4 * var(--u)); padding: calc(0.8 * var(--u)) calc(3 * var(--u)); }
+.endless-box { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: calc(0.9 * var(--u)); padding-bottom: calc(0.6 * var(--u)); }
+.endless-best { display: flex; flex-direction: column; align-items: center; background: var(--ink); color: #fff; border-radius: calc(1.4 * var(--u)); padding: calc(0.4 * var(--u)) calc(3 * var(--u)); }
 .endless-best b { font-size: calc(4 * var(--u)); color: #ffd54f; }
 .endless-list { display: flex; gap: calc(1 * var(--u)); align-items: center; flex-wrap: wrap; justify-content: center; }
 .stage-node.boss img { height: calc(6 * var(--u)); margin-bottom: calc(-0.5 * var(--u)); }
@@ -378,7 +378,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .stage-info { max-width: calc(70 * var(--u)); }
 .boss-warn { color: #c62828; }
 .endless-roster { display: flex; flex-direction: column; align-items: center; gap: calc(0.5 * var(--u)); margin-top: calc(0.6 * var(--u)); font-size: calc(1.4 * var(--u)); }
-.roster-list { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(0.4 * var(--u)); }
+.roster-list { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(0.4 * var(--u)); max-width: calc(130 * var(--u)); }
 .roster-item { padding: calc(0.2 * var(--u)) calc(0.7 * var(--u)); border: calc(0.15 * var(--u)) dashed #8d8494; border-radius: calc(1 * var(--u)); color: #8d8494; }
 .roster-item.on { border-style: solid; border-color: #37323d; color: #37323d; background: #fff3c4; }
 .enemy-row figure.extra-boss img { outline: calc(0.25 * var(--u)) solid #c62828; border-radius: 50%; }

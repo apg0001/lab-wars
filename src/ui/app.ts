@@ -647,6 +647,7 @@ export class App {
             `${n === best + 1 ? tr('도전: ', 'Challenge: ') : '{retry} '}${st.name}${st.boss ? ` (${ENEMY_BY_ID[st.boss]!.name})` : ''}${st.extraBosses?.length ? tr(` + 교수님 ${st.extraBosses.length}명`, ` + ${st.extraBosses.length} prof.`) : ''}`);
         })),
         h('p.muted', {}, tr(`다음 판 적 능력치 ×${next.scale.toFixed(1)} · 5판마다 보스 · 처음 넘는 판은 보상 전액`, `Next round enemy stats ×${next.scale.toFixed(1)} · boss every 5 rounds · full reward for new records`)),
+        powerCompare(this.save, next),
         endlessRoster(best),
       ),
       this.mapActions(),
