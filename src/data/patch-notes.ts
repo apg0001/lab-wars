@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.28.1',
+    date: '2026-11-19',
+    title: '교수님도 체력이 있다',
+    items: [
+      '{anger} 보스 돌진이 연구실 문 앞까지 오지 않고, 호통마다 전장의 약 1/5만큼만 전선을 뚫고 들어와요',
+    ],
+    en: {
+      title: 'Professors Get Tired Too',
+      items: [
+        '{anger} Boss charges no longer reach the Lab door: each yell breaks through about a fifth of the field',
+      ],
+    },
+  },
+  {
     version: '0.28.0',
     date: '2026-11-19',
     title: '교수님이 연구실 문을 열었다',
