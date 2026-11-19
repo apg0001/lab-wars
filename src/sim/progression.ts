@@ -75,6 +75,8 @@ export interface SaveData {
   presets: string[][];
   /** 전공 모드 과목 id → 최고 학점 (재수강하면 바뀐다) */
   grades: Record<string, Grade>;
+  /** 저장할 때의 편성 전투력 (순위표 전투력 순위용, 게임이 저장 직전에 다시 계산한다) */
+  power?: number;
   updatedAt: number;
 }
 

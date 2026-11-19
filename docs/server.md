@@ -19,7 +19,7 @@
 | POST | `/api/auth/logout` | `{refresh}` 폐기 |
 | GET | `/api/save` | `{data, version}` (Bearer 토큰) |
 | PUT | `/api/save` | `{data, version}` → `{version}`, 버전이 어긋나면 409 + 서버 데이터 |
-| GET | `/api/leaderboard` | `{top, me, total}` 순위표 (공개, Bearer 토큰이 있으면 `me`에 내 순위, 내 줄에는 `mine: true`). 이름은 닉네임(없으면 아이디). 30초 캐시, 저장·닉네임 변경 시 갱신. 저장 데이터에서 무한 기록·별을 검증해 계산. 줄마다 전공 평점 `gpa`(4.5 만점, 없으면 null)·이수 학점 `credits` |
+| GET | `/api/leaderboard` | `{top, me, total}` 순위표 (공개, Bearer 토큰이 있으면 `me`에 내 순위, 내 줄에는 `mine: true`). 이름은 닉네임(없으면 아이디). 30초 캐시, 저장·닉네임 변경 시 갱신. 저장 데이터에서 무한 기록·별을 검증해 계산. 줄마다 전공 평점 `gpa`(4.5 만점, 없으면 null)·이수 학점 `credits`·편성 전투력 `power`. `?by=power`면 전투력 순위 (게임이 저장할 때 넣는 `data.power`, 0 이하·1천만 초과·숫자 아님은 0점으로 빠짐, 같으면 먼저 저장한 사람) |
 | GET | `/api/me` | `{user}` 내 정보 (Bearer 토큰) |
 | PUT | `/api/me/nickname` | `{nickname}` → `{user}`. 2~12자 한글·영문·숫자·밑줄·띄어쓰기, 앞뒤 공백은 잘라 냄. 겹쳐도 됨 (Bearer 토큰) |
 | POST | `/api/feedback` | `{category: '문의'\|'건의'\|'버그', text(1~1000자), name?, version?}` → `{ok, id}`. 로그인했으면 계정으로, 아니면 게스트(`name`, 없으면 '게스트')로 저장. 계정(게스트는 IP)당 10분 5회 |

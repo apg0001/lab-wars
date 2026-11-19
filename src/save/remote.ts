@@ -100,6 +100,8 @@ export interface RankRow {
   /** 전공 모드 평점 (들은 과목이 없으면 null)과 이수 학점 (예전 서버면 없음) */
   gpa?: number | null;
   credits?: number;
+  /** 편성 전투력 (예전 서버면 없음) */
+  power?: number;
   /** 서버가 표시해 주는 내 줄 */
   mine?: boolean;
 }
@@ -194,8 +196,10 @@ export class AccountApi {
   }
 
   /** 순위표. 로그인 상태면 내 순위도 받는다. */
-  async leaderboard(): Promise<Leaderboard> {
-    const r = this.user ? await this.authed('GET', '/api/leaderboard').catch(() => this.raw('GET', '/api/leaderboard')) : await this.raw('GET', '/api/leaderboard');
+  /** by = 'power'면 전투력 순위, 아니면 진행 순위 (무한 기록 → 별) */
+  async leaderboard(by: 'progress' | 'power' = 'progress'): Promise<Leaderboard> {
+    const path = by === 'power' ? '/api/leaderboard?by=power' : '/api/leaderboard';
+    const r = this.user ? await this.authed('GET', path).catch(() => this.raw('GET', path)) : await this.raw('GET', path);
     return r as unknown as Leaderboard;
   }
 

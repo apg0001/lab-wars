@@ -125,6 +125,34 @@ describe('계정 서버', () => {
     expect(mine.json.top[1].mine).toBeUndefined();
   });
 
+  it('전투력 순위: ?by=power면 저장의 power 순, 없거나 이상한 값은 빠지고, 저장하면 갱신', async () => {
+    const mk = async (name: string, data: object) => {
+      const r = await call('POST', '/api/auth/register', { username: name, password: 'password123' });
+      await call('PUT', '/api/save', { data, version: 0 }, r.json.access);
+      return r.json.access as string;
+    };
+    await mk('강한학부생', { v: 3, stars: { '1-1': 3 }, power: 900.7 });
+    const weak = await mk('약한교수', { v: 3, stars: { '7-10': 3 }, endless: 50, power: 300 });
+    await mk('예전저장', { v: 3, stars: { '1-1': 3 } });
+    await mk('조작', { v: 3, stars: { '1-1': 3 }, power: 1e12 });
+    await mk('문자', { v: 3, stars: { '1-1': 3 }, power: 'over9000' });
+
+    const pw = await call('GET', '/api/leaderboard?by=power');
+    expect(pw.status).toBe(200);
+    expect(pw.json.top.map((r: { name: string }) => r.name)).toEqual(['강한학부생', '약한교수']);
+    expect(pw.json.top[0]).toMatchObject({ rank: 1, power: 900 });
+    expect(pw.json.total).toBe(2);
+    // 진행 순위는 그대로 (무한 기록 순), 전투력도 같이 실려 온다
+    const pg = await call('GET', '/api/leaderboard');
+    expect(pg.json.top[0]).toMatchObject({ name: '약한교수', power: 300 });
+
+    // 저장하면 캐시가 비워져 바로 반영된다
+    await call('PUT', '/api/save', { data: { v: 3, stars: { '7-10': 3 }, endless: 50, power: 5000 }, version: 1 }, weak);
+    const again = await call('GET', '/api/leaderboard?by=power', undefined, weak);
+    expect(again.json.top[0]).toMatchObject({ name: '약한교수', power: 5000, mine: true });
+    expect(again.json.me).toMatchObject({ rank: 1 });
+  });
+
   it('닉네임: 기본은 아이디, 바꾸면 응답·순위표에 반영, 잘못된 값은 거절', async () => {
     const reg = await call('POST', '/api/auth/register', { username: 'nick01', password: 'password123' });
     expect(reg.json.user).toMatchObject({ username: 'nick01', nickname: 'nick01' });
