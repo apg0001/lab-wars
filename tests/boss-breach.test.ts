@@ -24,18 +24,28 @@ function setup(stage: StageDef) {
 }
 
 describe('보스 돌파', () => {
-  it('호통(HP 66%) 때 아군을 치고 지나 연구실 앞까지 돌진하고, 연구실을 직접 때린다', () => {
+  it('호통(HP 66%) 때 아군을 치고 지나 BREACH.dist만큼만 돌진한다 (연구실 문 앞까지는 아님)', () => {
     const { b, p, step, ally } = setup(STAGE_BY_ID['3-10']!);
-    const boss = p.spawnEnemy.call(b, 'reviewer2', true, ENEMY_FRONT - 200)!;
-    const wall = ally(ENEMY_FRONT - 600, { speed: 0 });
-    b.ally.hp = b.ally.maxHp = 5000;
+    const start = ENEMY_FRONT - 200;
+    const boss = p.spawnEnemy.call(b, 'reviewer2', true, start)!;
+    boss.stats.speed = 0;
+    const wall = ally(start - 150, { speed: 0 });
     p.damageFighter.call(b, boss, boss.maxHp * 0.36, 'ally');
     expect(boss.breach).toBe('run');
-    step(1.5); // 호통 기절이 풀리고
-    step((ENEMY_FRONT - ALLY_FRONT) / BREACH.speed + 1);
+    step(1.5 + BREACH.dist / BREACH.speed + 0.5);
     expect(boss.breach).toBe('in');
-    expect(boss.x).toBeLessThanOrEqual(ALLY_FRONT + BREACH.stopAt + 1);
+    expect(boss.x).toBeCloseTo(start - BREACH.dist, 0);
+    expect(boss.x).toBeGreaterThan(ALLY_FRONT + 500);
     expect(wall.hp).toBeLessThan(1e5); // 지나가며 쳤다
+  });
+
+  it('연구실 가까이에서 호통치면 연구실 앞에서 멈추고 연구실을 때린다', () => {
+    const { b, p, step } = setup(STAGE_BY_ID['3-10']!);
+    const boss = p.spawnEnemy.call(b, 'reviewer2', true, ALLY_FRONT + 200)!;
+    b.ally.hp = b.ally.maxHp = 5000;
+    p.damageFighter.call(b, boss, boss.maxHp * 0.36, 'ally');
+    step(1.5 + BREACH.dist / BREACH.speed + 0.5);
+    expect(boss.x).toBeGreaterThanOrEqual(ALLY_FRONT + BREACH.stopAt - 1);
     const hp = b.ally.hp;
     step(5);
     expect(b.ally.hp).toBeLessThan(hp);
