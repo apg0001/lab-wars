@@ -39,6 +39,22 @@ describe('보스 돌파', () => {
     expect(wall.hp).toBeLessThan(1e5); // 지나가며 쳤다
   });
 
+  it('근거리 전열만 뚫고 원거리 아군 앞에서 멈춘다', () => {
+    const { b, p, step, ally } = setup(STAGE_BY_ID['3-10']!);
+    const start = ENEMY_FRONT - 200;
+    const boss = p.spawnEnemy.call(b, 'reviewer2', true, start)!;
+    boss.stats.speed = 0;
+    const melee = ally(start - 60, { speed: 0 });
+    const ranged = ally(start - 160, { speed: 0, range: 180 });
+    p.damageFighter.call(b, boss, boss.maxHp * 0.36, 'ally');
+    step(1.5 + BREACH.dist / BREACH.speed + 0.5);
+    expect(boss.breach).toBe('in');
+    expect(boss.trampled?.has(melee.uid)).toBe(true);
+    expect(boss.trampled?.has(ranged.uid)).toBe(false);
+    expect(boss.x).toBeGreaterThan(ranged.x);
+    expect(boss.x).toBeLessThan(start - 100); // 근거리는 지나쳤다
+  });
+
   it('연구실 가까이에서 호통치면 연구실 앞에서 멈추고 연구실을 때린다', () => {
     const { b, p, step } = setup(STAGE_BY_ID['3-10']!);
     const boss = p.spawnEnemy.call(b, 'reviewer2', true, ALLY_FRONT + 200)!;

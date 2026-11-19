@@ -34,8 +34,8 @@ const ALARM_AT = [0.75, 0.5, 0.25];
 export const ALARM_RADIUS = 300;
 /** 보스 호통 기본값: HP 66%·33% 아래로 처음 떨어질 때 모든 아군을 1.2초 기절, 70 밀어내기 */
 export const BOSS_RAGE = { at: [0.66, 0.33], stun: 1.2, push: 70 };
-/** 보스 돌파: 돌진 속도(px/초), 한 번에 뚫고 들어오는 거리(전장의 약 1/5), 연구실 앞 한계(ALLY_FRONT에서), 지나가며 치는 넉백 */
-export const BREACH = { speed: 260, dist: 300, stopAt: 30, kb: { chance: 0.7, dist: 40 } };
+/** 보스 돌파: 돌진 속도(px/초), 한 번에 뚫고 들어오는 최대 거리(전장의 약 1/5), 연구실 앞 한계(ALLY_FRONT에서), 원거리 아군 앞에서 멈추는 간격, 지나가며 치는 넉백. 근거리 전열만 뚫고 원거리 아군 앞에서 멈춘다 */
+export const BREACH = { speed: 260, dist: 300, stopAt: 30, wallGap: 18, kb: { chance: 0.7, dist: 40 } };
 /** 남은 시간이 이만큼이면 경고 배너 */
 const TIME_WARN = 60;
 /** 단계 n → n+1 비용 */
@@ -1778,7 +1778,12 @@ export class Battle {
   /** 보스 돌파: 아군 전선을 뚫고 BREACH.dist만큼 달려 들어온다. 지나가며 아군을 한 번씩 치고 밀어낸다 */
   private tickBreachRun(f: Fighter, dt: number): void {
     const from = f.x;
-    const stop = f.breachTo ?? ALLY_FRONT + BREACH.stopAt;
+    let stop = f.breachTo ?? ALLY_FRONT + BREACH.stopAt;
+    // 근거리 전열만 뚫는다: 앞에 원거리 아군(지상)이 있으면 그 앞에서 멈춘다
+    for (const o of this.alive('ally')) {
+      if (o.stats.flying || o.stats.range < RANGED_THRESHOLD || o.x > from + bodyR(o)) continue;
+      stop = Math.max(stop, Math.min(from, o.x + bodyR(o) + BREACH.wallGap));
+    }
     f.x = Math.max(stop, f.x - BREACH.speed * dt);
     f.walk += BREACH.speed * dt * 0.08;
     f.attacking = false;

@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.28.4',
+    date: '2026-11-19',
+    title: '뒷줄은 지킨다',
+    items: [
+      '{anger} 보스 돌진이 근거리 동료만 뚫고 지나가요. 원거리 동료를 만나면 그 앞에서 멈춰요',
+    ],
+    en: {
+      title: 'The Back Line Holds',
+      items: [
+        '{anger} Boss charges now only break through melee teammates and stop in front of ranged ones',
+      ],
+    },
+  },
+  {
     version: '0.28.3',
     date: '2026-11-19',
     title: '포인터 끝에서',
