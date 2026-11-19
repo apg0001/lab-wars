@@ -1722,6 +1722,11 @@ function mkBadge(ctx: Ctx, tier: number, x: number, y: number): void {
 
 /** 장비 얼굴: 동그란 눈 두 개와 작은 입 */
 function gearFace(ctx: Ctx, x: number, y: number, gap = 4, blink = 0): void {
+  // 모자 기준점을 잴 때: 얼굴(눈) 위치를 기록한다
+  if (probe) {
+    const m = ctx.getTransform();
+    probe.face = { x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f };
+  }
   ctx.fillStyle = INK;
   for (const dx of [-gap, gap]) {
     ctx.beginPath();
@@ -3502,7 +3507,70 @@ function paletteColor(id: string, time: number): string | undefined {
 /** 머리 기준점: 정수리 (x, top), 머리 반폭 w, 눈 위치 (ex, ey). 그리기 함수가 옮긴 좌표계 안에서 쓴다. */
 interface HeadAnchor { x: number; top: number; w: number; ex: number; ey: number }
 
-function headAnchor(kind: Look['kind'], tier: number): HeadAnchor | null {
+/** 장비 머리 기준점을 잴 때만 쓰는 기록 (gearFace가 얼굴 위치를 남긴다) */
+let probe: { face?: { x: number; y: number } } | null = null;
+const autoAnchors = new Map<string, HeadAnchor | null>();
+/** 잴 때 캔버스 안의 발 위치 */
+const PROBE = { w: 200, h: 200, x: 100, y: 160 };
+
+/**
+ * 장비는 종류가 많아 그림을 한 번 그려 보고 기준점을 잡는다:
+ * 가운데 띠에서 위에서부터 폭이 10px 넘는 첫 줄을 정수리로 (안테나 같은 가는 끝은 건너뛴다), 그 줄 폭으로 머리 반폭,
+ * 얼굴은 gearFace가 그린 자리 (없으면 정수리 아래). 캔버스가 없으면(테스트 등) null.
+ */
+/** 자동으로 잡으면 어긋나는 장비만 손으로 (납땜 인두: 인두 끝이 몸통보다 높이 솟아 있다) */
+const ANCHOR_FIX: Record<string, HeadAnchor> = {
+  iron: { x: -1, top: -31, w: 10.5, ex: -3, ey: -11 },
+};
+
+function autoAnchor(look: Look, tier: number): HeadAnchor | null {
+  const fix = look.variant ? ANCHOR_FIX[look.variant] : undefined;
+  if (fix) return fix;
+  const key = `${look.kind}|${look.variant ?? ''}|${tier}`;
+  if (autoAnchors.has(key)) return autoAnchors.get(key)!;
+  let out: HeadAnchor | null = null;
+  try {
+    if (typeof document === 'undefined') return null;
+    const c = document.createElement('canvas');
+    c.width = PROBE.w;
+    c.height = PROBE.h;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    if (!g) return null;
+    probe = {};
+    const keepCap = capHidden;
+    // 모자 없이, 크기 1로 (look.scale은 그릴 때 바깥에서 곱해진다)
+    drawCharacter(g, { ...look, scale: 1 }, { walk: 0, swing: 0, tier, time: 0.3, moving: false }, PROBE.x, PROBE.y, 1, '', {});
+    capHidden = keepCap;
+    const face = probe.face;
+    probe = null;
+    const { data } = g.getImageData(0, 0, PROBE.w, PROBE.h);
+    const solid = (px: number, py: number): boolean => data[(py * PROBE.w + px) * 4 + 3]! > 60;
+    for (let py = 0; py < PROBE.h && !out; py++) {
+      let lo = -1;
+      let hi = -1;
+      for (let px = PROBE.x - 30; px <= PROBE.x + 30; px++) {
+        if (!solid(px, py)) continue;
+        if (lo < 0) lo = px;
+        hi = px;
+      }
+      if (lo < 0 || hi - lo < 10) continue;
+      const top = py - PROBE.y;
+      const cx = (lo + hi) / 2 - PROBE.x;
+      const ex = face ? face.x - PROBE.x : cx;
+      const ey = face ? face.y - PROBE.y : top + 10;
+      out = { x: cx, top: top + 1, w: Math.min(15, Math.max(8, (hi - lo) / 2)), ex, ey };
+    }
+  } catch {
+    out = null;
+  } finally {
+    probe = null;
+  }
+  autoAnchors.set(key, out);
+  return out;
+}
+
+function headAnchor(look: Look, tier: number): HeadAnchor | null {
+  const kind = look.kind;
   switch (kind) {
     case 'student': return { x: 0, top: -53, w: 13, ex: 3, ey: -39 };
     case 'drone': return { x: 0, top: -27, w: 11, ex: 4, ey: -15 };
@@ -3514,6 +3582,7 @@ function headAnchor(kind: Look['kind'], tier: number): HeadAnchor | null {
     case 'claudy': return { x: 0, top: -44, w: 12, ex: 2, ey: -27 };
     case 'codexy': return { x: 0, top: tier >= 2 ? -44 : -40, w: 13, ex: 0, ey: -29 };
     case 'jaeminai': return { x: 0, top: -34, w: 12, ex: 2, ey: -22 };
+    case 'gear': return autoAnchor(look, tier);
     default: return null;
   }
 }
@@ -3796,7 +3865,7 @@ export function drawCharacter(ctx: Ctx, look: Look, pose: Pose, x: number, y: nu
     case 'lecturer': lecturer(ctx, look, pose); break;
   }
   if (hat) {
-    const a = headAnchor(look.kind, pose.tier);
+    const a = headAnchor(look, pose.tier);
     if (a) drawHat(ctx, hat.id, a, pose.time);
   }
   capHidden = false;
