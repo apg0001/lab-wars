@@ -29,8 +29,8 @@ const ALARM_AT = [0.75, 0.5, 0.25];
 export const ALARM_RADIUS = 300;
 /** 보스 호통 기본값: HP 66%·33% 아래로 처음 떨어질 때 모든 아군을 1.2초 기절, 70 밀어내기 */
 export const BOSS_RAGE = { at: [0.66, 0.33], stun: 1.2, push: 70 };
-/** 보스 돌파: 돌진 속도(px/초), 연구실 앞 멈추는 자리(ALLY_FRONT에서), 지나가며 치는 넉백 */
-export const BREACH = { speed: 260, stopAt: 30, kb: { chance: 0.7, dist: 40 } };
+/** 보스 돌파: 돌진 속도(px/초), 한 번에 뚫고 들어오는 거리(전장의 약 1/5), 연구실 앞 한계(ALLY_FRONT에서), 지나가며 치는 넉백 */
+export const BREACH = { speed: 260, dist: 300, stopAt: 30, kb: { chance: 0.7, dist: 40 } };
 /** 남은 시간이 이만큼이면 경고 배너 */
 const TIME_WARN = 60;
 /** 단계 n → n+1 비용 */
@@ -70,6 +70,8 @@ export interface Fighter {
   noBreach?: boolean;
   /** 이번 돌진에 이미 치고 지나간 아군 uid */
   trampled?: Set<number>;
+  /** 이번 돌진이 멈출 자리 */
+  breachTo?: number;
   /** 아군: 뚫고 들어온 보스를 막으러 뒤돌아 있다 (그림이 왼쪽을 본다) */
   back?: boolean;
   auraMul: number;
@@ -1725,10 +1727,10 @@ export class Battle {
     }
   }
 
-  /** 보스 돌파: 아군 전선을 뚫고 연구실 앞까지 달린다. 지나가며 아군을 한 번씩 치고 밀어낸다 */
+  /** 보스 돌파: 아군 전선을 뚫고 BREACH.dist만큼 달려 들어온다. 지나가며 아군을 한 번씩 치고 밀어낸다 */
   private tickBreachRun(f: Fighter, dt: number): void {
     const from = f.x;
-    const stop = ALLY_FRONT + BREACH.stopAt;
+    const stop = f.breachTo ?? ALLY_FRONT + BREACH.stopAt;
     f.x = Math.max(stop, f.x - BREACH.speed * dt);
     f.walk += BREACH.speed * dt * 0.08;
     f.attacking = false;
@@ -1743,7 +1745,7 @@ export class Battle {
       f.breach = 'in';
       this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.6, r: 120 });
       this.emit({ type: 'stomp', x: f.x, r: 120 });
-      this.banner(tr(`{warn} ${f.name}이(가) 연구실 문 앞까지 왔어요! 막아요!`, `{warn} ${f.name} is at the Lab door! Stop them!`));
+      this.banner(tr(`{warn} ${f.name}이(가) 전선을 뚫고 들어왔어요! 막아요!`, `{warn} ${f.name} broke through the line! Stop them!`));
     }
   }
 
@@ -1767,11 +1769,12 @@ export class Battle {
     this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.8, r: 420 });
     this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: tr('{anger} 이게 뭐야!', '{anger} What is THIS?!'), color: '#ff5252' });
     this.emit({ type: 'rage', x: f.x });
-    // 호통과 함께 전선을 뚫고 연구실로 돌진한다 (이미 들어와 있으면 그대로)
-    if (this.canBreach(f) && f.breach !== 'in') {
+    // 호통마다 전선을 뚫고 일정 거리 돌진한다 (연구실 앞에서는 멈춘다)
+    if (this.canBreach(f) && f.x > ALLY_FRONT + BREACH.stopAt + 1) {
       f.breach = 'run';
       f.trampled = new Set();
-      this.banner(tr(`{anger} ${f.name} 호통! 연구실로 돌진해요!`, `{anger} ${f.name} yells and charges the Lab!`));
+      f.breachTo = Math.max(ALLY_FRONT + BREACH.stopAt, f.x - BREACH.dist);
+      this.banner(tr(`{anger} ${f.name} 호통! 전선으로 돌진해요!`, `{anger} ${f.name} yells and charges your line!`));
     } else this.banner(tr(`{anger} ${f.name} 호통!`, `{anger} ${f.name} yells!`));
   }
 
