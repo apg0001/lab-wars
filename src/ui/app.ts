@@ -1,7 +1,9 @@
-import { CHAPTERS, SIDE_CHAPTERS, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessStage, type StageDef, type StageKind } from '../data/stages';
+import { CHAPTERS, PROF_FROM, SIDE_CHAPTERS, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessStage, sideJoinRound, type StageDef, type StageKind } from '../data/stages';
 
 /** 지도 탭 번호: 1~7 챕터, 8 무한, 9 외전 */
 const SIDE_TAB = CHAPTERS.length + 2;
+type MapMode = 'story' | 'major' | 'endless';
+const MAP_MODES: MapMode[] = ['story', 'major', 'endless'];
 /** 스토리 장면 속 주인공 모습 (외전은 시절이 다르다) */
 const heroChapter = (s: StageDef): number => (s.side ? SIDE_CHAPTERS[s.side - 1]!.heroChapter : s.chapter);
 import { ENEMY_BY_ID } from '../data/enemies';
@@ -74,7 +76,7 @@ export class App {
   private settings: Settings = { speed: 1 };
   private chapter = 1;
   /** 지도 모드: 스토리(캠페인·무한·외전) / 전공 (기기에 기억) */
-  private mode: 'story' | 'major' = kv.get('mapMode') === 'major' ? 'major' : 'story';
+  private mode: MapMode = MAP_MODES.includes(kv.get('mapMode') as MapMode) ? kv.get('mapMode') as MapMode : 'story';
   private cleanup: (() => void) | null = null;
   /** 연구실 동료 탭 정렬·보기 (기기에 기억) */
   private readonly labPref = loadPref('lab', LAB_SORT);
@@ -419,10 +421,10 @@ export class App {
     );
   }
 
-  /** 스토리 모드 / 전공 모드 전환 */
+  /** 스토리 모드 / 전공 모드 / 무한 모드 전환 */
   private modeSwitch(): HTMLElement {
     const open = isMajorOpen(this.save);
-    const set = (m: 'story' | 'major'): void => {
+    const set = (m: MapMode): void => {
       this.mode = m;
       kv.set('mapMode', m);
       this.showMap();
@@ -434,6 +436,10 @@ export class App {
         title: open ? '' : tr(`${MAJOR_UNLOCK_STAGE} 클리어 시 전공 배정`, `Unlocks after clearing ${MAJOR_UNLOCK_STAGE}`),
         onclick: () => set('major'),
       }, open ? tr('{cap} 전공 모드', '{cap} Major Mode') : tr(`{lock} 전공 모드 (${MAJOR_UNLOCK_STAGE} 클리어)`, `{lock} Major Mode (clear ${MAJOR_UNLOCK_STAGE})`)),
+      h(`button.mode-btn${this.mode === 'endless' ? '.on' : ''}`, {
+        disabled: isEndlessOpen(this.save) ? undefined : 'true',
+        onclick: () => set('endless'),
+      }, tr('{infinity} 무한 모드', '{infinity} Endless Mode')),
     );
   }
 
@@ -491,26 +497,24 @@ export class App {
   showMap(): void {
     music.play('lobby');
     if (this.mode === 'major' && isMajorOpen(this.save)) return this.showMajorMap();
-    const endlessOpen = isEndlessOpen(this.save);
+    if (this.mode === 'endless' && isEndlessOpen(this.save)) return this.showEndlessMap(h('div.map-head', {}, this.modeSwitch()));
     const sideOpen = isSideOpen(this.save);
     if (this.chapter === SIDE_TAB && !sideOpen) this.chapter = CHAPTERS.length;
+    // 무한 모드는 따로 떨어졌으니 예전 무한 탭 자리는 마지막 장으로
+    if (this.chapter > CHAPTERS.length && this.chapter !== SIDE_TAB) this.chapter = CHAPTERS.length;
     const tabRow = h('div.chapter-tabs', {}, ...CHAPTERS.map((c) => {
       const open = isStageOpen(this.save, STAGE_BY_ID[`${c.id}-1`]!);
       return h(`button.chapter-tab${c.id === this.chapter ? '.on' : ''}`, {
         disabled: open ? undefined : 'true',
         onclick: () => { this.chapter = c.id; this.showMap(); },
       }, open ? c.name : `{lock} ${c.name}`);
-    }), h(`button.chapter-tab.endless-tab${this.chapter === CHAPTERS.length + 1 ? '.on' : ''}`, {
-      disabled: endlessOpen ? undefined : 'true',
-      onclick: () => { this.chapter = CHAPTERS.length + 1; this.showMap(); },
-    }, endlessOpen ? tr('{infinity} 무한', '{infinity} Endless') : '{lock} {infinity}'), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
+    }), h(`button.chapter-tab.side-tab${this.chapter === SIDE_TAB ? '.on' : ''}`, {
       disabled: sideOpen ? undefined : 'true',
       onclick: () => { this.chapter = SIDE_TAB; this.showMap(); },
     }, sideOpen ? tr('{redbook} 외전', '{redbook} Side') : '{lock} {redbook}'));
     // 위쪽: 스토리/전공 모드 전환 + 챕터 탭
     const tabs = h('div.map-head', {}, this.modeSwitch(), tabRow);
     if (this.chapter === SIDE_TAB) return this.showSideMap(tabs);
-    if (this.chapter > CHAPTERS.length) return this.showEndlessMap(tabs);
     const ch = CHAPTERS[this.chapter - 1]!;
     const stages = STAGES.filter((s) => s.chapter === ch.id);
     const nodes = h('div.stage-path', {}, ...stages.map((s) => this.stageNode(s)));
@@ -637,9 +641,10 @@ export class App {
           const st = endlessStage(n);
           const open = isStageOpen(this.save, st);
           return h(`button.btn${n === best + 1 ? '.primary.big' : ''}`, { disabled: open ? undefined : 'true', onclick: () => this.showStageInfo(st) },
-            `${n === best + 1 ? tr('도전: ', 'Challenge: ') : '{retry} '}${st.name}${st.boss ? ` (${ENEMY_BY_ID[st.boss]!.name})` : ''}`);
+            `${n === best + 1 ? tr('도전: ', 'Challenge: ') : '{retry} '}${st.name}${st.boss ? ` (${ENEMY_BY_ID[st.boss]!.name})` : ''}${st.extraBosses?.length ? tr(` + 교수님 ${st.extraBosses.length}명`, ` + ${st.extraBosses.length} prof.`) : ''}`);
         })),
         h('p.muted', {}, tr(`다음 판 적 능력치 ×${next.scale.toFixed(1)} · 5판마다 보스 · 처음 넘는 판은 보상 전액`, `Next round enemy stats ×${next.scale.toFixed(1)} · boss every 5 rounds · full reward for new records`)),
+        endlessRoster(best),
       ),
       this.mapActions(),
     ));
@@ -649,15 +654,20 @@ export class App {
   private showStageInfo(s: StageDef): void {
     const overlay = h('div.overlay');
     const close = (): void => overlay.remove();
-    const enemyIds = [...s.pool.map((p) => p.id), ...(s.boss ? [s.boss] : [])];
+    const enemyIds = [...new Set([...s.pool.map((p) => p.id), ...(s.boss ? [s.boss] : [])])];
+    const extra = s.extraBosses ?? [];
     const first = !isCleared(this.save, s.id);
     const deck = makeLoadout(this.save).deck;
     overlay.append(h('div.panel.stage-info', {},
       h('h2', {}, `${s.id} ${s.name}`),
       s.boss ? h('p.boss-warn', {}, tr(`{warn} 보스: ${ENEMY_BY_ID[s.boss]!.name}`, `{warn} Boss: ${ENEMY_BY_ID[s.boss]!.name}`)) : null,
+      extra.length ? h('p.boss-warn', {}, s.boss
+        ? tr(`{tie} 교수님 ${extra.length}명 동행: ${extra.map((x) => ENEMY_BY_ID[x.id]!.name).join(', ')}`, `{tie} ${extra.length} professor(s) join: ${extra.map((x) => ENEMY_BY_ID[x.id]!.name).join(', ')}`)
+        : tr(`{tie} 초청 강연 (${extra[0]!.at}초): ${ENEMY_BY_ID[extra[0]!.id]!.name}`, `{tie} Guest lecture (${extra[0]!.at}s): ${ENEMY_BY_ID[extra[0]!.id]!.name}`)) : null,
       s.note ? h('p.stage-note', {}, s.note) : null,
       h('p.muted', {}, tr('등장하는 적', 'Enemies')),
-      h('div.enemy-row', {}, ...enemyIds.map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name), enemyStatLine(id, s)))),
+      h('div.enemy-row', {}, ...enemyIds.map((id) => h('figure', {}, h('img', { src: portrait(ENEMY_BY_ID[id]!.look, 1, id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[id]!.name), enemyStatLine(id, s))),
+        ...extra.map((x) => h('figure.extra-boss', {}, h('img', { src: portrait(ENEMY_BY_ID[x.id]!.look, 1, x.id, -1), alt: '' }), h('figcaption', {}, ENEMY_BY_ID[x.id]!.name), enemyStatLine(x.id, s, x.mul)))),
       s.kind === 'endless'
         ? h('p', {}, s.index > this.save.endless ? tr(`첫 돌파 보상 {coin} ${fmt(s.reward)}`, `New record reward {coin} ${fmt(s.reward)}`) : tr(`재도전 보상 {coin} ${fmt(s.reward * 0.4)} + 처치 보상`, `Replay reward {coin} ${fmt(s.reward * 0.4)} + kill rewards`))
         : h('p', {}, first ? tr(`첫 클리어 보상 {coin} 최대 ${fmt(s.reward * 1.2)}`, `First clear reward {coin} up to ${fmt(s.reward * 1.2)}`) : tr(`재도전 보상 {coin} 최대 ${fmt(s.reward * 1.2 * REPLAY_MUL)} + 처치 보상`, `Replay reward {coin} up to ${fmt(s.reward * 1.2 * REPLAY_MUL)} + kill rewards`)),
@@ -761,6 +771,12 @@ export class App {
   }
 
   private startBattle(stage: StageDef): void {
+    // 끝나고 돌아올 지도: 그 판이 속한 모드
+    const mode: MapMode = stage.kind === 'endless' ? 'endless' : stage.course ? 'major' : 'story';
+    if (mode !== this.mode) {
+      this.mode = mode;
+      kv.set('mapMode', mode);
+    }
     const intro = this.scenesBefore(stage);
     if (intro.length) {
       this.swap(h('div.screen.story-backdrop'));
@@ -1088,5 +1104,21 @@ export class App {
       );
     });
   }
+}
+
+/** 무한 모드 합류 일정: 외전 적·교수님이 몇 판부터 나오는지 (지난 것은 체크) */
+function endlessRoster(best: number): HTMLElement {
+  const events: { at: number; text: string }[] = [
+    ...SIDE_CHAPTERS.map((sc) => ({ at: sideJoinRound(sc.id), text: tr(`외전 ${sc.id} 적 합류`, `Side ${sc.id} foes join`) })),
+    { at: PROF_FROM, text: tr('보스 판에 교수님 동행', 'Professors join boss rounds') },
+    { at: 17, text: tr('7로 끝나는 판에 초청 강연', 'Guest lectures on rounds ending in 7') },
+    { at: 30, text: tr('교수님 2명', '2 professors') },
+    { at: 50, text: tr('교수님 3명', '3 professors') },
+    { at: 70, text: tr('교수님 4명', '4 professors') },
+  ].sort((a, b) => a.at - b.at);
+  return h('div.endless-roster', {},
+    h('b', {}, tr('{clipboard} 합류 일정', '{clipboard} Who shows up')),
+    h('div.roster-list', {}, ...events.map((e) => h(`span.roster-item${e.at <= best + 1 ? '.on' : ''}`, {}, `${e.at <= best + 1 ? '{check}' : '{lock}'} ${tr(`${e.at}판`, `R${e.at}`)} · ${e.text}`))),
+  );
 }
 

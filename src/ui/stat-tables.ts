@@ -76,9 +76,9 @@ export function enemyStageTable(save: SaveData, e: EnemyDef): HTMLElement {
 }
 
 /** 스테이지 정보의 적 초상 아래: 이 판에서의 체력·공격력 */
-export const enemyStatLine = (id: string, stage: StageDef): HTMLElement | null => {
+export const enemyStatLine = (id: string, stage: StageDef, bossMul?: number): HTMLElement | null => {
   const def = ENEMY_BY_ID[id];
   if (!def) return null;
-  const st = enemyStatsAt(def, stage);
+  const st = enemyStatsAt(def, stage, bossMul);
   return h('small.enemy-stat', {}, `{heart}${num(st.hp)} {sword}${num(st.atk)}`);
 };

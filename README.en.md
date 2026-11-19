@@ -64,7 +64,7 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 - **Event stages** like 🏖️ breaks, 🎤 spring/summer/fall/winter conferences, and 📝 thesis season
 - Every stage except bosses has a short **story cutscene** (walking, jumping, emote bubbles, voice blips)
 - 📜 Story replay: **binge-watch** from any scene, or **resume** where you left off
-- 🎓 An unskippable ending, plus an ever-harder **♾️ Endless Mode** you can play from the start, with a **🏆 leaderboard**. As the rounds climb, the **Bug Army** joins in (Segfault · Memory Leak · Infinite Loop · Merge Conflict · Blue Screen · Power Outage), and the Kernel Panic and Legacy Code bosses show up from round 30
+- 🎓 An unskippable ending, plus an ever-harder **♾️ Endless Mode** you can play from the start, with a **🏆 leaderboard**. As the rounds climb, the **Bug Army** joins in (Segfault · Memory Leak · Infinite Loop · Merge Conflict · Blue Screen · Power Outage), and the Kernel Panic and Legacy Code bosses show up from round 30. Side Story foes and bosses, and the **major-course professors** (1–4 joining each boss round from round 10), show up too
 
 ### 📕 Side Stories: the parts nobody tells you
 
