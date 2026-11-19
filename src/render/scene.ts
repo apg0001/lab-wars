@@ -513,7 +513,8 @@ function drawAura(ctx: Ctx, b: Battle, f: Fighter, time: number): void {
 
 function drawFighter(ctx: Ctx, b: Battle, f: Fighter, time: number, sprites: SpriteCache): void {
   const y = b.fy(f);
-  const facing = f.side === 'ally' ? 1 : -1;
+  // 아군이 뚫고 들어온 보스를 막으러 돌아갈 때는 뒤(왼쪽)를 본다
+  const facing = f.side === 'ally' && !f.back ? 1 : -1;
   ctx.save();
   // 그림자
   if (!f.dead) {
