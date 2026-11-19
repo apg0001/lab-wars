@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.27.2',
+    date: '2026-11-19',
+    title: '아이폰 버튼 구출 작전',
+    items: [
+      '{phone} 아이폰 세로 화면 전투에서 맨 아래 유닛 버튼이 절반쯤 잘리던 문제를 고쳤어요',
+    ],
+    en: {
+      title: 'Operation: Rescue the iPhone Buttons',
+      items: [
+        '{phone} Fixed the bottom row of unit buttons getting cut in half in portrait battles on iPhone',
+      ],
+    },
+  },
+  {
     version: '0.27.1',
     date: '2026-11-19',
     title: '장비도 멋 부릴 권리가 있다',
