@@ -297,6 +297,8 @@ export class Battle {
   private nextRush: number;
   private queue: { at: number; id: string; rush?: boolean }[] = [];
   private bossSpawned = false;
+  /** stage.extraBosses 중 나온 것 */
+  private extraSpawned: boolean[] = [];
   private uidSeq = 1;
   private acc = 0;
   private readonly rng: () => number;
@@ -694,6 +696,15 @@ export class Battle {
       this.banner(tr(`{warn} ${ENEMY_BY_ID[st.boss]!.name} 등장!`, `{warn} ${ENEMY_BY_ID[st.boss]!.name} appears!`));
       this.emit({ type: 'bossSpawn' });
     }
+    // 무한 모드 교수님: 정해진 시각에 하나씩 (동행 보스·초청 강연)
+    st.extraBosses?.forEach((xb, i) => {
+      if (this.extraSpawned[i] || this.t < xb.at) return;
+      this.extraSpawned[i] = true;
+      if (!this.spawnEnemy(xb.id, true, ENEMY_FRONT + 20, xb.mul)) return;
+      const name = ENEMY_BY_ID[xb.id]!.name;
+      this.banner(st.boss ? tr(`{tie} ${name}도 합류!`, `{tie} ${name} joins in!`) : tr(`{tie} 초청 강연: ${name}`, `{tie} Guest lecture: ${name}`));
+      this.emit({ type: 'bossSpawn' });
+    });
     // 장기전 방지: 3분이 지나면 출현 간격이 점점 짧아진다 (최대 절반).
     const overtime = this.t > 180 ? Math.max(0.5, 1 - (this.t - 180) / 240) : 1;
     const every = st.spawnEvery * overtime * this.cardMods.spawnEvery;
@@ -732,11 +743,11 @@ export class Battle {
     return pool[pool.length - 1]!.id;
   }
 
-  private spawnEnemy(id: string, boss = false, x = ENEMY_FRONT + 20): Fighter | null {
+  private spawnEnemy(id: string, boss = false, x = ENEMY_FRONT + 20, bossMul?: number): Fighter | null {
     const def = ENEMY_BY_ID[id];
     if (!def) return null;
     if (!boss && this.alive('enemy').length >= MAX_ENEMIES) return null;
-    const stats = enemyStatsAt(def, this.stage);
+    const stats = enemyStatsAt(def, this.stage, bossMul);
     const f = this.addFighter('enemy', id, def.name, def.look, 1, stats, x, Math.round(def.reward * KILL_REWARD_MUL * (this.stage.killMul ?? 1)));
     f.isBoss = !!def.boss;
     f.summonCd = def.boss?.summon?.every ?? 0;

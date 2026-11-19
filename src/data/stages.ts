@@ -2,6 +2,7 @@ import { localizeAll, tr } from '../i18n';
 import type { CourseMods } from '../sim/course-rules';
 import { ICE_COURSES, type CourseDef } from './major';
 import { COURSE_CONTENT } from './courses';
+import { ENEMY_BY_ID } from './enemies';
 
 export interface Chapter {
   id: number;
@@ -47,6 +48,8 @@ export interface StageDef {
   boss?: string;
   /** 보스 능력치 배율 (무한 모드에서 커진다) */
   bossScale?: number;
+  /** 함께 나오는 추가 보스 (무한 모드 교수님): at초에 등장, mul = 이 보스의 bossScale */
+  extraBosses?: ExtraBoss[];
   /** 카페인 충전 배율 (방학엔 조금 여유) */
   caffeineMul?: number;
   /** 적 처치 연구비 배율 */
@@ -291,7 +294,8 @@ export function legacyOrder(oldId: string): number | null {
 
 // ───────────── 무한 모드 ─────────────
 
-const ENDLESS_BOSSES = ['prof2', 'reviewer2', 'chair', 'committee', 'dean', 'president'];
+/** 무한 모드 보스 순환: 캠페인 보스 → 외전 보스 */
+const ENDLESS_BOSSES = ['prof2', 'reviewer2', 'chair', 'committee', 'dean', 'president', 'tenure', 'ghost13', 'reviewer3', 'submitsys', 'autoreview', 'vc', 'mainbreaker'];
 
 /** 무한 모드 전용 버그 군단: from판부터 출현 목록에 weight로 합류한다 */
 export const ENDLESS_ENEMIES: { id: string; from: number; weight: number }[] = [
@@ -351,6 +355,57 @@ export function endlessOutposts(n: number, scale: number): OutpostDef[] {
   }));
 }
 
+export interface ExtraBoss {
+  id: string;
+  at: number;
+  mul: number;
+}
+
+/** 외전 적이 무한 모드에 합류하는 판: 외전 k의 새 적은 2 + 3k판부터 (5·8·…·23) */
+export const sideJoinRound = (side: number): number => 2 + 3 * side;
+/** 무한 모드에 합류하는 외전 적 (외전마다 처음 나오는 적, 캠페인 적은 빼고) */
+export function endlessSideEnemies(): { id: string; from: number; weight: number }[] {
+  const camp = new Set(STAGES.flatMap((st) => st.pool.map((p) => p.id)));
+  const out: { id: string; from: number; weight: number }[] = [];
+  for (const sc of SIDE_CHAPTERS) {
+    const first = SIDE_STAGES.find((st) => st.side === sc.id && st.index === 1);
+    const ids = [...new Set(first?.pool.map((p) => p.id) ?? [])].filter((id) => !camp.has(id) && !out.some((o) => o.id === id));
+    for (const id of ids) out.push({ id, from: sideJoinRound(sc.id), weight: 1.2 / ids.length });
+  }
+  return out;
+}
+
+/** 무한 모드 교수님: 교수님마다 가장 높은 학년 과목의 기말 보스를 대표로 (교수님 16명) */
+export function endlessProfessors(): string[] {
+  const best = new Map<string, CourseDef>();
+  for (const co of ICE_COURSES) {
+    const cur = best.get(co.prof);
+    if (!cur || co.year > cur.year || (co.year === cur.year && co.sem > cur.sem)) best.set(co.prof, co);
+  }
+  return [...best.values()].map((co) => `boss-${co.id}`);
+}
+
+/** 교수님이 보스 판에 동행하기 시작하는 판 */
+export const PROF_FROM = 10;
+/** 교수님 기준 HP: 학년과 상관없이 이 HP × 판 배율로 맞춘다 */
+const PROF_BASE_HP = 3500;
+
+/** 무한 n판의 교수님: 보스 판(10판~)엔 1 + (n−10)/20명(최대 4), 7로 끝나는 판(17판~)엔 초청 강연 1명 */
+export function endlessExtraBosses(n: number, hpOf: (id: string) => number): ExtraBoss[] {
+  const profs = endlessProfessors();
+  if (!profs.length) return [];
+  const boss = n % 5 === 0 && n >= PROF_FROM;
+  const guest = n % 10 === 7 && n >= 17;
+  const count = boss ? Math.min(4, 1 + Math.floor((n - PROF_FROM) / 20)) : guest ? 1 : 0;
+  const scale = 1 + n * 0.04;
+  // 판마다 다른 교수님들이 (같은 판엔 겹치지 않게)
+  const start = (n * 7) % profs.length;
+  return Array.from({ length: count }, (_, i) => {
+    const id = profs[(start + i * 5) % profs.length]!;
+    return { id, at: guest ? 45 : 8 + i * 12, mul: Math.round(scale * (PROF_BASE_HP / hpOf(id)) * 100) / 100 };
+  });
+}
+
 export function endlessStage(n: number): StageDef {
   const order = LAST_ORDER + n;
   const c = 19 + n * ENDLESS_STEP;
@@ -373,15 +428,16 @@ export function endlessStage(n: number): StageDef {
     towerRamp: ENDLESS_TOWER_RAMP,
     outposts: endlessOutposts(n, enemyScale(c) * endlessMul(n)),
     spawnEvery: Math.max(1.4, 2.8 - c * 0.06) * (isBoss ? 1.5 : 1),
-    pool: [...poolAt(c, kind === 'boss' ? 'normal' : kind), ...ENDLESS_ENEMIES.filter((e) => e.from <= n).map(({ id, weight }) => ({ id, weight }))],
+    pool: [...poolAt(c, kind === 'boss' ? 'normal' : kind), ...[...ENDLESS_ENEMIES, ...endlessSideEnemies()].filter((e) => e.from <= n).map(({ id, weight }) => ({ id, weight }))],
     rush: { first: 30, every: Math.max(18, 40 - c), size: Math.round((3 + Math.floor(c / 3)) * (isBoss ? 0.5 : 1)) },
     boss: endlessBoss(n),
     bossScale: isBoss ? 1 + n * 0.04 : undefined,
+    extraBosses: endlessExtraBosses(n, (id) => ENEMY_BY_ID[id]?.hp ?? PROF_BASE_HP),
     caffeineMul: undefined,
-    note: tr('{infinity} 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스.', '{infinity} Endless Mode: enemies keep getting stronger every round. A boss every 5 rounds.'),
+    note: tr('{infinity} 무한 모드: 판이 올라갈수록 끝없이 강해져요. 5판마다 보스, 10판부터는 교수님들도 함께 와요.', '{infinity} Endless Mode: enemies keep getting stronger every round. A boss every 5 rounds, and professors tag along from round 10.'),
     en: {
       name: isBoss ? `Endless Round ${n}: Boss Rush` : `Endless Round ${n}`,
-      note: '{infinity} Endless Mode: enemies keep getting stronger every round. A boss every 5 rounds.',
+      note: '{infinity} Endless Mode: enemies keep getting stronger every round. A boss every 5 rounds, and professors tag along from round 10.',
     },
     reward: Math.round(80 + c * 12),
     timeLimit: TIME_LIMIT.endless,
