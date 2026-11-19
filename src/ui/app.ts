@@ -38,6 +38,7 @@ import { mountGallery, statTags } from './gallery';
 import { RARITY_RANK, loadPref, sortBar, sortByPref, type SortKey } from './sort';
 import { maybeShowUpdates, showPatchNotes } from './patch-notes';
 import { powerBadge, powerCompare } from './power';
+import { squadPower } from '../sim/power';
 import { enemyStatLine } from './stat-tables';
 import { fullscreenButton } from './fullscreen';
 import { h, fmt, setRich } from './dom';
@@ -204,6 +205,8 @@ export class App {
 
   private persist(): void {
     setWardrobe(this.save.cosmetics.outfits);
+    // 순위표 전투력 순위용: 저장할 때마다 지금 편성 전투력을 같이 올린다
+    this.save.power = squadPower(this.save);
     if (this.profile) void this.storeFor(this.profile).save(this.profile.id, this.save);
   }
 
@@ -849,14 +852,22 @@ export class App {
   }
 
   /** 순위표: 무한 모드 최고 기록 → 캠페인 별 순 */
-  private showLeaderboard(): void {
-    const overlay = h('div.overlay');
+  private showLeaderboard(by: 'progress' | 'power' = 'progress'): void {
+    this.root.querySelector('.rank-overlay')?.remove();
+    const overlay = h('div.overlay.rank-overlay');
     const close = (): void => overlay.remove();
     const body = h('div.rank-body', {}, h('p.muted', {}, tr('불러오는 중…', 'Loading…')));
     const isAccount = this.profile?.kind === 'account';
+    const power = by === 'power';
     overlay.append(h('div.panel.rank-panel', {},
       h('h2', {}, tr('{trophy} 연구실 순위', '{trophy} Lab Rankings')),
-      h('p.muted.rank-sub', {}, tr('무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 닉네임과 전공 평점이 표시돼요.', 'Ranked by Endless best, then campaign stars. Account nicknames and major GPAs are shown.')),
+      h('div.lab-tabs.rank-tabs', {},
+        h(`button.chapter-tab${power ? '' : '.on'}`, { onclick: () => this.showLeaderboard('progress') }, tr('{infinity} 진행 순위', '{infinity} Progress')),
+        h(`button.chapter-tab${power ? '.on' : ''}`, { onclick: () => this.showLeaderboard('power') }, tr('{bolt} 전투력 순위', '{bolt} Power')),
+      ),
+      h('p.muted.rank-sub', {}, power
+        ? tr(`지금 편성의 전투력 순서예요. 내 전투력 ${fmt(squadPower(this.save))} (저장할 때 반영돼요).`, `Ranked by current squad power. Yours: ${fmt(squadPower(this.save))} (updated when you save).`)
+        : tr('무한 모드 최고 기록 → 캠페인 별 순서예요. 계정 닉네임과 전공 평점이 표시돼요.', 'Ranked by Endless best, then campaign stars. Account nicknames and major GPAs are shown.')),
       body,
       isAccount || !this.api ? null : h('p.notice', {}, tr('{key} 로그인하면 내 기록도 순위에 올라가요.', '{key} Log in to get your record on the board.')),
       h('button.btn.primary', { onclick: close }, tr('닫기', 'Close')),
@@ -873,10 +884,14 @@ export class App {
       h('img.rank-avatar', { src: rankAvatar(r.avatar, r.avatarTier, r.fit), alt: '' }),
       h('span.rank-name', {}, r.name, r.badge && COSMETIC_BY_ID[r.badge]?.kind === 'title' ? h('small.rank-badge', {}, COSMETIC_BY_ID[r.badge]!.name) : null),
       h('span.rank-title', {}, rankTitle(r.title), typeof r.gpa === 'number' ? h('small.rank-gpa', {}, tr(`평점 ${r.gpa.toFixed(2)}`, `GPA ${r.gpa.toFixed(2)}`)) : null),
-      h('span.rank-endless', {}, r.endless ? tr(`{infinity} ${r.endless}판`, `{infinity} R${r.endless}`) : '—'),
-      h('span.rank-stars', {}, `{star} ${r.stars}`),
+      power
+        ? h('span.rank-endless.rank-power', {}, `{bolt} ${fmt(r.power ?? 0)}`)
+        : h('span.rank-endless', {}, r.endless ? tr(`{infinity} ${r.endless}판`, `{infinity} R${r.endless}`) : '—'),
+      power
+        ? h('span.rank-stars', {}, r.endless ? tr(`{infinity} ${r.endless}판`, `{infinity} R${r.endless}`) : `{star} ${r.stars}`)
+        : h('span.rank-stars', {}, `{star} ${r.stars}`),
     );
-    this.api.leaderboard().then((lb) => {
+    this.api.leaderboard(by).then((lb) => {
       if (!lb.top.length) {
         body.replaceChildren(h('p.muted', {}, tr('아직 순위에 오른 사람이 없어요. 첫 번째가 되어 보세요!', 'Nobody on the board yet. Be the first!')));
         return;
