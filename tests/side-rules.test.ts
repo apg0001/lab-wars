@@ -50,10 +50,10 @@ function setup(stageId: string, seed = 1) {
 }
 
 describe('외전 4~7 스테이지', () => {
-  it('외전은 7개, 새 외전 4~7은 스테이지 5개씩이고 기존 외전보다 곡선 뒤쪽에 있다', () => {
-    expect(SIDE_CHAPTERS.map((c) => c.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(SIDE_STAGES).toHaveLength(35);
-    for (const n of [4, 5, 6, 7]) {
+  it('외전은 8개, 외전 4~8은 스테이지 5개씩이고 기존 외전보다 곡선 뒤쪽에 있다', () => {
+    expect(SIDE_CHAPTERS.map((c) => c.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(SIDE_STAGES).toHaveLength(40);
+    for (const n of [4, 5, 6, 7, 8]) {
       const ss = SIDE_STAGES.filter((s) => s.side === n);
       expect(ss.map((s) => s.id)).toEqual([1, 2, 3, 4, 5].map((i) => `S${n}-${i}`));
       expect(ss[4]!.boss).toBe(SIDE_CHAPTERS[n - 1]!.boss);
@@ -65,6 +65,7 @@ describe('외전 4~7 스테이지', () => {
     expect(from(5)).toBeGreaterThan(from(4));
     expect(from(6)).toBeGreaterThan(from(5));
     expect(from(7)).toBeGreaterThan(from(6));
+    expect(from(8)).toBeGreaterThan(from(7));
     // 카운트다운은 시간 제한이 짧다
     expect(STAGE_BY_ID['S4-1']!.timeLimit).toBeLessThan(TIME_LIMIT.normal);
     expect(STAGE_BY_ID['S4-5']!.timeLimit).toBeLessThan(TIME_LIMIT.boss);
@@ -73,9 +74,9 @@ describe('외전 4~7 스테이지', () => {
 
   it('엔딩 뒤에 열리고, 외전 안에서는 차례로 연다', () => {
     const s = newSave();
-    for (const n of [4, 5, 6, 7]) expect(isStageOpen(s, STAGE_BY_ID[`S${n}-1`]!)).toBe(false);
+    for (const n of [4, 5, 6, 7, 8]) expect(isStageOpen(s, STAGE_BY_ID[`S${n}-1`]!)).toBe(false);
     s.stars[FINAL_STAGE.id] = 1;
-    for (const n of [4, 5, 6, 7]) {
+    for (const n of [4, 5, 6, 7, 8]) {
       expect(isStageOpen(s, STAGE_BY_ID[`S${n}-1`]!)).toBe(true);
       expect(isStageOpen(s, STAGE_BY_ID[`S${n}-2`]!)).toBe(false);
     }
@@ -85,7 +86,7 @@ describe('외전 4~7 스테이지', () => {
   });
 
   it('스테이지마다 장면이 있고 (도입·보스·클리어 포함) 영어 대본도 있다', () => {
-    for (const n of [4, 5, 6, 7]) {
+    for (const n of [4, 5, 6, 7, 8]) {
       for (const id of [`side${n}-intro`, `side${n}-boss`, `side${n}-clear`, ...[1, 2, 3, 4].map((i) => `st-S${n}-${i}`)]) {
         expect(SCENES[id], id).toBeTruthy();
         expect(STORY_EN[id]!.lines.length, id).toBe(SCENES[id]!.lines.length);
@@ -289,3 +290,71 @@ describe('순간 정전 (외전 7)', () => {
     expect(events.filter((e) => e.type === 'blip')).toHaveLength(1);
   });
 });
+
+describe('데이터 대기 (외전 8)', () => {
+  it('아군 공격력이 70%에서 시작해 외장하드 택배를 잡을수록 오른다', () => {
+    const { b, p, step } = setup('S8-1');
+    expect(b.dataMul).toBeCloseTo(0.7);
+    // 맞는 쪽이 받은 피해로 공격력 배율을 잰다
+    const hit = (): number => {
+      const foe = p.spawnEnemy.call(b, 'nda', false, 500);
+      foe.stats.speed = 0;
+      foe.stats.atk = 0;
+      foe.hp = foe.maxHp = 1e6;
+      const a = p.addFighter.call(b, 'ally', 'test', 'T', LOOK, 1, { ...BASE, atk: 100, range: 200 }, 450, 0);
+      step(1.05);
+      const dealt = 1e6 - foe.hp;
+      a.dead = true;
+      foe.dead = true;
+      step(0.1);
+      return dealt;
+    };
+    const before = hit();
+    for (let i = 0; i < 5; i++) {
+      const d = p.spawnEnemy.call(b, 'datadrive', false, 600);
+      (b as unknown as { damageFighter: (f: Fighter, dmg: number, by: string) => void }).damageFighter.call(b, d, 1e6, 'ally');
+    }
+    expect(b.data).toBeGreaterThan(0.45);
+    expect(b.data).toBeLessThanOrEqual(1);
+    const after = hit();
+    expect(after / before).toBeCloseTo(b.dataMul / 0.7, 1);
+  });
+
+  it('50초마다 중간보고: 데이터가 모자라면 적이 몰려오고, 넘으면 카페인을 준다', () => {
+    const { b, step, events } = setup('S8-1');
+    const dw = STAGE_BY_ID['S8-1']!.mods!.dataWait!;
+    step(dw.every - 1);
+    const n0 = b.alive('enemy').length;
+    step(1.1);
+    expect(b.reports).toBe(1);
+    expect(b.alive('enemy').length - n0).toBe(dw.rush);
+    expect(b.alive('enemy').filter((f) => f.defId === 'reqchange').length).toBeGreaterThanOrEqual(2);
+    expect(events.some((e) => e.type === 'report' && !e.pass)).toBe(true);
+    // 두 번째 보고는 need×2가 필요하다
+    expect(b.reportNeed()).toBeCloseTo(dw.need * 2);
+    b.data = 0.6;
+    b.caffeine = 0;
+    step(dw.every);
+    expect(b.reports).toBe(2);
+    expect(events.some((e) => e.type === 'report' && e.pass)).toBe(true);
+    expect(b.caffeine).toBeGreaterThanOrEqual(dw.bonus);
+  });
+
+  it('협력사 상무님이 나와 있으면 중간보고가 35초마다로 당겨진다', () => {
+    const { b, step, boss } = setup('S8-5');
+    expect(b.reportEvery()).toBe(50);
+    boss('exec', 1400);
+    expect(b.reportEvery()).toBe(35);
+    step(36);
+    expect(b.reports).toBe(1);
+    step(35);
+    expect(b.reports).toBe(2);
+  });
+
+  it('다른 스테이지에는 영향이 없다', () => {
+    const { b } = setup('S7-1');
+    expect(b.dataMul).toBe(1);
+    expect(b.nextReport).toBe(Infinity);
+  });
+});
+

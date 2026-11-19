@@ -58,7 +58,9 @@ export type SideVariant =
   // 외전 6 랩실 창업기
   | 'cloudbill' | 'pivot' | 'bmq'
   // 외전 7 연구실 정전의 날
-  | 'powerstrip' | 'overload' | 'breaker' | 'mainbreaker';
+  | 'powerstrip' | 'overload' | 'breaker' | 'mainbreaker'
+  // 외전 8 산학공동연구
+  | 'datadrive' | 'reqchange' | 'mergedcell' | 'noreply';
 
 /** 유닛 등급: 기본(스토리 해금) · 레어 · 에픽 · 레전더리(뽑기) */
 export type UnitRarity = 'basic' | 'rare' | 'epic' | 'legend';
@@ -172,6 +174,8 @@ export interface CombatStats {
   caffeineDrain?: number;
   /** 비상 전원: 이 반경 안 아군은 순간 정전(외전 7)의 기절·증발을 피한다 */
   blipGuard?: number;
+  /** 데이터 운반 (외전 8): 쓰러지면 데이터 수신률이 이만큼 오른다 (0~1) */
+  dataDrop?: number;
 }
 
 export interface UnitDef extends CombatStats {
@@ -215,6 +219,8 @@ export interface BossPattern {
   silence?: { every: number; radius: number; dur: number; dmg: number };
   /** 메인 차단기 (외전 7): HP 비율이 at 아래로 떨어지면 순간 정전 간격이 every로 짧아진다 */
   blipFaster?: { at: number[]; every: number[] };
+  /** 협력사 상무님 (외전 8): 나와 있는 동안 중간보고 간격(초) */
+  reportEvery?: number;
 }
 
 export interface EnemyDef extends CombatStats {
