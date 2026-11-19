@@ -38,7 +38,7 @@ export function powerCompare(save: SaveData, stage: StageDef): HTMLElement {
   return h('div.power-compare', {},
     h('div.power-line', {},
       h('span', {}, tr(`{bolt} 내 전투력 `, `{bolt} Your power `), h('b', {}, fmt(mine))),
-      rec ? h('span.muted', {}, tr(` / 권장 ${fmt(rec)}`, ` / recommended ${fmt(rec)}`)) : null,
+      rec ? h('span.muted', {}, stage.kind === 'endless' ? tr(` / 권장 ${fmt(rec)} (추정)`, ` / recommended ${fmt(rec)} (est.)`) : tr(` / 권장 ${fmt(rec)}`, ` / recommended ${fmt(rec)}`)) : null,
       verdict ? h(`span.power-verdict.v-${verdict}`, { title: VERDICT_TIP[verdict]() }, VERDICT[verdict]()) : null,
     ),
     verdict === 'hard' ? h('p.muted.power-tip', {}, VERDICT_TIP.hard()) : null,
