@@ -142,6 +142,8 @@ export function runCampaign(save: SaveData, maxAttempts = 12, seed = 7, stages: 
     for (;;) {
       attempts++;
       botShop(save);
+      // 사람처럼 판마다 편성을 다시 짠다 (새로 생긴 동료 반영)
+      save.loadout = botSquad(save);
       const r = playOnce(save, stage, s++, opts);
       if (r.win) {
         runs.push({ stage: stage.id, attempts, stars: r.stars, seconds: Math.round(r.seconds) });

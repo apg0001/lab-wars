@@ -14,7 +14,7 @@ import { makeLoadout, type BattleLoadout, type DeckEntry, type SaveData } from '
 export function unitPower(st: CombatStats, count = 1): number {
   let dps = st.atk / Math.max(0.2, st.interval);
   if (st.splash) dps *= 1 + Math.min(st.splash / 60, 1) * 0.6;
-  if (st.pierce) dps *= 1.4;
+  if (st.pierce) dps *= st.pierceFalloff ? 1 + 0.4 * st.pierceFalloff : 1.4;
   if (st.chain) dps *= 1 + st.chain.jumps * st.chain.falloff * 0.5;
   if (st.burn) dps += st.burn.dps * 0.5;
   if (st.fieldStrike) dps += (st.fieldStrike.dmg / st.fieldStrike.every) * 3;

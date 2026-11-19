@@ -353,10 +353,10 @@ export const Y34: Record<string, CourseContent> = {
     },
   },
   netprog: {
-    rule: '{hourglass} 소켓 백로그: 맨 앞(연구실에 가장 가까운) 잡무만 제대로 맞아요. 나머지는 대기열에서 기다리느라 피해를 35%만 받아요. 맨 앞부터 차례로 처리하세요.',
+    rule: '{hourglass} 소켓 백로그: 맨 앞(연구실에 가장 가까운) 잡무만 제대로 맞아요. 나머지는 대기열에서 기다리느라 피해를 50%만 받아요. 맨 앞부터 차례로 처리하세요.',
     desc: '첫 과제는 채팅 서버. 접속자 둘까지는 완벽했는데 셋째가 들어오자 서버가 조용히 죽었다. 조원 넷이 같은 포트 번호를 놓고 싸우고 있다.',
     quote: '"질문 대기열은 다섯까지만 받습니다. 여섯 번째 질문은 연결이 거부돼요. 빨리빨리 하세요."',
-    mods: { rules: [{ kind: 'queue', rest: 0.35 }] },
+    mods: { rules: [{ kind: 'queue', rest: 0.5 }] },
     pool: { memo: 2, rejectmail: 1, deadline: 1, loop: 0.8, outage: 0.6 },
     foe: {
       name: '이미 사용 중인 포트',
@@ -370,7 +370,7 @@ export const Y34: Record<string, CourseContent> = {
     },
     boss: { summon: 8, count: 4, stomp: false, say: ['다음 질문 받겠습니다. 아, 대기열이 꽉 찼네요.', 'Next question, please... oh, the queue is full.'] },
     en: {
-      rule: '{hourglass} Socket Backlog: only the frontmost busywork (closest to your Lab) takes full damage. The rest are waiting in the queue and take only 35%. Handle them front to back.',
+      rule: '{hourglass} Socket Backlog: only the frontmost busywork (closest to your Lab) takes full damage. The rest are waiting in the queue and take only 50%. Handle them front to back.',
       desc: 'The first assignment is a chat server. It worked perfectly with two users, then quietly died when the third joined. Four teammates are fighting over the same port number.',
       quote: '"The question queue holds five. The sixth question gets connection refused. Be quick."',
     },

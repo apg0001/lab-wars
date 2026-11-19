@@ -137,6 +137,8 @@ export interface CombatStats {
   freeze?: HitEffects['freeze'];
   /** 관통: 공격이 대상 뒤로 이만큼(px) 더 뻗으며 줄 위의 적을 모두 맞힌다 */
   pierce?: number;
+  /** 관통 감쇠: 적을 하나 뚫을 때마다 피해 ×이 값 (최소 30%, 없으면 감쇠 없음). 교수실도 앞에서 뚫은 만큼 줄어든다 */
+  pierceFalloff?: number;
   /** 쓰러질 때 폭발: 반경 안 적에게 피해 + 자기 상태 이상 */
   deathBurst?: { dmg: number; radius: number };
   /** 보호막: every초마다 반경 안 아군(반경 0이면 자신만)에게 amount만큼 피해를 막는 막 (최대 amount) */

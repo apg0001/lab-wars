@@ -22,6 +22,30 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.27.0',
+    date: '2026-11-19',
+    title: '대학원은 원래 어렵다',
+    items: [
+      '{warn} 전체 난이도를 올렸어요. 막히면 다른 모드에서 연구비를 벌고 키워서 돌아오세요',
+      '{scroll} 스토리 모드: 3장부터 적이 점점 강해져 7장은 +15%, 장 보스는 +10% 더 강해요',
+      '{cap} 전공 모드: 고학년일수록 적과 교수님이 강하고 많이 와요 (4학년 +60%). 네트워크프로그래밍의 대기열 피해는 35% → 50%로 완화했어요',
+      '{infinity} 무한 모드: 13~30판 난이도를 올리고, 외전 적은 한꺼번에 몰리지 않고 몇 판에 걸쳐 서서히 섞여요',
+      '{fire} 리플로우 오븐 공격력 22 → 18, 화상 8 → 6.5',
+      '{bolt} 입자 가속기 빔이 적을 하나 뚫을 때마다 20%씩 약해져요 (최소 30%, 교수실 피해도)',
+    ],
+    en: {
+      title: 'Grad School Is Supposed to Be Hard',
+      items: [
+        '{warn} Overall difficulty is up. When you get stuck, earn funding in another mode, grow, and come back',
+        '{scroll} Story Mode: from Chapter 3 enemies keep getting stronger, up to +15% in Chapter 7, and chapter bosses are +10% on top',
+        '{cap} Major Mode: upper years bring stronger and more enemies and professors (Year 4 +60%). Network Programming\'s queue now lets the rest take 50% instead of 35%',
+        '{infinity} Endless Mode: rounds 13–30 are harder, and Side Story foes now blend in over several rounds instead of all at once',
+        '{fire} Reflow Oven attack 22 → 18, burn 8 → 6.5',
+        '{bolt} The Particle Accelerator beam weakens by 20% for each enemy it passes through (down to 30%, including damage to the Prof\'s Office)',
+      ],
+    },
+  },
+  {
     version: '0.26.0',
     date: '2026-11-19',
     title: '무한 모드 전투력 가늠자',

@@ -19,8 +19,10 @@ describe('밸런스', () => {
     expect(playOnce(s, STAGE_BY_ID['2-10']!, 1, NO_CARDS).win).toBe(false);
   });
 
+  // 0.27.0부터 장마다 적이 세져서 카드 없이 캠페인만 돌면 5장에서 막힌다 (막히면 다른 모드에서 키워 오는 설계).
+  // 사람은 늘 카드를 쓰므로 카드를 켠 채, 앞 판을 다시 돌며 버티면 끝까지 깨지는지 본다.
   it('성장하며 진행하면 캠페인을 끝까지 깰 수 있다', () => {
-    const { runs, stuckAt } = runCampaign(newSave(), 15, 7, STAGES, NO_CARDS);
+    const { runs, stuckAt } = runCampaign(newSave(), 20, 7, STAGES);
     expect(stuckAt).toBeNull();
     expect(runs).toHaveLength(STAGES.length);
     // 1챕터는 튜토리얼 구간: 스테이지마다 2회 안에 깬다
