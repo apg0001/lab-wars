@@ -20,6 +20,11 @@ export const ENEMY_FRONT = WORLD_W - 30 - BASE_W;
 const STEP = 1 / 60;
 const MAX_ENEMIES = 45;
 const ENEMY_TOWER_RANGE = 260;
+/**
+ * 교수님 레이저: 끊기지 않는 빔으로 교수실에 가장 가까운 아군을 따라가며 지진다.
+ * tick초마다 한 번 피해 (초당 피해는 예전 1.2초 한 발과 같다), 출력 단계마다 사거리 +rangeStep, 빔 끝은 sweep 속도로 새 대상에 미끄러진다.
+ */
+export const LASER = { tick: 0.3, shotEvery: 1.2, rangeStep: 60, sweep: 16 };
 /** 처치 보상 배율 */
 const KILL_REWARD_MUL = 1.3;
 export const BREW_MAX = 6;
@@ -351,6 +356,8 @@ export class Battle {
   private rushUids = new Set<number>();
   /** 무한 모드 교수님 레이저 출력 단계 (0~3, 전투 1·2·3분에 오른다) */
   laserTier = 0;
+  /** 교수님 레이저 빔 (켜져 있을 때만): 지지는 대상과 빔 끝 위치 */
+  beam: { uid: number; x: number; y: number } | null = null;
   /** 화이트보드 전초기지를 세웠는지 */
   private outpostsPlaced = false;
   /** 철거 연출을 마친 전초기지 uid */
@@ -1374,7 +1381,49 @@ export class Battle {
     });
   }
 
+  /** 교수님 레이저 사거리: 무한 모드 출력 단계마다 늘어난다 */
+  laserRange(): number {
+    return ENEMY_TOWER_RANGE + LASER.rangeStep * this.laserTier;
+  }
+
+  /** 교수님 레이저: 사거리 안에서 교수실에 가장 가까운 아군을 빔으로 계속 지진다 */
+  private tickLaser(dt: number): void {
+    const b = this.enemy;
+    const range = this.laserRange();
+    let best: Fighter | null = null;
+    let bestD = Infinity;
+    for (const o of this.fighters) {
+      if (o.dead || o.side !== 'ally') continue;
+      const d = ENEMY_FRONT - o.x;
+      if (d <= range && d < bestD) {
+        bestD = d;
+        best = o;
+      }
+    }
+    if (!best) {
+      this.beam = null;
+      b.towerCd = 0;
+      return;
+    }
+    const tx = best.x;
+    const ty = this.fy(best) - 18;
+    if (!this.beam) {
+      // 켜지는 순간: 교수실 앞에서 대상 쪽으로 쓸어 간다
+      this.beam = { uid: best.uid, x: ENEMY_FRONT - 20, y: ty };
+      this.emit({ type: 'shoot', kind: 'laser', x: WORLD_W - 105, side: 'enemy', tower: true });
+    }
+    this.beam.uid = best.uid;
+    const k = Math.min(1, dt * LASER.sweep);
+    this.beam.x += (tx - this.beam.x) * k;
+    this.beam.y += (ty - this.beam.y) * k;
+    b.towerCd -= dt;
+    if (b.towerCd > 0) return;
+    b.towerCd = LASER.tick;
+    this.damageFighter(best, this.towerDmg() * (LASER.tick / LASER.shotEvery), 'enemy');
+  }
+
   private tickTower(b: Base, dt: number): void {
+    if (b.side === 'enemy') return this.tickLaser(dt);
     b.towerCd -= dt;
     if (b.towerCd > 0) return;
     const ally = b.side === 'ally';
@@ -1384,23 +1433,22 @@ export class Battle {
     for (const o of this.fighters) {
       if (o.dead || o.side === b.side) continue;
       const d = Math.abs(o.x - front);
-      if (d <= (ally ? this.loadout.printerRange : ENEMY_TOWER_RANGE) && d < bestD) {
+      if (d <= this.loadout.printerRange && d < bestD) {
         bestD = d;
         best = o;
       }
     }
     if (!best) return;
-    b.towerCd = ally ? 0.8 : 1.2;
-    const x0 = ally ? 105 : WORLD_W - 105;
+    b.towerCd = 0.8;
+    const x0 = 105;
     // 프린터는 강화 단계마다 외형과 투사체가 바뀐다 (피해량은 그대로, 복합기만 작은 범위 피해)
     const tier = this.loadout.printerTier ?? 1;
-    const shot: ProjectileKind = ally ? (tier === 3 ? 'scan' : tier === 2 ? 'toner' : 'ink') : 'laser';
+    const shot: ProjectileKind = tier === 3 ? 'scan' : tier === 2 ? 'toner' : 'ink';
     this.emit({ type: 'shoot', kind: shot, x: x0, side: b.side, tower: true });
     this.projectiles.push({
       kind: shot, side: b.side, x0, y0: GROUND_Y - 250, x1: best.x, y1: this.fy(best) - 18,
-      t: 0, dur: (ally && tier === 2 ? 0.05 : 0.1) + bestD / (ally && tier === 2 ? 1300 : 900), dmg: ally ? this.loadout.printerAtk * this.cardMods.printerAtk : this.towerDmg(),
-      splash: ally && tier === 3 ? 40 : 0, buildingMul: 1, targetUid: best.uid, hitsBase: false, arc: 0,
-      power: ally ? undefined : this.laserTier,
+      t: 0, dur: (tier === 2 ? 0.05 : 0.1) + bestD / (tier === 2 ? 1300 : 900), dmg: this.loadout.printerAtk * this.cardMods.printerAtk,
+      splash: tier === 3 ? 40 : 0, buildingMul: 1, targetUid: best.uid, hitsBase: false, arc: 0,
     });
   }
 
@@ -1519,12 +1567,12 @@ export class Battle {
       // 관통: 쏜 자리부터 대상 뒤 pierce까지 줄 위의 적을 모두 맞힌다
       const dir = p.side === 'ally' ? 1 : -1;
       const end = (p.x1 - p.x0) * dir + p.pierce;
-      // 가까운 적부터 차례로 뚫는다. 감쇠가 있으면 뚫을 때마다 약해진다 (최소 30%)
+      // 가까운 적부터 차례로 뚫는다. 감쇠가 있으면 뚫을 때마다 계속 약해진다 (바닥 없음)
       const line = this.alive(foe)
         .filter((o) => (!o.stats.flying || p.antiAir) && (o.x - p.x0) * dir >= -12 && (o.x - p.x0) * dir <= end + bodyR(o))
         .sort((a, b) => (a.x - b.x) * dir);
       const fall = p.pierceFalloff ?? 1;
-      const mulAt = (k: number): number => Math.max(fall < 1 ? 0.3 : 1, fall ** k);
+      const mulAt = (k: number): number => fall ** k;
       line.forEach((o, k) => this.hitFrom(p.src, o, p.dmg * mulAt(k), p.side, p.knockback, false, p.hit));
       if (p.hitsBase) this.damageBase(p.side === 'ally' ? this.enemy : this.ally, p.dmg * p.buildingMul * mulAt(line.length), p.x1);
       return;

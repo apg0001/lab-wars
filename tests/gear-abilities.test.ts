@@ -261,7 +261,7 @@ describe('봇 편성과 그림', () => {
 });
 
 describe('입자 가속기 관통 감쇠', () => {
-  it('뚫을 때마다 ×0.8, 최소 30%, 교수실도 줄어든 피해', () => {
+  it('뚫을 때마다 ×0.8로 바닥 없이 계속 줄고, 교수실도 줄어든 피해', () => {
     const b = new Battle({ ...STAGE_BY_ID['1-1']!, spawnEvery: 1e9, rush: { first: 1e9, every: 1e9, size: 0 } }, makeLoadout(newSave()), 1, { cards: false });
     const spawn = (b as unknown as { spawnEnemy: (id: string, boss: boolean, x: number) => Fighter }).spawnEnemy;
     const foes = Array.from({ length: 8 }, (_, i) => {
@@ -281,7 +281,7 @@ describe('입자 가속기 관통 감쇠', () => {
     expect(dealt[0]).toBe(100);
     expect(dealt[1]).toBe(80);
     expect(dealt[2]).toBe(64);
-    expect(dealt[7]).toBe(30);
-    expect(before - b.enemy.hp).toBeCloseTo(30, 0);
+    expect(dealt[7]).toBe(21); // 0.8^7 (예전 최저 30% 없음)
+    expect(before - b.enemy.hp).toBeCloseTo(100 * 0.8 ** 8, 0);
   });
 });
