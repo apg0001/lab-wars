@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.26.0',
+    date: '2026-11-19',
+    title: '무한 모드 전투력 가늠자',
+    items: [
+      '{bolt} 무한 모드에도 권장 전투력(추정)과 판정이 나와요. 무한 지도에서 다음 판 기준으로 보여 줘요',
+    ],
+    en: {
+      title: 'Endless Power Gauge',
+      items: [
+        '{bolt} Endless Mode now shows an estimated recommended power and verdict, for the next round on the Endless map',
+      ],
+    },
+  },
+  {
     version: '0.25.1',
     date: '2026-11-19',
     title: '지도 정리',
