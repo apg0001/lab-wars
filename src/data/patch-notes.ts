@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.27.1',
+    date: '2026-11-19',
+    title: '장비도 멋 부릴 권리가 있다',
+    items: [
+      '{hanger} 옷장에서 장비 동료에게 입힌 모자·안경 같은 소품이 이제 그림에 보여요',
+    ],
+    en: {
+      title: 'Gear Deserves Style Too',
+      items: [
+        '{hanger} Hats and accessories you put on gear labmates in the Wardrobe now actually show up',
+      ],
+    },
+  },
+  {
     version: '0.27.0',
     date: '2026-11-19',
     title: '대학원은 원래 어렵다',
