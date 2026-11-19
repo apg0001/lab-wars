@@ -22,6 +22,26 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.23.0',
+    date: '2026-11-19',
+    title: '교수님들의 습격',
+    items: [
+      '{infinity} 무한 모드가 독립했어요. 지도 위에서 스토리 모드 · 전공 모드 · 무한 모드를 골라요',
+      '{redbook} 무한 모드에 외전 적들이 5판부터 차례로 합류하고, 외전 보스들도 보스 판에 나와요',
+      '{tie} 전공 교수님 16명이 무한 모드에 출연해요. 10판부터 보스 판에 동행하고, 판이 오를수록 최대 4명까지 한꺼번에 와요. 7로 끝나는 판엔 초청 강연도 있어요',
+      '{clipboard} 무한 모드 지도에 누가 몇 판부터 나오는지 합류 일정을 보여 줘요',
+    ],
+    en: {
+      title: 'Faculty Ambush',
+      items: [
+        '{infinity} Endless Mode now has its own spot: pick Story · Major · Endless at the top of the map',
+        '{redbook} Side Story foes join Endless Mode one by one from round 5, and Side Story bosses enter the boss rotation',
+        '{tie} All 16 major-course professors appear in Endless Mode: from round 10 they tag along on boss rounds, up to 4 at once as rounds climb. Rounds ending in 7 bring a guest lecture',
+        '{clipboard} The Endless map shows a schedule of who joins from which round',
+      ],
+    },
+  },
+  {
     version: '0.22.0',
     date: '2026-11-18',
     title: '스펙 시트 공개',
