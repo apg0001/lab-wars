@@ -1,6 +1,6 @@
 import { RANGED_THRESHOLD, type CombatStats } from '../data/types';
 import { ENEMY_BY_ID } from '../data/enemies';
-import type { StageDef } from '../data/stages';
+import { STAGE_BY_ID, type StageDef } from '../data/stages';
 import { STAGE_POWER } from '../data/stage-power';
 import { makeLoadout, type BattleLoadout, type DeckEntry, type SaveData } from './progression';
 
@@ -49,8 +49,33 @@ export function loadoutPower(l: BattleLoadout): number {
 /** 지금 편성의 전투력 */
 export const squadPower = (save: SaveData): number => loadoutPower(makeLoadout(save));
 
-/** 스테이지 권장 전투력 (표에 없으면 null: 무한 모드 등) */
-export const recommendedPower = (stage: StageDef): number | null => STAGE_POWER[stage.id] ?? null;
+/**
+ * 무한 모드 권장 전투력 추정: 봇이 끝까지 못 가므로 표에서 후반 스테이지(적 배율 2.5 이상, 캠페인·외전)의
+ * 배율 → 권장 전투력 관계를 로그 회귀로 맞추고 (power = a × scale^b, b는 최소 1) 무한 판 배율에 쓴다.
+ */
+let endlessFit: { a: number; b: number } | null = null;
+export function endlessPowerFit(): { a: number; b: number } {
+  if (endlessFit) return endlessFit;
+  const pts = Object.entries(STAGE_POWER).flatMap(([id, p]) => {
+    const st = STAGE_BY_ID[id];
+    return st && !st.course && st.scale >= 2.5 ? [[Math.log(st.scale), Math.log(p)] as const] : [];
+  });
+  if (pts.length < 2) return (endlessFit = { a: 4000, b: 1 });
+  const mx = pts.reduce((s, [x]) => s + x, 0) / pts.length;
+  const my = pts.reduce((s, [, y]) => s + y, 0) / pts.length;
+  const fitB = pts.reduce((s, [x, y]) => s + (x - mx) * (y - my), 0) / pts.reduce((s, [x]) => s + (x - mx) ** 2, 0);
+  const b = Math.max(1, fitB);
+  return (endlessFit = { a: Math.exp(my - b * mx), b });
+}
+
+/** 스테이지 권장 전투력 (무한 모드는 추정값, 그 밖에 표에 없으면 null) */
+export function recommendedPower(stage: StageDef): number | null {
+  const known = STAGE_POWER[stage.id];
+  if (known) return known;
+  if (stage.kind !== 'endless') return null;
+  const { a, b } = endlessPowerFit();
+  return roundPower(a * stage.scale ** b);
+}
 
 export type PowerVerdict = 'easy' | 'fair' | 'hard';
 

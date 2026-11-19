@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { botShop, botSquad, playOnce } from '../src/sim/bot';
 import { newSave, unitProgress, type SaveData } from '../src/sim/progression';
-import { COURSE_STAGE_BY_COURSE, SIDE_CHAPTERS, SIDE_STAGES, STAGES, STAGE_BY_ID, type StageDef } from '../src/data/stages';
+import { COURSE_STAGE_BY_COURSE, SIDE_CHAPTERS, SIDE_STAGES, STAGES, STAGE_BY_ID, endlessStage, type StageDef } from '../src/data/stages';
 import { ICE_COURSES } from '../src/data/major';
 import { STAGE_POWER } from '../src/data/stage-power';
 import { UNIT_BY_ID } from '../src/data/units';
-import { loadoutPower, powerVerdict, recommendedPower, roundPower, squadPower, stageHints, unitPower } from '../src/sim/power';
+import { endlessPowerFit, loadoutPower, powerVerdict, recommendedPower, roundPower, squadPower, stageHints, unitPower } from '../src/sim/power';
 import { makeLoadout } from '../src/sim/progression';
 
 /** 봇이 플레이어가 밟을 순서대로 진행: 캠페인 장마다, 학년 과목은 해당 장 뒤에(1학년 ← 2장 … 4학년 ← 7장), 외전은 엔딩 뒤 */
@@ -101,6 +101,14 @@ describe('전투력', () => {
   it('권장 전투력은 장이 갈수록 대체로 오른다', () => {
     const chapterMax = (ch: number): number => Math.max(...STAGES.filter((s) => s.chapter === ch).map((s) => STAGE_POWER[s.id]!));
     for (let ch = 2; ch <= 7; ch++) expect(chapterMax(ch)).toBeGreaterThanOrEqual(chapterMax(ch - 1));
+  });
+
+  it('무한 모드 권장 전투력은 추정값: 캠페인 끝 근처에서 시작해 판마다 오른다', () => {
+    expect(endlessPowerFit().b).toBeGreaterThanOrEqual(1);
+    const rec = (n: number): number => recommendedPower(endlessStage(n))!;
+    expect(rec(1)).toBeGreaterThan(STAGE_POWER['7-1']!);
+    for (const n of [1, 5, 10, 20, 30, 50]) expect(rec(n + 5)).toBeGreaterThanOrEqual(rec(n));
+    expect(rec(50)).toBeGreaterThan(rec(1) * 2);
   });
 
   it('상성 힌트는 알려진 값만 낸다', () => {
