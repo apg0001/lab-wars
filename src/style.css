@@ -995,7 +995,9 @@ html.portrait, html.portrait body, .portrait #app { background: #fdf3ec; }
 .portrait .unit-row {
   /* 칸 수와 크기(--cols, --cell)는 battle-screen.ts가 남은 공간에 맞춰 정한다 */
   order: 3; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 4), min(var(--cell, calc(12 * var(--u))), calc(18 * var(--u))));
-  justify-content: center; align-content: end; gap: calc(1.1 * var(--u)); overflow: hidden auto; touch-action: pan-y; padding: calc(0.4 * var(--u)) calc(0.2 * var(--u)) calc(0.8 * var(--u));
+  justify-content: center; align-content: end; gap: calc(1.1 * var(--u)); overflow: hidden auto; touch-action: pan-y;
+  /* --cut: 보이는 화면 밖으로 나간 높이 (battle-screen.ts가 잰다). 그만큼 아래를 비워 버튼이 화면 안에 오게 */
+  padding: calc(0.4 * var(--u)) calc(0.2 * var(--u)) calc(calc(0.8 * var(--u)) + var(--cut, 0px));
 }
 .portrait .unit-btn { min-width: 0; max-width: none; width: 100%; aspect-ratio: 1; }
 .portrait .unit-btn img { height: 68%; margin-top: 4%; }

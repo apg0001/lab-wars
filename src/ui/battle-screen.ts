@@ -377,12 +377,22 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     if (!isPortrait()) return;
     const r = unitRow.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    const gap = parseFloat(getComputedStyle(unitRow).columnGap) || 0;
+    const cs = getComputedStyle(unitRow);
+    const gap = parseFloat(cs.columnGap) || 0;
+    // 아이폰(특히 홈 화면 앱)은 앱 영역이 실제로 보이는 화면보다 길 수 있다: 보이는 아래 끝까지만 쓴다
+    const vv = window.visualViewport;
+    const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    const cut = Math.max(0, Math.round(r.bottom - visibleBottom));
+    unitRow.style.setProperty('--cut', `${cut}px`);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) - (parseFloat(unitRow.style.getPropertyValue('--cut-was')) || 0) + cut;
+    unitRow.style.setProperty('--cut-was', `${cut}px`);
+    const width = r.width - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const height = r.height - padY;
     const n = Math.max(1, unitBtns.length);
     let best = { cols: 4, cell: 0 };
     for (let cols = 3; cols <= 9; cols++) {
       const rows = Math.ceil(n / cols);
-      const cell = Math.min((r.width - gap * (cols - 1)) / cols, (r.height - gap * (rows - 1)) / rows);
+      const cell = Math.min((width - gap * (cols - 1)) / cols, (height - gap * (rows - 1)) / rows);
       if (cell > best.cell + 1) best = { cols, cell };
       if (rows === 1) break;
     }
@@ -390,6 +400,8 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     unitRow.style.setProperty('--cell', `${Math.floor(best.cell)}px`);
   };
   const ro = new ResizeObserver(() => { resize(); layoutUnits(); });
+  // 사파리 주소창·툴바가 접히고 펴질 때도 다시 맞춘다
+  window.visualViewport?.addEventListener('resize', layoutUnits);
   ro.observe(canvas);
   ro.observe(unitRow);
   resize();
@@ -546,6 +558,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
     cancelAnimationFrame(raf);
     window.clearTimeout(draftTimer);
     ro.disconnect();
+    window.visualViewport?.removeEventListener('resize', layoutUnits);
     window.removeEventListener('keydown', onKey);
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('blur', onBlur);
