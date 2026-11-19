@@ -1216,8 +1216,8 @@ html[lang='en'] body { font-weight: 500; }
 @keyframes gift-pop { from { transform: translate(-50%, calc(-2 * var(--u))); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 
 /* ── 전공 모드 (src/ui/major.ts) ── */
-.mode-switch { display: flex; gap: calc(0.4 * var(--u)); margin-right: calc(0.6 * var(--u)); flex: none; }
-.major-map .mode-switch { justify-content: center; margin: 0 0 calc(0.4 * var(--u)); }
+/* 모드 전환은 세 모드 모두 위 가운데, 스토리 모드의 장 탭은 그 아래 줄 */
+.mode-switch { display: flex; justify-content: center; gap: calc(0.4 * var(--u)); margin: 0 0 calc(0.4 * var(--u)); flex: none; }
 .mode-btn { font: inherit; font-size: calc(1.6 * var(--u)); border: calc(0.22 * var(--u)) solid var(--ink); border-radius: calc(1 * var(--u)); background: #fff; padding: calc(0.3 * var(--u)) calc(1 * var(--u)); cursor: pointer; color: var(--ink); white-space: nowrap; }
 .mode-btn.on { background: var(--accent); color: #fff; }
 .mode-btn:disabled { opacity: 0.55; cursor: default; }
@@ -1257,10 +1257,9 @@ html[lang='en'] body { font-weight: 500; }
 .major-grad { text-align: center; }
 .grad-avatar { width: calc(12 * var(--u)); height: calc(12 * var(--u)); }
 .portrait .major-board { grid-template-columns: repeat(4, calc(30 * var(--u))); }
-.map-head { display: flex; align-items: center; padding-left: calc(1.5 * var(--u)); }
-.map-head .chapter-tabs { flex: 1; min-width: 0; padding-left: 0; }
-.portrait .map-head { flex-direction: column; align-items: stretch; gap: calc(0.4 * var(--u)); padding: 0 calc(1.2 * var(--u)); }
-.portrait .map-head .mode-switch { justify-content: center; margin: 0; }
+.map-head { display: flex; flex-direction: column; align-items: stretch; gap: calc(0.4 * var(--u)); }
+.map-head .mode-switch { margin: 0; }
+.portrait .map-head { padding: 0 calc(1.2 * var(--u)); }
 .portrait .map-head .chapter-tabs { padding: 0; }
 .portrait .mode-btn { font-size: calc(1.9 * var(--u)); }
 
