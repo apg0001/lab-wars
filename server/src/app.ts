@@ -58,6 +58,8 @@ export interface RankRow {
   /** 전공 모드 평점 (4.5 만점, 들은 과목이 없으면 null)과 이수 학점 */
   gpa: number | null;
   credits: number;
+  /** 편성 전투력 (게임이 저장할 때 같이 넣는다, 없으면 0) */
+  power: number;
   /** 칭호 아이템 id, 대표 캐릭터와 단계·차림 */
   badge: string;
   avatar: string;
@@ -141,6 +143,16 @@ export function rankGpa(raw: unknown): { gpa: number | null; credits: number } {
   return { gpa: n ? Math.round((pts / n) * 100) / 100 : null, credits: passed * COURSE_CREDITS };
 }
 
+/** 전투력 상한: 이보다 큰 값은 조작으로 보고 0점 */
+const POWER_MAX = 10_000_000;
+
+/** 저장 데이터에 게임이 넣어 둔 편성 전투력 (모르는 값은 0) */
+export function rankPower(raw: unknown): number {
+  const p = raw && typeof raw === 'object' ? (raw as { power?: unknown }).power : undefined;
+  if (typeof p !== 'number' || !Number.isFinite(p) || p <= 0 || p > POWER_MAX) return 0;
+  return Math.floor(p);
+}
+
 export function rankStats(raw: unknown): { endless: number; stars: number; cleared: number; title: string } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as { v?: unknown; stars?: unknown; endless?: unknown };
   const v = typeof r.v === 'number' && Number.isFinite(r.v) ? r.v : 1;
@@ -192,24 +204,29 @@ export function rankStats(raw: unknown): { endless: number; stars: number; clear
 }
 
 export function createApp(store: Store, cfg: Config) {
-  // 순위표는 30초 동안 캐시한다.
-  let board: { at: number; rows: (RankRow & { uid: number })[] } | null = null;
-  const leaderboard = (): (RankRow & { uid: number })[] => {
+  // 순위표는 30초 동안 캐시한다 (진행 순위·전투력 순위 따로).
+  type Board = 'progress' | 'power';
+  const boards: Partial<Record<Board, { at: number; rows: (RankRow & { uid: number })[] }>> = {};
+  const leaderboard = (by: Board = 'progress'): (RankRow & { uid: number })[] => {
     const now = cfg.now();
-    if (board && now - board.at < 30_000) return board.rows;
-    const rows = store.allSaves().map((s) => {
+    const cached = boards[by];
+    if (cached && now - cached.at < 30_000) return cached.rows;
+    const all = store.allSaves().map((s) => {
       let data: unknown = null;
       try {
         data = JSON.parse(s.data);
       } catch {
         /* 깨진 저장은 0점 */
       }
-      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data), ...rankLook(data), ...rankGpa(data) };
-    }).filter((r) => r.cleared > 0 || r.endless > 0)
+      return { uid: s.user_id, name: s.nickname || s.username, at: s.updated_at, ...rankStats(data), ...rankLook(data), ...rankGpa(data), power: rankPower(data) };
+    });
+    const ranked = by === 'power'
+      // 전투력 → 먼저 달성한 사람
+      ? all.filter((r) => r.power > 0).sort((a, b) => b.power - a.power || a.at - b.at)
       // 무한 기록 → 별 → 먼저 달성한 사람
-      .sort((a, b) => b.endless - a.endless || b.stars - a.stars || b.cleared - a.cleared || a.at - b.at)
-      .map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title, badge: r.badge, avatar: r.avatar, avatarTier: r.avatarTier, fit: r.fit, gpa: r.gpa, credits: r.credits }));
-    board = { at: now, rows };
+      : all.filter((r) => r.cleared > 0 || r.endless > 0).sort((a, b) => b.endless - a.endless || b.stars - a.stars || b.cleared - a.cleared || a.at - b.at);
+    const rows = ranked.map((r, i) => ({ rank: i + 1, uid: r.uid, name: r.name, endless: r.endless, stars: r.stars, cleared: r.cleared, title: r.title, badge: r.badge, avatar: r.avatar, avatarTier: r.avatarTier, fit: r.fit, gpa: r.gpa, credits: r.credits, power: r.power }));
+    boards[by] = { at: now, rows };
     return rows;
   };
 
@@ -302,7 +319,7 @@ export function createApp(store: Store, cfg: Config) {
       const nick = cleanNickname(b.nickname);
       if (!nick) throw new HttpError(400, '닉네임은 2~12자의 한글·영문·숫자·밑줄·띄어쓰기만 쓸 수 있어요.');
       store.setNickname(uid, nick);
-      board = null;
+      for (const k of Object.keys(boards) as Board[]) delete boards[k];
       return { user: publicUser(store.userById(uid)!) };
     },
 
@@ -404,7 +421,9 @@ export function createApp(store: Store, cfg: Config) {
 
     // 순위표: 누구나 볼 수 있고, 로그인했으면 내 순위도 준다.
     'GET /api/leaderboard': (req) => {
-      const rows = leaderboard();
+      // ?by=power: 전투력 순위 (그 밖은 진행 순위)
+      const by = new URLSearchParams((req.url ?? '').split('?')[1] ?? '').get('by') === 'power' ? 'power' : 'progress';
+      const rows = leaderboard(by);
       const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
       const uid = m ? verifyAccess(cfg.secret, m[1]!, cfg.now()) : null;
       // 닉네임은 겹칠 수 있으니 내 줄은 서버가 표시해 준다
@@ -425,7 +444,7 @@ export function createApp(store: Store, cfg: Config) {
       const json = JSON.stringify(b.data);
       if (json.length > cfg.maxSaveBytes) throw new HttpError(413, '저장 데이터가 너무 커요.');
       const next = store.putSave(uid, json, b.version, cfg.now());
-      if (next !== null) board = null;
+      if (next !== null) for (const k of Object.keys(boards) as Board[]) delete boards[k];
       if (next === null) {
         const cur = store.getSave(uid)!;
         throw Object.assign(new HttpError(409, '다른 기기에서 먼저 저장했어요.'), { extra: { data: JSON.parse(cur.data), version: cur.version, updatedAt: cur.updated_at } });

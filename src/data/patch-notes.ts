@@ -22,6 +22,22 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.25.0',
+    date: '2026-11-19',
+    title: '전투력 순위표',
+    items: [
+      '{trophy} 순위 창에 전투력 순위 탭이 생겼어요. 진행 순위(무한 기록 → 별)와 따로 볼 수 있어요',
+      '{bolt} 전투력은 저장할 때마다 순위에 반영돼요. 편성을 바꾸거나 강화하면 올라가요',
+    ],
+    en: {
+      title: 'Power Rankings',
+      items: [
+        '{trophy} The rankings window now has a Power tab, separate from Progress (Endless best → stars)',
+        '{bolt} Your power is updated on the board every time you save, so changing your squad or upgrading raises it',
+      ],
+    },
+  },
+  {
     version: '0.24.0',
     date: '2026-11-19',
     title: '데이터는 다음 주에 드릴게요',
