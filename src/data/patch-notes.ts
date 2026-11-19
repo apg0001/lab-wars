@@ -22,6 +22,26 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.24.0',
+    date: '2026-11-19',
+    title: '데이터는 다음 주에 드릴게요',
+    items: [
+      '{redbook} 외전 8 · 산학공동연구가 열렸어요. 협력사는 데이터를 안 보내고, 중간보고는 다가와요',
+      '{mail} 특수 규칙 데이터 대기: 데이터가 없어 공격력 70%로 시작해요. 외장하드 택배를 잡으면 데이터가 들어와요. 50초마다 중간보고에서 데이터가 모자라면 요구사항이 추가돼요',
+      '{paper} 새 적: NDA 보안서약서, 요구사항 변경 메일, 병합된 셀 엑셀, "확인 후 회신드리겠습니다". 보스는 협력사 상무님',
+      '{infinity} 무한 모드에도 외전 8 적과 상무님이 합류해요. 보스 순환에서 빠지던 보스들도 이제 모두 나와요',
+    ],
+    en: {
+      title: 'We\'ll Send the Data Next Week',
+      items: [
+        '{redbook} Side Story 8 · Industry Joint Research is open. The partner company won\'t send the data, and the interim report is coming',
+        '{mail} New rule, Waiting on Data: with no data, allies start at 70% damage. Catch External HDD Couriers to receive data. Every 50s an interim report checks it, and coming up short means new requirements',
+        '{paper} New foes: NDA Packet, Change Request Email, Merged-Cell Spreadsheet, and "I\'ll Check and Get Back to You". The boss is the Partner Company Executive',
+        '{infinity} Side Story 8 foes and the Executive join Endless Mode too, and bosses that were skipped in the rotation now all appear',
+      ],
+    },
+  },
+  {
     version: '0.23.0',
     date: '2026-11-19',
     title: '교수님들의 습격',
