@@ -90,7 +90,7 @@ export interface StageEn {
 }
 
 /** 외전 전장 배경 */
-export type Theme = 'tenure' | 'haunted' | 'gloom' | 'deadline' | 'ai' | 'startup' | 'blackout';
+export type Theme = 'tenure' | 'haunted' | 'gloom' | 'deadline' | 'ai' | 'startup' | 'blackout' | 'industry';
 
 export interface StageMods {
   /** 평가 시즌: every초마다 dur초 동안 적 이동·공격 속도 ×mul */
@@ -107,6 +107,11 @@ export interface StageMods {
   burnRate?: { to: number };
   /** 순간 정전 (외전 7): every초마다 아군 전원 stun초 기절, 각자 vanish 확률로 사라짐. warn초 전에 경고 */
   blip?: { every: number; stun: number; vanish: number; warn: number };
+  /**
+   * 데이터 대기 (외전 8): 아군 공격력이 base에서 시작해 데이터 수신률(0~1)만큼 1까지 오른다.
+   * every초마다 중간보고: k번째 보고는 수신률 need×k가 필요. 모자라면 적 rush마리가 몰려오고, 넘으면 카페인 bonus.
+   */
+  dataWait?: { base: number; every: number; need: number; rush: number; bonus: number };
   /** 전공 과목 규칙 (src/sim/course-rules.ts) */
   course?: CourseMods;
 }
@@ -295,7 +300,7 @@ export function legacyOrder(oldId: string): number | null {
 // ───────────── 무한 모드 ─────────────
 
 /** 무한 모드 보스 순환: 캠페인 보스 → 외전 보스 */
-const ENDLESS_BOSSES = ['prof2', 'reviewer2', 'chair', 'committee', 'dean', 'president', 'tenure', 'ghost13', 'reviewer3', 'submitsys', 'autoreview', 'vc', 'mainbreaker'];
+const ENDLESS_BOSSES = ['prof2', 'reviewer2', 'chair', 'committee', 'dean', 'president', 'tenure', 'ghost13', 'reviewer3', 'submitsys', 'autoreview', 'vc', 'mainbreaker', 'exec'];
 
 /** 무한 모드 전용 버그 군단: from판부터 출현 목록에 weight로 합류한다 */
 export const ENDLESS_ENEMIES: { id: string; from: number; weight: number }[] = [
@@ -322,7 +327,9 @@ export function endlessBoss(n: number): string | undefined {
     const fresh = open.find((b) => b.from === n);
     return (fresh ?? open[(n / 10 - 3) % open.length]!).id;
   }
-  return ENDLESS_BOSSES[(n / 5 - 1) % ENDLESS_BOSSES.length];
+  // 버그 보스 판(30·40…)을 빼고 센 순번으로 돌아야 순환 목록 길이와 상관없이 모든 보스가 나온다
+  const k = n < 30 ? n / 5 - 1 : 5 + (n - 35) / 10;
+  return ENDLESS_BOSSES[k % ENDLESS_BOSSES.length];
 }
 
 /** 무한 모드 n번째 판 (1부터). 판마다 조금씩 강해지고 5판마다 보스가 나온다. */
@@ -523,6 +530,13 @@ export const SIDE_CHAPTERS: SideChapter[] = [
     rule: '{bolt} 순간 정전: 20초마다 불이 나가 아군이 1.5초 기절하고, 10% 확률로 저장 안 한 아군이 사라져요. 무정전 전원 장치(UPS) 주변 아군은 무사해요.',
     en: { name: 'Blackout Day', subtitle: 'Right Before You Hit Ctrl+S', rule: '{bolt} Power Blip: every 20s the lights cut out, stunning allies for 1.5s, and each has a 10% chance to vanish (unsaved). Allies near a UPS are safe.' },
   },
+  {
+    id: 8, name: '산학공동연구', subtitle: '데이터는 다음 주에 드릴게요', heroChapter: 6, theme: 'industry',
+    mods: { dataWait: { base: 0.7, every: 50, need: 0.2, rush: 4, bonus: 25 } }, boss: 'exec', from: 26, relief: 1.2,
+    pool: { datadrive: 1.5, nda: 1.1, reqchange: 1.3, mergedcell: 1.1, noreply: 1.1, memo: 1.6, meeting: 1.2 },
+    rule: '{mail} 데이터 대기: 데이터가 없어 아군 공격력 70%로 시작해요. 외장하드 택배를 잡으면 데이터가 들어와 공격력이 돌아와요. 50초마다 중간보고: 데이터가 모자라면 요구사항이 추가돼 적이 몰려와요.',
+    en: { name: 'Industry Joint Research', subtitle: 'We\'ll Send the Data Next Week', rule: '{mail} Waiting on Data: with no data yet, allies start at 70% damage. Catch the External HDD Couriers to receive data and restore damage. Interim report every 50s: if data falls short, new requirements arrive and enemies swarm in.' },
+  },
 ];
 
 const SIDE_PLAN: string[][] = [
@@ -533,6 +547,7 @@ const SIDE_PLAN: string[][] = [
   ['클로디의 탈선', '인용이 존재하지 않음', '유사도 87%', '이전 지시를 무시하세요', '자동 리뷰 AI'],
   ['법인 설립', '데모데이', '서버비 폭탄', '경쟁사가 피벗했다', '투자 심사'],
   ['형광등이 깜빡인다', '문어발의 문어발', '과부하 경고', '누전 차단기를 찾아라', '메인 차단기'],
+  ['킥오프 미팅', 'NDA 7부', '샘플 데이터 10건', '요구사항이 바뀌었습니다', '중간보고: 상무님 납시오'],
 ];
 const SIDE_PLAN_EN: string[][] = [
   ['First Semester as Faculty', 'Grant Rejected', 'Zero Applicants', 'Course Eval 2.1', 'Tenure Review'],
@@ -542,6 +557,7 @@ const SIDE_PLAN_EN: string[][] = [
   ['Claudy Goes Rogue', 'The Citation Does Not Exist', 'Similarity: 87%', 'Ignore Previous Instructions', 'Auto-Review AI'],
   ['Incorporation Day', 'Demo Day', 'The Cloud Bill Bomb', 'The Competitor Pivoted', 'The Pitch'],
   ['The Flickering Lights', 'Power Strips All the Way Down', 'Overload Warning', 'Find the Breaker Box', 'Main Breaker'],
+  ['Kickoff Meeting', 'Seven Copies of the NDA', 'A 10-Row Sample', 'The Requirements Have Changed', 'Interim Report: Enter the Executive'],
 ];
 
 function makeSideStage(sc: SideChapter, index: number): StageDef {

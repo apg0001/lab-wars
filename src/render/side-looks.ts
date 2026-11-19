@@ -1,5 +1,5 @@
 /**
- * 외전 4~7 전용 적·보스 그림 (look.kind === 'sidefoe'). 다른 캐릭터처럼 발 아래 가운데가 원점, 오른쪽을 본다.
+ * 외전 4~8 전용 적·보스 그림 (look.kind === 'sidefoe'). 다른 캐릭터처럼 발 아래 가운데가 원점, 오른쪽을 본다.
  */
 import type { Look } from '../data/types';
 import { INK, blob, eyes, label, legs, line, rrect, type Pose } from './characters';
@@ -23,6 +23,10 @@ export function drawSideFoe(ctx: Ctx, look: Look, pose: Pose): void {
     case 'overload': overload(ctx, look, pose); break;
     case 'breaker': breaker(ctx, look, pose); break;
     case 'mainbreaker': mainBreaker(ctx, look, pose); break;
+    case 'datadrive': dataDrive(ctx, look, pose); break;
+    case 'reqchange': reqChange(ctx, look, pose); break;
+    case 'mergedcell': mergedCell(ctx, look, pose); break;
+    case 'noreply': noReply(ctx, look, pose); break;
     default: pageLimit(ctx, look, pose);
   }
 }
@@ -553,3 +557,134 @@ function mainBreaker(ctx: Ctx, look: Look, pose: Pose): void {
   }
   line(ctx);
 }
+
+// ─────────────── 외전 8: 산학공동연구 ───────────────
+
+/** 외장하드 택배: 테이프 붙은 택배 상자, 위에 외장하드, 송장에 파일 이름 */
+function dataDrive(ctx: Ctx, look: Look, pose: Pose): void {
+  line(ctx);
+  legs(ctx, pose, 12, 8);
+  // 바쁘게 흔들리며 달린다
+  ctx.save();
+  ctx.rotate(Math.sin(pose.walk * 2) * 0.05);
+  rrect(ctx, -17, -40, 34, 30, 2, look.color);
+  ctx.fillStyle = '#c8a170';
+  ctx.fillRect(-17, -27, 34, 5);
+  ctx.strokeRect(-17, -40, 34, 30);
+  // 송장
+  rrect(ctx, -12, -22, 16, 9, 1, '#ffffff');
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 3.5px Jua, sans-serif';
+  label(ctx, '진짜최종', -11, -16.5, 'FINAL_v9');
+  // 상자 위 외장하드
+  rrect(ctx, -10, -50, 20, 10, 2, look.accent ?? '#37474f');
+  ctx.fillStyle = '#76ff03';
+  ctx.beginPath();
+  ctx.arc(6, -45, 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  line(ctx);
+  eyes(ctx, 4, -33, 5, false, 1.8);
+  arms(ctx, pose, 17, -28, 4);
+}
+
+/** 요구사항 변경 메일: 날개 달린 봉투, 제목은 RE: RE: FW: */
+function reqChange(ctx: Ctx, look: Look, pose: Pose): void {
+  line(ctx);
+  const bob = Math.sin(pose.time * 5 + pose.walk) * 3;
+  ctx.translate(0, bob - 16);
+  // 날개
+  const flap = Math.sin(pose.time * 14) * 6;
+  ctx.fillStyle = '#e3f2fd';
+  for (const dir of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(dir * 6, -16);
+    ctx.quadraticCurveTo(dir * 18, -30 - flap, dir * 26, -22 - flap);
+    ctx.quadraticCurveTo(dir * 18, -18, dir * 10, -12);
+    ctx.fill();
+    ctx.stroke();
+  }
+  rrect(ctx, -16, -18, 32, 20, 2, look.color);
+  ctx.beginPath();
+  ctx.moveTo(-16, -18);
+  ctx.lineTo(0, -6);
+  ctx.lineTo(16, -18);
+  ctx.stroke();
+  ctx.fillStyle = look.accent ?? '#1e88e5';
+  ctx.font = 'bold 5px Jua, sans-serif';
+  label(ctx, 'RE:RE:FW:', -14, -1);
+  eyes(ctx, 0, -11, 6, true, 1.4);
+}
+
+/** 병합된 셀 엑셀: 초록 표, 한가운데 커다랗게 병합된 칸, 색칠된 셀 */
+function mergedCell(ctx: Ctx, look: Look, pose: Pose): void {
+  line(ctx);
+  legs(ctx, pose, 12, 7);
+  const x0 = -18;
+  const y0 = -50;
+  rrect(ctx, x0, y0, 36, 40, 2, look.color);
+  ctx.fillStyle = look.accent ?? '#2e7d32';
+  ctx.fillRect(x0, y0, 36, 6);
+  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = '#81c784';
+  for (let k = 1; k < 4; k++) {
+    ctx.beginPath();
+    ctx.moveTo(x0 + k * 9, y0 + 6);
+    ctx.lineTo(x0 + k * 9, y0 + 40);
+    ctx.stroke();
+  }
+  for (let k = 1; k < 5; k++) {
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + 6 + k * 7);
+    ctx.lineTo(x0 + 36, y0 + 6 + k * 7);
+    ctx.stroke();
+  }
+  // 병합된 칸 (선 위를 덮는다)과 의미를 색으로만 표시한 셀
+  ctx.fillStyle = '#fffde7';
+  ctx.fillRect(x0 + 9.5, y0 + 13.5, 17, 13);
+  ctx.fillStyle = '#ef9a9a';
+  ctx.fillRect(x0 + 0.5, y0 + 27.5, 8, 6);
+  ctx.fillStyle = '#fff59d';
+  ctx.fillRect(x0 + 27.5, y0 + 34.5, 8, 5);
+  line(ctx);
+  ctx.strokeRect(x0, y0, 36, 40);
+  eyes(ctx, 0, -30, 5, true, 1.7);
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 4px Jua, sans-serif';
+  label(ctx, 'Sheet37', x0 + 2, y0 + 4.5);
+  // 던지는 팔
+  arms(ctx, pose, 18, -28, 6);
+}
+
+/** "확인 후 회신드리겠습니다": 말풍선 몸통, 점 세 개가 영원히 깜빡인다 */
+function noReply(ctx: Ctx, look: Look, pose: Pose): void {
+  line(ctx);
+  legs(ctx, pose, 10, 8);
+  ctx.beginPath();
+  ctx.roundRect(-18, -46, 36, 28, 12);
+  ctx.moveTo(-6, -18);
+  ctx.lineTo(-10, -10);
+  ctx.lineTo(2, -18);
+  ctx.fillStyle = look.color;
+  ctx.fill();
+  ctx.stroke();
+  // 입력 중… 점 세 개
+  const k = Math.floor(pose.time * 3) % 4;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i < k ? (look.accent ?? '#8e24aa') : '#b0bec5';
+    ctx.beginPath();
+    ctx.arc(-8 + i * 8, -26, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  eyes(ctx, 0, -37, 6, false, 1.6);
+  // 느릿한 시계 바늘 (둔화)
+  ctx.strokeStyle = look.accent ?? '#8e24aa';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(16, -46, 5, 0, Math.PI * 2);
+  ctx.moveTo(16, -46);
+  ctx.lineTo(16 + Math.cos(pose.time) * 4, -46 + Math.sin(pose.time) * 4);
+  ctx.stroke();
+  line(ctx);
+}
+

@@ -8,7 +8,7 @@ describe('스토리 다시 보기', () => {
     for (const st of STAGES) if (st.kind !== 'boss') expect(SCENES[`st-${st.id}`], st.id).toBeTruthy();
     expect(new Set(STORY_ORDER).size).toBe(Object.keys(SCENES).length);
     expect(STORY_ORDER[0]).toBe('ch1-intro');
-    expect(STORY_ORDER.at(-1)).toBe('side7-clear');
+    expect(STORY_ORDER.at(-1)).toBe('side8-clear');
     expect(STORY_ORDER.indexOf('ending')).toBeLessThan(STORY_ORDER.indexOf('side1-intro'));
     for (const st of SIDE_STAGES) if (st.kind !== 'boss') expect(SCENES[`st-${st.id}`], st.id).toBeTruthy();
   });

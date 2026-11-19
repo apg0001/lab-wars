@@ -315,6 +315,8 @@ export function playBattleSfx(e: BattleEvent, camX: number, viewW: number): void
     case 'timeWarn': case 'blipWarn': sfx.timeWarn(); break;
     case 'blip': sfx.blip(); break;
     case 'copy': sfx.summon(); break;
+    case 'data': sfx.heal(); break;
+    case 'report': if (e.pass) sfx.brew(); else sfx.rush(); break;
     case 'end': if (e.result === 'win') sfx.win(); else sfx.lose(); break;
   }
 }
