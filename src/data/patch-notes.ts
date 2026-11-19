@@ -22,6 +22,22 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.28.3',
+    date: '2026-11-19',
+    title: '포인터 끝에서',
+    items: [
+      '{printer} 입자 가속기 넉백 확률 50% → 10%',
+      '{anger} 교수님 레이저가 건물 모서리가 아니라 지붕 레이저 포인터 끝에서 나가요',
+    ],
+    en: {
+      title: 'From the Pointer Tip',
+      items: [
+        '{printer} Particle Accelerator knockback chance 50% → 10%',
+        '{anger} The professor’s laser now fires from the tip of the rooftop laser pointer, not the building corner',
+      ],
+    },
+  },
+  {
     version: '0.28.2',
     date: '2026-11-19',
     title: '교수님의 레이저 포인터',
