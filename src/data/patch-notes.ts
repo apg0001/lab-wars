@@ -22,6 +22,24 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.28.2',
+    date: '2026-11-19',
+    title: '교수님의 레이저 포인터',
+    items: [
+      '{anger} 교수님 레이저가 끊기지 않는 빔이 되어 교수실에 가장 가까운 동료를 따라가며 지져요 (초당 피해는 그대로)',
+      '{anger} 무한 모드에서 레이저 출력이 오를 때마다 사거리도 늘어나요 (260 → 440, 바닥 붉은 점선)',
+      '{printer} 입자 가속기 빔이 적을 뚫을 때마다 최저치 없이 계속 약해져요',
+    ],
+    en: {
+      title: 'The Professor’s Laser Pointer',
+      items: [
+        '{anger} The professor’s laser is now a continuous beam that tracks the teammate closest to the office (same damage per second)',
+        '{anger} In Endless, each laser power-up also extends its range (260 → 440, red dashed line on the floor)',
+        '{printer} The Particle Accelerator beam keeps weakening with every enemy it pierces, with no floor',
+      ],
+    },
+  },
+  {
     version: '0.28.1',
     date: '2026-11-19',
     title: '교수님도 체력이 있다',
