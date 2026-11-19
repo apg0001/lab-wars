@@ -29,6 +29,8 @@ const ALARM_AT = [0.75, 0.5, 0.25];
 export const ALARM_RADIUS = 300;
 /** 보스 호통 기본값: HP 66%·33% 아래로 처음 떨어질 때 모든 아군을 1.2초 기절, 70 밀어내기 */
 export const BOSS_RAGE = { at: [0.66, 0.33], stun: 1.2, push: 70 };
+/** 보스 돌파: 돌진 속도(px/초), 연구실 앞 멈추는 자리(ALLY_FRONT에서), 지나가며 치는 넉백 */
+export const BREACH = { speed: 260, stopAt: 30, kb: { chance: 0.7, dist: 40 } };
 /** 남은 시간이 이만큼이면 경고 배너 */
 const TIME_WARN = 60;
 /** 단계 n → n+1 비용 */
@@ -62,6 +64,14 @@ export interface Fighter {
   stunT: number;
   /** 보스: 지금까지 일으킨 호통 횟수 */
   rageN: number;
+  /** 보스 돌파: 'run' 연구실로 돌진 중, 'in' 연구실 앞에 들어와 있음 */
+  breach?: 'run' | 'in';
+  /** 돌파하지 않는 보스 (무한 모드 동행 교수님) */
+  noBreach?: boolean;
+  /** 이번 돌진에 이미 치고 지나간 아군 uid */
+  trampled?: Set<number>;
+  /** 아군: 뚫고 들어온 보스를 막으러 뒤돌아 있다 (그림이 왼쪽을 본다) */
+  back?: boolean;
   auraMul: number;
   dead: boolean;
   deathT: number;
@@ -309,6 +319,8 @@ export class Battle {
   private bossSpawned = false;
   /** stage.extraBosses 중 나온 것 */
   private extraSpawned: boolean[] = [];
+  /** 전선을 뚫고 들어온(또는 돌진 중인) 보스: 아군이 돌아서서 막으러 간다 */
+  breacher: Fighter | null = null;
   private uidSeq = 1;
   private acc = 0;
   private readonly rng: () => number;
@@ -585,6 +597,7 @@ export class Battle {
 
     this.spawnEnemies(dt);
     this.computeAuras();
+    this.breacher = this.fighters.find((f) => !f.dead && f.breach !== undefined) ?? null;
     for (const f of this.fighters) {
       if (!f.dead) this.tickStatus(f, dt);
       if (!f.dead) this.tickFighter(f, dt);
@@ -739,7 +752,9 @@ export class Battle {
     st.extraBosses?.forEach((xb, i) => {
       if (this.extraSpawned[i] || this.t < xb.at) return;
       this.extraSpawned[i] = true;
-      if (!this.spawnEnemy(xb.id, true, ENEMY_FRONT + 20, xb.mul)) return;
+      const xf = this.spawnEnemy(xb.id, true, ENEMY_FRONT + 20, xb.mul);
+      if (!xf) return;
+      xf.noBreach = true;
       const name = ENEMY_BY_ID[xb.id]!.name;
       this.banner(st.boss ? tr(`{tie} ${name}도 합류!`, `{tie} ${name} joins in!`) : tr(`{tie} 초청 강연: ${name}`, `{tie} Guest lecture: ${name}`));
       this.emit({ type: 'bossSpawn' });
@@ -1246,6 +1261,7 @@ export class Battle {
       f.attacking = false;
       return;
     }
+    if (f.breach === 'run') return this.tickBreachRun(f, dt);
 
     const silenced = f.silenceT > 0;
     if (s.stunField && !silenced) this.tickStunField(f, dt);
@@ -1271,8 +1287,13 @@ export class Battle {
     if (s.turret && !silenced) this.tickTurret(f, dt);
     if (s.fieldStrike && !silenced) this.tickStrike(f, dt);
 
-    const target = this.findTarget(f);
-    const hitBase = !target && this.baseInRange(f);
+    let target = this.findTarget(f);
+    // 보스가 뒤로 뚫고 들어왔으면 앞에 나가 있던 아군은 돌아서서 막으러 간다
+    const br = f.side === 'ally' ? this.breacher : null;
+    const back = !!br && br.x < f.x - 12;
+    f.back = back;
+    if (back) target = Math.abs(f.x - br!.x) <= s.range + bodyR(br!) ? br : null;
+    const hitBase = !target && !back && this.baseInRange(f);
     // 과목 규칙(라운드 로빈·무임승차): 공격하지 않는 차례면 앞을 막아 서기만 한다
     if ((target || hitBase) && this.rules.some((r) => r.canAttack && !r.canAttack(this, f))) {
       f.attacking = false;
@@ -1280,7 +1301,7 @@ export class Battle {
     }
     f.attacking = !!target || hitBase;
     if (!f.attacking) {
-      const dir = f.side === 'ally' ? 1 : -1;
+      const dir = f.side === 'ally' && !back ? 1 : -1;
       const v = s.speed * this.speedMul(f) * dt;
       f.x += dir * v;
       f.walk += v * 0.08;
@@ -1704,6 +1725,33 @@ export class Battle {
     }
   }
 
+  /** 보스 돌파: 아군 전선을 뚫고 연구실 앞까지 달린다. 지나가며 아군을 한 번씩 치고 밀어낸다 */
+  private tickBreachRun(f: Fighter, dt: number): void {
+    const from = f.x;
+    const stop = ALLY_FRONT + BREACH.stopAt;
+    f.x = Math.max(stop, f.x - BREACH.speed * dt);
+    f.walk += BREACH.speed * dt * 0.08;
+    f.attacking = false;
+    for (const o of this.alive('ally')) {
+      if (o.stats.flying || f.trampled?.has(o.uid)) continue;
+      if (o.x <= from + bodyR(o) && o.x >= f.x - bodyR(o)) {
+        f.trampled?.add(o.uid);
+        this.damageFighter(o, f.stats.atk, 'enemy', BREACH.kb);
+      }
+    }
+    if (f.x <= stop) {
+      f.breach = 'in';
+      this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.6, r: 120 });
+      this.emit({ type: 'stomp', x: f.x, r: 120 });
+      this.banner(tr(`{warn} ${f.name}이(가) 연구실 문 앞까지 왔어요! 막아요!`, `{warn} ${f.name} is at the Lab door! Stop them!`));
+    }
+  }
+
+  /** 이 보스가 돌파할 수 있는가: 1장(튜토리얼)과 무한 모드 동행 교수님은 하지 않는다 */
+  private canBreach(f: Fighter): boolean {
+    return !f.noBreach && this.stage.chapter !== 1;
+  }
+
   /**
    * 보스 호통: 전장의 모든 아군을 잠깐 기절시키고 뒤로 밀어낸다.
    * 보스에 몰아치던 흐름을 끊어 보스전에 굴곡을 준다.
@@ -1719,7 +1767,12 @@ export class Battle {
     this.fx.push({ kind: 'stomp', x: f.x, y: GROUND_Y, t: 0, life: 0.8, r: 420 });
     this.fx.push({ kind: 'text', x: f.x, y: GROUND_Y - 170, t: 0, life: 1.2, text: tr('{anger} 이게 뭐야!', '{anger} What is THIS?!'), color: '#ff5252' });
     this.emit({ type: 'rage', x: f.x });
-    this.banner(tr(`{anger} ${f.name} 호통!`, `{anger} ${f.name} yells!`));
+    // 호통과 함께 전선을 뚫고 연구실로 돌진한다 (이미 들어와 있으면 그대로)
+    if (this.canBreach(f) && f.breach !== 'in') {
+      f.breach = 'run';
+      f.trampled = new Set();
+      this.banner(tr(`{anger} ${f.name} 호통! 연구실로 돌진해요!`, `{anger} ${f.name} yells and charges the Lab!`));
+    } else this.banner(tr(`{anger} ${f.name} 호통!`, `{anger} ${f.name} yells!`));
   }
 
   private damageBase(b: Base, dmg: number, x: number): void {
