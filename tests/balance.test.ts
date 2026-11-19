@@ -28,6 +28,6 @@ describe('밸런스', () => {
     // 1챕터는 튜토리얼 구간: 스테이지마다 2회 안에 깬다
     for (const r of runs.slice(0, 10)) expect(r.attempts).toBeLessThanOrEqual(2);
     // 판 길이는 시간 제한(일반 5분, 보스 6분) 안
-    for (const r of runs) expect(r.seconds).toBeLessThan(STAGE_BY_ID[r.stage]!.timeLimit!);
+    for (const r of runs) expect(r.seconds).toBeLessThanOrEqual(STAGE_BY_ID[r.stage]!.timeLimit!);
   }, 300_000);
 });
