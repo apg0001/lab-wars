@@ -187,6 +187,9 @@ export type BattleEvent =
   | { type: 'strike'; n: number }
   | { type: 'revive'; x: number }
   | { type: 'bossSpawn' }
+  /** 외전 8: 데이터 수신·중간보고 */
+  | { type: 'data'; x: number }
+  | { type: 'report'; pass: boolean }
   | { type: 'alarm' }
   | { type: 'rage'; x: number }
   | { type: 'timeWarn' }
@@ -287,6 +290,11 @@ export class Battle {
   blipT = 0;
   /** 순간 정전으로 사라진 아군 수 */
   vanished = 0;
+  /** 외전 8 데이터 대기: 데이터 수신률(0~1), 다음 중간보고 시각, 지난 보고 수 */
+  data = 0;
+  nextReport = Infinity;
+  reports = 0;
+  private lastReport = 0;
   result: BattleResult = null;
   /** 시간 제한을 넘겨 졌는지 */
   timedOut = false;
@@ -347,6 +355,7 @@ export class Battle {
     if (stage.mods?.drain) this.mental = loadout.mentalMax * 0.6;
     if (stage.mods?.copy) this.nextCopy = stage.mods.copy.every;
     if (stage.mods?.blip) this.nextBlip = stage.mods.blip.every;
+    if (stage.mods?.dataWait) this.nextReport = stage.mods.dataWait.every;
   }
 
   // ───────────── 플레이어 조작 ─────────────
@@ -373,6 +382,33 @@ export class Battle {
   get burnMul(): number {
     const br = this.stage.mods?.burnRate;
     return br ? 1 - (1 - br.to) * this.progress : 1;
+  }
+
+  /** 외전 8 데이터 대기: 아군 공격력 배율 (base → 1, 데이터 수신률만큼) */
+  get dataMul(): number {
+    const dw = this.stage.mods?.dataWait;
+    return dw ? dw.base + (1 - dw.base) * this.data : 1;
+  }
+
+  /** 아군 공격력 배율: 멘탈 붕괴(외전 3) × 데이터 대기(외전 8) */
+  private get allyMul(): number {
+    return (this.broken ? 0.75 : 1) * this.dataMul;
+  }
+
+  /** 다음 중간보고에 필요한 데이터 수신률 */
+  reportNeed(): number {
+    const dw = this.stage.mods?.dataWait;
+    return dw ? Math.min(1, dw.need * (this.reports + 1)) : 0;
+  }
+
+  /** 중간보고 간격: 협력사 상무님이 나와 있으면 당겨진다 */
+  reportEvery(): number {
+    const base = this.stage.mods?.dataWait?.every ?? Infinity;
+    for (const f of this.fighters) {
+      const re = !f.dead && f.isBoss ? ENEMY_BY_ID[f.defId]?.boss?.reportEvery : undefined;
+      if (re) return Math.min(base, re);
+    }
+    return base;
   }
 
   /** 외전 4 카운트다운: 적 이동·공격 속도 배율 (1 → mul) */
@@ -535,6 +571,7 @@ export class Battle {
     this.frenzyT = Math.max(0, this.frenzyT - dt);
     this.tickCopy();
     this.tickBlip(dt);
+    this.tickReport();
     for (const r of this.rules) r.step?.(this, dt);
     for (const k of Object.keys(this.unitCd)) this.unitCd[k] = Math.max(0, this.unitCd[k]! - dt);
     this.hasteT = Math.max(0, this.hasteT - dt);
@@ -879,6 +916,45 @@ export class Battle {
     this.blipWarned = false;
   }
 
+  /** 외전 8 중간보고: 때가 되면 데이터 수신률을 확인한다 */
+  private tickReport(): void {
+    const dw = this.stage.mods?.dataWait;
+    if (!dw) return;
+    // 상무님이 오셔서 간격이 짧아졌으면 다음 보고를 당긴다 (최소 3초 여유)
+    const due = this.lastReport + this.reportEvery();
+    if (due < this.nextReport) this.nextReport = Math.max(this.t + 3, due);
+    if (this.t < this.nextReport) return;
+    const need = this.reportNeed();
+    this.reports++;
+    this.lastReport = this.t;
+    this.nextReport = this.t + this.reportEvery();
+    const pass = this.data >= need - 1e-9;
+    if (pass) {
+      this.caffeine = Math.min(this.caffeineMax, this.caffeine + dw.bonus);
+      this.banner(tr(`{check} 중간보고 통과! (데이터 ${Math.round(this.data * 100)}%) 카페인 +${dw.bonus}`, `{check} Interim report passed! (data ${Math.round(this.data * 100)}%) Caffeine +${dw.bonus}`));
+    } else {
+      // 데이터가 없으니 보고서는 '향후 계획'뿐. 요구사항이 추가된다
+      for (let i = 0; i < dw.rush; i++) this.spawnEnemy(i < 2 ? 'reqchange' : this.pickEnemy(), false, ENEMY_FRONT + 20 + i * 14);
+      this.banner(tr(`{warn} 중간보고: 데이터 ${Math.round(this.data * 100)}% / 필요 ${Math.round(need * 100)}%. "향후 계획"만 5쪽… 요구사항 추가!`, `{warn} Interim report: data ${Math.round(this.data * 100)}% / needed ${Math.round(need * 100)}%. Five pages of "future work"… New requirements!`));
+    }
+    this.emit({ type: 'report', pass });
+  }
+
+  /** 외장하드 택배를 잡았다: 데이터 수신 (가끔 압축이 안 풀려 절반만) */
+  private receiveData(f: Fighter): void {
+    const broken = this.rng() < 0.25;
+    const got = f.stats.dataDrop! * (broken ? 0.5 : 1);
+    this.data = Math.min(1, this.data + got);
+    const lines = [
+      (): string => tr('{check} 데이터 수신! (DATA_최종_진짜최종.zip)', '{check} Data received! (DATA_final_REAL_final.zip)'),
+      (): string => tr('{check} 데이터 수신! (시트 37개)', '{check} Data received! (37 sheets)'),
+      (): string => tr('{check} 데이터 수신! (CSV 인코딩 깨짐… 그래도 쓴다)', '{check} Data received! (broken CSV encoding… using it anyway)'),
+    ];
+    const msg = broken ? tr('{warn} 압축 해제 실패… 절반만 건졌다', '{warn} Extraction failed… salvaged half') : lines[Math.floor(this.rng() * lines.length)]!();
+    this.fx.push({ kind: 'text', x: f.x, y: this.fy(f) - 84, t: 0, life: 1.4, text: `${msg} ${Math.round(this.data * 100)}%`, color: broken ? '#ffab40' : '#80deea' });
+    this.emit({ type: 'data', x: f.x });
+  }
+
   /** 아군이 UPS 비상 전원 반경 안에 있는지 */
   private guarded(o: Fighter, guards: Fighter[]): boolean {
     return guards.some((g) => Math.abs(g.x - o.x) <= g.stats.blipGuard!);
@@ -1093,7 +1169,7 @@ export class Battle {
     const foes = this.alive(f.side === 'ally' ? 'enemy' : 'ally');
     if (!foes.length) return;
     f.strikeCd = fs.every;
-    const dmg = fs.dmg * (f.side === 'ally' ? this.cardMods.allyAtk * (this.broken ? 0.75 : 1) : 1);
+    const dmg = fs.dmg * (f.side === 'ally' ? this.cardMods.allyAtk * this.allyMul : 1);
     for (const o of foes) {
       this.fx.push({ kind: 'zap', x: o.x, y: this.fy(o) - 20, t: 0, life: 0.5 });
       this.damageFighter(o, dmg, f.side);
@@ -1212,7 +1288,7 @@ export class Battle {
     if (f.cd > 0) return;
     f.cd = s.interval;
     f.swing = 1;
-    const atk = s.atk * f.auraMul * (f.side === 'ally' ? (this.broken ? 0.75 : 1) * this.cardMods.allyAtk : this.cardMods.enemyAtk);
+    const atk = s.atk * f.auraMul * (f.side === 'ally' ? this.allyMul * this.cardMods.allyAtk : this.cardMods.enemyAtk);
     const ranged = s.range >= RANGED_THRESHOLD;
     if (target) {
       if (ranged) this.shoot(f, atk, target.x, this.fy(target) - 18, target.uid, false);
@@ -1564,6 +1640,7 @@ export class Battle {
       this.emit({ type: 'kill', x: f.x, y: this.fy(f) - 16, side: f.side, boss: f.isBoss });
       if (f.side === 'enemy') {
         this.kills++;
+        if (f.stats.dataDrop && this.stage.mods?.dataWait) this.receiveData(f);
         const reward = Math.round(f.reward * this.cardMods.reward);
         this.killReward += reward;
         // 적 세기(기본 처치 보상)에 비례해 카페인을 얻는다

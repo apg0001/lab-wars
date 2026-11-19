@@ -36,7 +36,7 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 | | |
 |:-:|:-:|
 | <img src="docs/images/map.webp" alt="Stage map" width="360"><br>**7 chapters, 70 stages** · from undergrad to postdoc | <img src="docs/images/cutscene.webp" alt="Story cutscene" width="360"><br>**An animated story cutscene for every stage** |
-| <img src="docs/images/lab.webp" alt="Lab upgrades" width="360"><br>**Level up, evolve, upgrade facilities** | <img src="docs/images/side-map.webp" alt="Side Story map" width="360"><br>**Seven Side Stories after the ending** |
+| <img src="docs/images/lab.webp" alt="Lab upgrades" width="360"><br>**Level up, evolve, upgrade facilities** | <img src="docs/images/side-map.webp" alt="Side Story map" width="360"><br>**Eight Side Stories after the ending** |
 
 ## ✨ Features
 
@@ -81,6 +81,7 @@ The game follows your browser language: Korean if it starts with `ko`, English o
 | 5 · The Lab in the Age of AI | 🤖 **Generative Copy**: every 14s one of your recent summons is cloned onto the enemy side at 60% stats | Auto-Review AI (silences nearby allies' abilities) |
 | 6 · After Graduation: The Lab Startup | 🔥 **Burn Rate**: caffeine charge shrinks over time, down to 35% | VC Partner ("So what's the business model?" flying questions) |
 | 7 · Blackout Day | ⚡ **Power Blip**: every 20s allies are stunned 1.5s and each has a 10% chance to vanish. Allies near a UPS are safe | Main Breaker (blips come faster as its HP drops) |
+| 8 · Industry Joint Research | 📧 **Waiting on Data**: allies start at 70% damage; catch External HDD Couriers to receive data and recover. Interim report every 50s: short on data means new requirements | Partner Company Executive ("So when do we see results?", pulls reports earlier) |
 
 ### 🎓 Major Mode: 41 ICE courses
 

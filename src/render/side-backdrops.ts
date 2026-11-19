@@ -1,5 +1,5 @@
 /**
- * 외전 4~7 배경: 마감 직전의 연구실(밤 → 새벽), 네온 서버실, 공유 오피스, 형광등이 깜빡이는 연구실.
+ * 외전 4~8 배경: 마감 직전의 연구실(밤 → 새벽), 네온 서버실, 공유 오피스, 형광등이 깜빡이는 연구실, 협력사 회의실.
  * 전투와 컷신에서 같이 쓴다. progress(0~1)는 전투 진행률 (마감 24시의 하늘색).
  */
 import type { Theme } from '../data/stages';
@@ -13,6 +13,7 @@ export function drawSideBackdrop(ctx: Ctx, theme: Theme, w: number, ground: numb
   if (theme === 'deadline') deadline(ctx, w, ground, h, scroll, t, progress);
   else if (theme === 'ai') neon(ctx, w, ground, h, scroll, t);
   else if (theme === 'startup') startup(ctx, w, ground, h, scroll, t);
+  else if (theme === 'industry') industry(ctx, w, ground, h, scroll, t, progress);
   else blackout(ctx, w, ground, h, scroll, t);
 }
 
@@ -379,6 +380,113 @@ function blackout(ctx: Ctx, w: number, ground: number, h: number, scroll: number
     ctx.fillStyle = 'rgba(10,14,12,.18)';
     ctx.fillRect(-20, -20, w + 40, h + 40);
   }
+}
+
+// ─────────────── 외전 8 산학공동연구: 협력사 회의실 ───────────────
+
+function industry(ctx: Ctx, w: number, ground: number, h: number, scroll: number, t: number, p: number): void {
+  const top = ground - 340;
+  sky(ctx, w, ground, '#dfe6ec', '#c9d3db');
+  ctx.save();
+  ctx.translate(-scroll, 0);
+  for (const i of tiles(scroll, w, 400)) {
+    const x = i * 400;
+    // 유리 칸막이와 회사 로고 시트지
+    ctx.fillStyle = 'rgba(178,235,242,.35)';
+    ctx.fillRect(x + 8, top + 10, 120, ground - top - 10);
+    ctx.strokeStyle = '#90a4ae';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 8, top + 10, 120, ground - top - 10);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.fillRect(x + 8, top + 150, 120, 16);
+    ctx.fillStyle = '#1a237e';
+    ctx.font = '11px Jua, sans-serif';
+    ctx.fillText(tr('(주)협력사 · 보안구역', 'PartnerCo · Secure Area'), x + 14, top + 162);
+    // 프로젝터 화면: 간트 차트, 막대 하나만 빨갛게 멈춰 있다
+    const sx = x + 160;
+    const sy = top + 40;
+    ctx.fillStyle = '#fafafa';
+    ctx.strokeStyle = '#78909c';
+    ctx.lineWidth = 3;
+    ctx.fillRect(sx, sy, 200, 130);
+    ctx.strokeRect(sx, sy, 200, 130);
+    ctx.fillStyle = '#263238';
+    ctx.font = '13px Jua, sans-serif';
+    ctx.fillText(tr('산학과제 추진 일정', 'Joint Project Schedule'), sx + 10, sy + 20);
+    const rows: [string, number, number, string][] = [
+      [tr('데이터 수령', 'Get data'), 0, 0.1, '#e53935'],
+      [tr('전처리', 'Preprocess'), 0.1, 0.35, '#90a4ae'],
+      [tr('모델 개발', 'Modeling'), 0.35, 0.75, '#90a4ae'],
+      [tr('중간보고', 'Interim rpt'), 0.75, 0.8, '#1e88e5'],
+    ];
+    ctx.font = '10px Jua, sans-serif';
+    rows.forEach(([name, a, b, c], k) => {
+      const y = sy + 36 + k * 22;
+      ctx.fillStyle = '#455a64';
+      ctx.fillText(name, sx + 8, y + 9);
+      ctx.fillStyle = c;
+      ctx.fillRect(sx + 70 + a * 120, y, Math.max(6, (b - a) * 120), 11);
+    });
+    // 오늘 선: 진행률만큼 오른쪽으로
+    const todayX = sx + 70 + Math.min(1, 0.3 + p * 0.5) * 120;
+    ctx.strokeStyle = '#e53935';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(todayX, sy + 30);
+    ctx.lineTo(todayX, sy + 122);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // 회의 탁자와 노트북, 생수병, 명패
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(x + 150, ground - 70, 230, 12);
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(x + 165, ground - 58, 10, 58);
+    ctx.fillRect(x + 355, ground - 58, 10, 58);
+    for (let k = 0; k < 3; k++) {
+      const lx = x + 170 + k * 70;
+      ctx.fillStyle = '#b0bec5';
+      ctx.fillRect(lx, ground - 92, 34, 22);
+      ctx.fillStyle = hash(i * 5 + k) < 0.5 ? '#80deea' : '#c5e1a5';
+      ctx.fillRect(lx + 3, ground - 89, 28, 16);
+      ctx.fillStyle = 'rgba(129,212,250,.75)';
+      ctx.fillRect(lx + 44, ground - 92, 7, 22);
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 300, ground - 84, 44, 14);
+    ctx.fillStyle = '#1a237e';
+    ctx.font = '9px Jua, sans-serif';
+    ctx.fillText(tr('상무', 'Exec.'), x + 312, ground - 74);
+    // 천장 매립등
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillRect(x + 220, top - 26, 90, 6);
+  }
+  ctx.restore();
+  // 벽시계와 D-day (화면 위 가운데 고정): 전투가 흐를수록 중간보고가 다가온다
+  const d = Math.max(0, 3 - Math.floor(p * 4));
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#37474f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(w / 2, ground - 300, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(w / 2, ground - 300);
+  ctx.rotate(t * 0.8);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, -16);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = d === 0 ? '#e53935' : '#37474f';
+  ctx.font = 'bold 18px Jua, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(d === 0 ? tr('중간보고 D-DAY', 'Interim Report: TODAY') : tr(`중간보고 D-${d}`, `Interim Report D-${d}`), w / 2, ground - 262);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#78909c';
+  ctx.fillRect(-20, ground - 8, w + 40, 8);
+  floor(ctx, w, ground, h, scroll, '#8a96a0', '#66727c', 'rgba(255,255,255,.07)');
 }
 
 /** 초록 비상구 표지 (glow 0~1) */

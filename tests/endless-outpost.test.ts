@@ -207,7 +207,7 @@ describe('무한 모드 외전 적·교수님', () => {
 
   it('외전 보스도 보스 순환에 들어간다', () => {
     const bosses = new Set(Array.from({ length: 80 }, (_, i) => endlessBoss((i + 1) * 5)));
-    for (const id of ['tenure', 'ghost13', 'reviewer3', 'submitsys', 'autoreview', 'vc', 'mainbreaker']) expect(bosses.has(id), id).toBe(true);
+    for (const id of ['tenure', 'ghost13', 'reviewer3', 'submitsys', 'autoreview', 'vc', 'mainbreaker', 'exec']) expect(bosses.has(id), id).toBe(true);
   });
 
   it('교수님 16명이 모두 나오고, 보스 판엔 판이 오를수록 여러 명이 동행한다', () => {

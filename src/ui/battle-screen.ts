@@ -92,7 +92,7 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
   const timeTxt = h('span.time');
   // 외전 4~7 특수 규칙의 지금 상태 (적 속도·카페인 충전·다음 정전·다음 복제)
   const mods = opt.stage.mods;
-  const modIcon = mods?.countdown ? 'hourglass' : mods?.burnRate ? 'fire' : mods?.blip ? 'bolt' : mods?.copy ? 'robot' : null;
+  const modIcon = mods?.countdown ? 'hourglass' : mods?.burnRate ? 'fire' : mods?.blip ? 'bolt' : mods?.copy ? 'robot' : mods?.dataWait ? 'mail' : null;
   const modTxt = h('span.mod-val');
   const modChip = modIcon ? h('span.mod-chip', {}, iconEl(modIcon), modTxt) : null;
   const speedBtn = h('button.icon-btn', { title: tr('배속', 'Speed'), onclick: () => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!) }, '');
@@ -470,8 +470,9 @@ export function mountBattle(root: HTMLElement, opt: BattleScreenOptions): () => 
       setText(modTxt, mods?.countdown ? tr(` 적 ×${battle.countdownMul.toFixed(2)}`, ` Foes ×${battle.countdownMul.toFixed(2)}`)
         : mods?.burnRate ? tr(` 충전 ×${battle.burnMul.toFixed(2)}`, ` Charge ×${battle.burnMul.toFixed(2)}`)
         : mods?.blip ? tr(` 정전 ${soon(battle.nextBlip)}초`, ` Blip in ${soon(battle.nextBlip)}s`)
+        : mods?.dataWait ? tr(` 데이터 ${Math.round(battle.data * 100)}%/${Math.round(battle.reportNeed() * 100)}% · 보고 ${soon(battle.nextReport)}초`, ` Data ${Math.round(battle.data * 100)}%/${Math.round(battle.reportNeed() * 100)}% · report in ${soon(battle.nextReport)}s`)
         : tr(` 복제 ${soon(battle.nextCopy)}초`, ` Copy in ${soon(battle.nextCopy)}s`));
-      modChip.classList.toggle('low', !!mods?.blip && battle.nextBlip - battle.t <= (mods.blip.warn ?? 2));
+      modChip.classList.toggle('low', (!!mods?.blip && battle.nextBlip - battle.t <= (mods.blip.warn ?? 2)) || (!!mods?.dataWait && battle.nextReport - battle.t <= 8 && battle.data < battle.reportNeed()));
     }
     setStyle(cafFill, 'width', pct(battle.caffeine / battle.caffeineMax));
     setText(cafNum, ` ${Math.floor(battle.caffeine)}/${battle.caffeineMax}`);

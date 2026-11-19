@@ -437,4 +437,66 @@ export const EN_SIDE: Record<string, SceneEn> = {
       'From that day on, the lab had one more rule: "No power strips plugged into power strips."',
     ],
   },
+  'side8-intro': {
+    title: 'Side Story 8 · Industry Joint Research',
+    lines: [
+      'An industry-funded project landed in the lab. At the words "stipends included," everyone applauded.',
+      'We just build one prediction model on the partner\'s data. Simple.',
+      'When does the data arrive?',
+      'I\'ll check and get back to you.',
+      'Oh, and the interim report is next month. The executive is attending in person.',
+      '…Next month, with no data?',
+      'And so began "we\'ll send the data next week."',
+    ],
+  },
+  'st-S8-1': {
+    lines: [
+      'Thanks for the kickoff deck. We\'ll send the data next week.',
+      '(The "next week" from last week IS this week…)',
+      'Until the data shows up, I\'ll train on dummy data. Performance will be… let\'s not talk about it.',
+      'If you see anyone carrying an external hard drive, grab them!',
+    ],
+  },
+  'st-S8-2': {
+    lines: [
+      'Here are seven copies of the NDA. Please seal-stamp across every page.',
+      'Senpai, what\'s a cross-page seal?',
+      'You stamp across two pages at once. Seven copies… an hour, tops.',
+      'Oh, and every participating student signs by hand. Mail us the originals.',
+    ],
+  },
+  'st-S8-3': {
+    lines: [
+      'An email, at last. Attachment: sample_data_v2.xlsx (10 rows)',
+      'Forty-seven merged cells. Red means "outlier," yellow means "probably."',
+      'The units change every row. Row 3 is mm, row 4 is inches, row 5 is… "roughly."',
+      'You want deep learning… from these ten rows?',
+    ],
+  },
+  'st-S8-4': {
+    lines: [
+      'RE: RE: FW: Oh, and one more thing. Could it run in real time instead of just predicting?',
+      'And the deadline? Does the deadline change too?',
+      'The deadline stays the same.',
+      '…Fine. Slides first. We\'ll leave a blank where the results go.',
+    ],
+  },
+  'side8-boss': {
+    lines: [
+      'I\'m busy, so let\'s keep it short. When do we see results?',
+      'We, um, haven\'t received the data yet…',
+      'The data? I told them to send that three months ago.',
+      'I\'ll check and get back to you.',
+      '…Then we\'re taking it home today!',
+    ],
+  },
+  'side8-clear': {
+    lines: [
+      'The interim report went fine. The "Future Work" section shrank from five slides to two.',
+      'Good. And for the final report, it\'ll run in real time, right?',
+      'Yes…? Yes!',
+      'I just opened the data folder we got. Every file is dated 2019.',
+      'The project wasn\'t over. The stipend, they said, would come next month.',
+    ],
+  },
 };

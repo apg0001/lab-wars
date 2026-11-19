@@ -7,13 +7,14 @@ import { SIDE_SCENES } from './side-scenes';
 import { localizeScenes } from './en';
 import type { TrackId } from '../audio/music';
 
-export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny' | 'haunted' | 'tenure' | 'rain' | 'deadline' | 'ai' | 'startup' | 'blackout';
+export type Bg = 'classroom' | 'lab' | 'night' | 'office' | 'conference' | 'hall' | 'sunny' | 'haunted' | 'tenure' | 'rain' | 'deadline' | 'ai' | 'startup' | 'blackout' | 'industry';
 
 export type ActorId =
   | 'hero' | 'senior' | 'claudy' | 'codexy' | 'jaeminai' | 'newbie'
   | 'prof1' | 'prof2' | 'reviewer2' | 'chair' | 'committee' | 'dean' | 'president'
   | 'tenure' | 'ghost' | 'ghost13' | 'printer3am' | 'imposter' | 'reviewer3' | 'mom'
-  | 'submitsys' | 'autoreview' | 'vc' | 'mainbreaker' | 'pagelimit' | 'citation' | 'hallucite' | 'injection' | 'cloudbill' | 'powerstrip' | 'breaker';
+  | 'submitsys' | 'autoreview' | 'vc' | 'mainbreaker' | 'pagelimit' | 'citation' | 'hallucite' | 'injection' | 'cloudbill' | 'powerstrip' | 'breaker'
+  | 'exec' | 'datadrive' | 'nda' | 'reqchange' | 'mergedcell' | 'noreply';
 
 export type Action =
   | { a: 'enter'; id: ActorId; from: 'left' | 'right'; to: number }

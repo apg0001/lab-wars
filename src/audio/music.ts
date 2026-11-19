@@ -123,7 +123,7 @@ export function themeTracks(theme?: Theme): [TrackId, TrackId] {
   switch (theme) {
     case 'tenure': case 'haunted': case 'gloom': return ['spooky', 'spookyBoss'];
     case 'ai': return ['neon', 'boss'];
-    case 'deadline': case 'startup': case 'blackout': return ['tense', 'boss'];
+    case 'deadline': case 'startup': case 'blackout': case 'industry': return ['tense', 'boss'];
     default: return ['battle', 'boss'];
   }
 }

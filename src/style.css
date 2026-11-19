@@ -568,6 +568,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .side-row.theme-ai { background: linear-gradient(90deg, #05060f, #3a0d4a); }
 .side-row.theme-startup { background: linear-gradient(90deg, #6d3d2b, #b5794f); }
 .side-row.theme-blackout { background: linear-gradient(90deg, #1f2724, #4d5a55); }
+.side-row.theme-industry { background: linear-gradient(90deg, #1a237e, #546e7a); }
 /* 가로 화면: 외전 7개를 두 줄로 나란히 (넘치면 스크롤) */
 .side-list.two-col { display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: calc(0.7 * var(--u)) calc(1.2 * var(--u)); overflow-y: auto; touch-action: pan-y; }
 .side-list.two-col .side-row { gap: calc(0.8 * var(--u)); padding: calc(0.4 * var(--u)) calc(0.9 * var(--u)); min-width: 0; }
