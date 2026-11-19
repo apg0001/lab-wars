@@ -974,7 +974,8 @@ function drawLaserBeam(ctx: Ctx, x0: number, y0: number, x: number, y: number, p
 function drawProfBeam(ctx: Ctx, b: Battle, time: number): void {
   if (!b.beam) return;
   ctx.save();
-  drawLaserBeam(ctx, WORLD_W - 105 - 75, GROUND_Y - 250 + 14, b.beam.x, b.beam.y, b.laserTier, time);
+  // 교수실 지붕 레이저 포인터 끝의 빨간 점 (drawOffice: x + 25, top - 14)
+  drawLaserBeam(ctx, ENEMY_FRONT + 25, GROUND_Y - 240 - 14, b.beam.x, b.beam.y, b.laserTier, time);
   ctx.restore();
 }
 
