@@ -22,6 +22,20 @@ export interface PatchNoteEn {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: '0.25.1',
+    date: '2026-11-19',
+    title: '지도 정리',
+    items: [
+      '{map} 스토리 · 전공 · 무한 모드 전환 버튼이 모든 모드에서 위 가운데에 와요. 스토리 모드의 장 선택은 그 아래 줄로 옮겼어요',
+    ],
+    en: {
+      title: 'Map Tidy-Up',
+      items: [
+        '{map} The Story · Major · Endless switch now sits top-center in every mode, with Story chapter tabs on the row below',
+      ],
+    },
+  },
+  {
     version: '0.25.0',
     date: '2026-11-19',
     title: '전투력 순위표',
